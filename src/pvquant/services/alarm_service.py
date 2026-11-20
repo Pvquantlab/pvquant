@@ -502,6 +502,19 @@ def kullanicilar(tenant_id) -> list[dict]:
     return [{"id": str(r.id), "email": r.email, "rol": r.role} for r in rows]
 
 
+def deneme_alicilari(plant: dict, alicilar: list[str] | None) -> list[str]:
+    """v2.641: deneme e-postası alıcıları — gövdede verilenler (doğrulanır, ≤10) ya da santralın kayıtlı alıcıları; PVQ_ALARM_TO eklenmez."""
+    if alicilar is None:
+        return [x for x in (_pj(plant).get("alarm_alicilar") or []) if isinstance(x, str) and x.strip()]
+    a = list(dict.fromkeys(x.strip().lower() for x in alicilar if isinstance(x, str) and x.strip()))
+    if len(a) > 10:
+        raise ValueError("en çok 10 alıcı")
+    for x in a:
+        if not _EPOSTA.match(x):
+            raise ValueError(f"alıcı e-posta geçersiz: {x}")
+    return a
+
+
 def kural_durumu(plant: dict) -> dict:
     pj = _pj(plant)
     return {"secili": secili_kurallar(plant), "secilebilir": list(EK_KURALLAR), "esik": esikler(plant),
@@ -515,8 +528,17 @@ _EPOSTA = __import__("re").compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = None, alicilar: list[str] | None = None) -> dict:
     from pvquant.services import plant_service
+    # v2.641 (Santralim denetimi Parti 2): bilinmeyen kural/eşik anahtarı sessizce yutulmaz — yazım hatası «Kaydedildi» sanılırdı
+    bilinmeyen_k = [x for x in (kurallar or []) if x not in EK_KURALLAR and x not in ("veri_gelmedi", "skill_dustu")]
+    if bilinmeyen_k:
+        raise ValueError(f"bilinmeyen kural: {', '.join(str(x) for x in bilinmeyen_k[:3])}")
+    bilinmeyen_e = [kk for kk in (esik or {}) if kk not in ESIK_VARSAYILAN]
+    if bilinmeyen_e:
+        raise ValueError(f"bilinmeyen eşik: {', '.join(str(x) for x in bilinmeyen_e[:3])}")
     k = [x for x in EK_KURALLAR if x in (kurallar or [])]
     e = {kk: float(v) for kk, v in (esik or {}).items() if kk in ESIK_VARSAYILAN and v is not None}
+    if "revizyon_esik" in e and not (0.0 < e["revizyon_esik"] <= 1.0):   # v2.641: UI «1–100» (%), api oran — sınır yoktu, −5 ve 50 kabul ediliyordu
+        raise ValueError("revizyon_esik 0–1 (yüzde 1–100)")
     if "takvim_gun_once" in e and not (1 <= e["takvim_gun_once"] <= 30):
         raise ValueError("takvim_gun_once 1–30")
     if "ptf_esik_tl_mwh" in e and not (0 <= e["ptf_esik_tl_mwh"] <= 10000):
@@ -527,6 +549,8 @@ def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = N
         raise ValueError("sayac_eksik_esik_saat 1–744")
     for kk in ("takvim_gun_once", "ariza_esik", "sayac_eksik_esik_saat"):
         if kk in e:
+            if e[kk] != int(e[kk]):   # v2.641: 2,9 sessizce 2'ye kesiliyordu
+                raise ValueError(f"{kk} tam sayı olmalı")
             e[kk] = int(e[kk])
     ek = {}
     if alicilar is not None:

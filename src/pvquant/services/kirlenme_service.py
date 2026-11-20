@@ -249,6 +249,21 @@ def _meteo_yagis(lat: float, lon: float, bas, bit) -> pd.DataFrame:
             s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": bas, "b": bit}, index_col="ts_utc", parse_dates=["ts_utc"])
 
 
+def son_yagis_ozeti(yg, bitis) -> dict:
+    """SAF. v2.641 (Santralim denetimi Parti 2, 02C-B11): arşiv pencereyi KAPSAMIYORSA «yağış yok» denmez — 2018 gibi eski pencerede
+    hava tahmini arşivi boştur; eski metin yanlış «yağış yok» diyordu. arsiv alanı: True/False."""
+    if yg is None or len(yg) == 0:
+        return {"tarih": None, "mm": None, "gun_once": None, "kaynak": "hava tahmini arşivi", "arsiv": False,
+                "not": "hava tahmini arşivi bu pencereyi kapsamıyor; yağış bağlamı yok"}
+    yagisli = yg[yg >= YAGIS_ESIK_MM]
+    if len(yagisli):
+        t = max(yagisli.index)
+        return {"tarih": t.isoformat(), "mm": round(float(yagisli[t]), 1), "gun_once": (bitis - t).days, "referans": "son ölçüm günü",
+                "kaynak": "hava tahmini arşivi (ölçülen yağış değil)", "arsiv": True}
+    return {"tarih": None, "mm": None, "gun_once": None, "kaynak": "hava tahmini arşivi", "arsiv": True,
+            "not": f"pencerede ≥ {YAGIS_ESIK_MM:g} mm/gün yağış yok (hava tahmini arşivi)"}
+
+
 def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> dict:
     """Son `gun` ölçüm günü: açık gün serisi, AGE/PR_açık 7 gün medyanları, 30 açık gün eğimleri, yorum, son yağış."""
     from zoneinfo import ZoneInfo
@@ -290,9 +305,7 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
         bas_utc = pd.Timestamp(bitis - timedelta(days=gun), tz=ZoneInfo(tz)).tz_convert("UTC").to_pydatetime()
         bit_utc = pd.Timestamp(bitis + timedelta(days=1), tz=ZoneInfo(tz)).tz_convert("UTC").to_pydatetime()
         yg = gunluk_yagis(_meteo_yagis(float(plant["lat"]), float(plant["lon"]), bas_utc, bit_utc), tz)
-        yagisli = yg[yg >= YAGIS_ESIK_MM]
-        son_yagis = ({"tarih": max(yagisli.index).isoformat(), "mm": round(float(yagisli[max(yagisli.index)]), 1), "gun_once": (bitis - max(yagisli.index)).days, "referans": "son ölçüm günü", "kaynak": "hava tahmini arşivi (ölçülen yağış değil)"}
-                     if len(yagisli) else {"tarih": None, "mm": None, "gun_once": None, "kaynak": "hava tahmini arşivi", "not": f"pencerede ≥ {YAGIS_ESIK_MM:g} mm/gün yağış yok (hava tahmini arşivi)"})
+        son_yagis = son_yagis_ozeti(yg, bitis)
     except Exception as e:   # noqa: BLE001 — meteo arşivi yoksa gösterge düşmez
         son_yagis = {"tarih": None, "mm": None, "gun_once": None, "kaynak": "hava tahmini arşivi", "not": f"hava tahmini arşivi okunamadı ({type(e).__name__}); yağış bağlamı yok"}
     yorum = yorumla(age_egim, pr_egim)

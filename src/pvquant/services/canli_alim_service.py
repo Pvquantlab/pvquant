@@ -9,6 +9,7 @@ Her sınama denetim izine yazılır (çağıran katman).
 """
 from __future__ import annotations
 
+import functools
 import ipaddress
 import socket
 from datetime import datetime, timezone
@@ -89,11 +90,45 @@ def zaman_asimi(h: dict) -> float:
         return ZAMAN_ASIMI_SN
 
 
+YASAK_AGLAR_VARSAYILAN = "172.16.0.0/12,100.64.0.0/10"   # v2.641 (02A-B7): docker köprü bloğu + paylaşımlı adres alanı; PVQ_SAHA_YASAK_CIDR ile değişir
+
+
+def _cidr_listesi(ad: str, varsayilan: str) -> list:
+    import os
+    out = []
+    for parca in (os.environ.get(ad) if os.environ.get(ad) is not None else varsayilan).split(","):
+        parca = parca.strip()
+        if not parca:
+            continue
+        try:
+            out.append(ipaddress.ip_network(parca, strict=False))
+        except ValueError:
+            continue
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def _sunucu_adresleri() -> frozenset:
+    """Sunucunun kendi arayüz adresleri (konteyner içinde konteynerin adresi); çözümleme başarısızsa boş küme. Süreç ömrünce bir kez çözülür."""
+    try:
+        return frozenset(ipaddress.ip_address(x[4][0]) for x in socket.getaddrinfo(socket.gethostname(), None))
+    except (OSError, ValueError):
+        return frozenset()
+
+
 def adres_izinli(ip: str) -> tuple[bool, str]:
-    """Loopback / link-local / multicast / ayrılmış / belirsiz → ret; özel ağ (VPN) ve genel adres → izin."""
+    """Loopback / link-local / multicast / ayrılmış / belirsiz → ret; özel ağ (VPN) ve genel adres → izin.
+    v2.641 (02A-B7): sunucunun kendi arayüz adresleri ve PVQ_SAHA_YASAK_CIDR blokları (varsayılan docker 172.16/12 + 100.64/10) da reddedilir —
+    saha sınaması/örneklemesi sunucunun kendi konteyner ağına TCP açamaz. Sahanın VPN'i bu bloktaysa PVQ_SAHA_IZINLI_CIDR ile delik açılır (izinli kazanır)."""
     a = ipaddress.ip_address(ip)
     if a.is_loopback or a.is_link_local or a.is_multicast or a.is_reserved or a.is_unspecified:
         return False, "hedef adres yerel/ayrılmış aralıkta; sahadaki cihaz ya da VPN adresi gerekir"
+    if any(a in ag for ag in _cidr_listesi("PVQ_SAHA_IZINLI_CIDR", "")):
+        return True, "izinli özel ağ (VPN) adresi"
+    if a in _sunucu_adresleri():
+        return False, "hedef adres sunucunun kendi adresi; sahadaki cihaz ya da VPN adresi gerekir"
+    if any(a in ag for ag in _cidr_listesi("PVQ_SAHA_YASAK_CIDR", YASAK_AGLAR_VARSAYILAN)):
+        return False, "hedef adres sunucu ağına ayrılmış blokta (docker/paylaşımlı adres alanı); sahadaki cihaz ya da VPN adresi gerekir"
     return True, "özel ağ (VPN) adresi" if a.is_private else "genel adres"
 
 

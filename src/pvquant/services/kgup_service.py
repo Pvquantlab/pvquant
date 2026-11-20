@@ -83,6 +83,23 @@ def sablon_ozeti(pj, sab=None) -> dict:
             "saat_bicim": sab.saat_bicim, "bom": bool(sab.bom), "eak_kolonlar": list(kg.EAK_KOLONLAR)}   # v2.512
 
 
+SEGMENT_NEDEN = {"lisanssiz_dagitim": "program bildirimi GTŞ/toplayıcı portföyünde yapılır", "oz_tuketim_saatlik": "saatlik mahsuplaşma; program bildirimi yok"}
+
+
+def segment_notu(pj: dict) -> str | None:
+    """v2.641 (02B-B5): KGUP yukumlu olmayan segmentte (lisanssiz dagitim, oz tuketim) ya da segment secilmemisken dosya yine
+    uretilir; uyari satiri bunu soyler. Kapi degil: dosya bilgi amacli indirilebilir (denetim 02B-B5: 'KGUP ucunda segment kapisi yok')."""
+    from pvquant.ext.turkiye import segment as sg
+    from pvquant.services import dengesizlik_service
+    seg = dengesizlik_service.segment_bilgisi(pj)
+    if seg["segment"] is None:
+        return "Segment seçilmedi (Santralim → Piyasa kimliği): KGÜP yükümlülüğü bilinmiyor; dosya bilgi amaçlı üretildi."
+    if not seg["kgup_yukumlu"]:
+        neden = SEGMENT_NEDEN.get(seg["segment"], "bu segmentte program bildirimi yoktur")
+        return f"Beyan edilen segment «{sg.ETIKET.get(seg['segment'], seg['segment'])}» KGÜP yükümlü değil ({neden}); dosya yalnız bilgi amaçlı, TPYS bildirimi gerekmez."
+    return None
+
+
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
     """Program tablosu + doğrulama + TPYS CSV metni. Koşu yoksa {'hata': ..., 'kod': 409}; eksik saat varsa {'hata', 'kod': 422, 'eksik_saatler'}."""
     import json as _j
@@ -118,6 +135,9 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     baytlar = kg.csv_baytlari(tablo, sab)
     eak_metin = kg.eak_csv_metni(son.tablo, kap, gerekce_saat=gerekce_saat)   # v2.512: TPYS EAK.csv; fark «kaynak yetersizliği»; v2.521: olay gerekçesi
     uyarilar = son.uyarilar + hatalar   # v2.513 rötuş: şablon durumu artık uyarı değil (sablon.durum alanında; v2.512'den beri TPYS ile birebir)
+    seg_notu = segment_notu(pj)   # v2.641 (02B-B5): KGUP yukumlu olmayan segment / secilmemis segment uyari satiri
+    if seg_notu:
+        uyarilar.append(seg_notu)
     if son.sicrama_saatleri and not dengeleme_birimi:
         uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")
     # v2.287: gün içi revizyon kapısı (md. 69(1)) — öğlen örneğiyle; öneri kantili dengesizlik servisinden

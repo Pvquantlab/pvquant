@@ -16,6 +16,23 @@ def kimlik_etiketi(kod: str, alan: str) -> str:
     return (SAGLAYICILAR.get(kod, {}).get("kimlik_etiketleri") or {}).get(alan, alan)
 
 
+def hata_sinifi(e: BaseException) -> str:
+    """v2.641 (02A-B6). SAF. Sağlayıcı kitaplığının istisnasını müşteri diline sınıflar; HAM MESAJ döndürülmez (URL/parola/kimlik sızabilir)."""
+    ad = type(e).__name__
+    msg = str(e).lower()
+    if "timeout" in ad.lower() or "timed out" in msg:
+        return "zaman aşımı"
+    if "connect" in ad.lower() or "resolve" in msg or "name or service not known" in msg or "nodename" in msg:
+        return "bağlantı kurulamadı"
+    if "ssl" in ad.lower() or "certificate" in msg:
+        return "TLS/sertifika hatası"
+    if "json" in ad.lower() or "decode" in ad.lower() or ad in ("KeyError", "TypeError", "IndexError", "AttributeError"):
+        return "yanıt beklenen biçimde değil"
+    if "http" in ad.lower() or "status" in msg:
+        return "sağlayıcı hata yanıtı verdi"
+    return f"beklenmeyen hata: {ad}"
+
+
 def sina(saglayici: str, kimlik: dict, onay: bool, bolge: str | None = None, transport=None) -> dict:
     simdi = datetime.now(timezone.utc).isoformat(timespec="seconds")
     if not onay:
@@ -42,7 +59,7 @@ def sina(saglayici: str, kimlik: dict, onay: bool, bolge: str | None = None, tra
         msg = str(e)
         if "kimlik" in msg or "(305)" in msg or "(401)" in msg or "geçersiz" in msg or "yetki" in msg:
             return {"durum": "kimlik_hatasi", "zaman": simdi, "aciklama": f"Kimlik doğrulanamadı: {msg}"}
-        return {"durum": "baglanti_hatasi", "zaman": simdi, "aciklama": f"Sağlayıcıya ulaşılamadı ya da yanıt okunamadı ({type(e).__name__}: {msg})."}
+        return {"durum": "baglanti_hatasi", "zaman": simdi, "aciklama": f"Sağlayıcıya ulaşılamadı ya da yanıt okunamadı ({hata_sinifi(e)}).", "hata_sinifi": type(e).__name__}
     ilk = santraller[0] if santraller else None
     return {"durum": "ok", "zaman": simdi, "saglayici": kod,
             "ozet": {"santral_sayisi": len(santraller), "ilk_santral": (ilk or {}).get("ad"), "ilk_kapasite_kwp": (ilk or {}).get("kapasite_kwp"), "saat_dilimi": (ilk or {}).get("saat_dilimi"),

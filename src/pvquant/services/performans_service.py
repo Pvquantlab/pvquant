@@ -85,9 +85,12 @@ def sensor_dogrula(s: dict) -> dict:
     kt = s.get("kalibrasyon_tarihi")
     if kt not in (None, ""):
         try:
-            kt = date.fromisoformat(str(kt)[:10]).isoformat()
+            kt_d = date.fromisoformat(str(kt)[:10])
         except ValueError as e:
             raise ValueError("kalibrasyon_tarihi YYYY-AA-GG olmalı") from e
+        if kt_d > date.today():   # v2.641 (02C-B8): gelecekteki kalibrasyon tarihi vadeyi yanlış ileri atar
+            raise ValueError("kalibrasyon_tarihi gelecekte olamaz")
+        kt = kt_d.isoformat()
     else:
         kt = None
     per = s.get("kalibrasyon_periyodu_ay")
@@ -103,6 +106,21 @@ def sensor_dogrula(s: dict) -> dict:
         return v or None
     return {"tur": tur, "olcum": olcum, "marka_model": _metin("marka_model", 80), "seri_no": _metin("seri_no", 40),
             "sinif": sinif, "kalibrasyon_tarihi": kt, "kalibrasyon_periyodu_ay": per, "not": _metin("not", 200)}
+
+
+def sensorler_dogrula(liste: list) -> list[dict]:
+    """v2.641 (02C-B8). SAF. Envanterin tamamı: her kayıt sensor_dogrula'dan geçer; aynı (tur, olcum, seri_no) iki kez beyan
+    edilemez (seri numarası boşsa tekillik aranmaz — aynı tür iki piranometre seri numarasız olabilir). Hata → ValueError."""
+    temiz = [sensor_dogrula(s) for s in (liste or [])]
+    gorulen: set[tuple] = set()
+    for s in temiz:
+        if not s.get("seri_no"):
+            continue
+        anahtar = (s["tur"], s["olcum"], s["seri_no"].casefold())
+        if anahtar in gorulen:
+            raise ValueError(f"yinelenen sensör: {s['tur']}/{s['olcum']} seri no {s['seri_no']} iki kez beyan edildi")
+        gorulen.add(anahtar)
+    return temiz
 
 
 def _ay_ekle(d: date, ay: int) -> date:
@@ -139,6 +157,15 @@ def isinim_kaynagi(sensorler: list[dict] | None, bugun: date | None = None) -> d
     etiket = f"{SENSOR_TURLERI[s['tur']]} — {OLCUMLER[s['olcum']]}" + (f", sınıf {s['sinif']}" if s.get("sinif") else ", sınıf beyan edilmedi")
     return {"duzlem": s["olcum"], "etiket": etiket, "sinif": s.get("sinif"), "kalibrasyon": s["durum"], "tur": s["tur"],
             "vade": s.get("vade")}
+
+
+def isinim_uyarisi(kaynak: dict | None, pr_durum: str | None) -> str | None:
+    """SAF. v2.641 (Santralim denetimi Parti 2, 02C-B9): beyan yalnız YATAY (GHI) sensörken PR yine ölçüm dosyasının düzlem-içi (POA)
+    sütununa dayanır — beyan hesabı yönlendirmez; kart bunu söylesin. POA beyanı ya da PR yokken uyarı yok."""
+    if not kaynak or kaynak.get("duzlem") != "ghi" or pr_durum != "ok":
+        return None
+    return ("Beyan edilen ışınım sensörü yatay (GHI); PR hesabı ölçüm dosyasındaki düzlem-içi (POA) sütununa dayanır — "
+            "sütunun hangi sensörden geldiğini doğrulayın ya da düzlem-içi sensörü beyan edin.")
 
 
 def sensorler_oku(pj: dict | str | None) -> list[dict]:

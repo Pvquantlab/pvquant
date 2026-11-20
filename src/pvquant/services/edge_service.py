@@ -56,8 +56,10 @@ def toplayici_listele(tenant_id, plant_id) -> list[dict]:
         with tenant_baglami(tenant_id) as s:
             rows = s.execute(text("SELECT id, ad, prefix, durum, olusturma, son_gorulme, son_sira, iptal_zamani FROM edge_toplayici WHERE plant_id=CAST(:p AS uuid) ORDER BY olusturma"),
                              {"p": str(plant_id)}).mappings().all()
-    except Exception:   # noqa: BLE001 — göç yoksa
-        return []
+    except Exception as e:   # noqa: BLE001 — v2.641 (02A-B13): yalnız göç yoksa (tablo tanımsız) boş liste; başka hata gizlenmez
+        if "edge_toplayici" in str(e) and ("does not exist" in str(e) or "UndefinedTable" in type(e).__name__ or "no such table" in str(e)):
+            return []
+        raise
     return [{"id": str(r["id"]), "ad": r["ad"], "prefix": r["prefix"], "durum": r["durum"], "olusturma": r["olusturma"].isoformat(),
              "son_gorulme": r["son_gorulme"].isoformat() if r["son_gorulme"] else None, "son_sira": r["son_sira"], "iptal_zamani": r["iptal_zamani"].isoformat() if r["iptal_zamani"] else None} for r in rows]
 
@@ -76,20 +78,31 @@ def dogrula(anahtar: str, bul=None) -> dict:
     if not a:
         raise PermissionError("toplayıcı anahtarı biçimi geçersiz")
     onek, gizli = a
-    kayit = (bul or _bul)(onek)
-    if kayit is None or not hmac.compare_digest(kayit["anahtar_hash"], _hash(gizli)):
+    adaylar = (bul or _bul_hepsi)(onek)   # v2.641 (02A-B11): ayni onekli tum kayitlar; LIMIT 1 cakismada eski anahtari hic dogrulamiyordu
+    if isinstance(adaylar, dict) or adaylar is None:
+        adaylar = [adaylar] if adaylar else []
+    ozet = _hash(gizli)
+    kayit = next((k for k in adaylar if hmac.compare_digest(k["anahtar_hash"], ozet)), None)
+    if kayit is None:
         raise PermissionError("toplayıcı anahtarı geçersiz")
     if kayit.get("durum") != "etkin":
         raise PermissionError("toplayıcı anahtarı iptal edilmiş")
     return {"id": str(kayit["id"]), "tenant_id": str(kayit["tenant_id"]), "plant_id": str(kayit["plant_id"]), "ad": kayit["ad"]}
 
 
-def _bul(onek: str) -> dict | None:
+def _bul_hepsi(onek: str) -> list[dict]:
+    """v2.641 (02A-B11): ayni onekli TUM kayitlar (yeni -> eski). Onek 8 hex (~4 milyar) cakisma olasiligi dusuk ama LIMIT 1
+    cakisan eski anahtari hic dogrulamiyordu; dogrula() her adayi compare_digest ile dener."""
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT id, tenant_id, plant_id, ad, anahtar_hash, durum FROM edge_toplayici WHERE prefix=:o ORDER BY olusturma DESC LIMIT 1"), {"o": onek}).mappings().first()
-    return dict(r) if r else None
+        rows = s.execute(text("SELECT id, tenant_id, plant_id, ad, anahtar_hash, durum FROM edge_toplayici WHERE prefix=:o ORDER BY olusturma DESC"), {"o": onek}).mappings().all()
+    return [dict(r) for r in rows]
+
+
+def _bul(onek: str) -> dict | None:   # geriye uyum: en yeni kayit
+    h = _bul_hepsi(onek)
+    return h[0] if h else None
 
 
 GELECEK_PAYI = timedelta(minutes=15)   # v2.640: toplayıcı saati ileri olabilir; daha ötesi makul değil

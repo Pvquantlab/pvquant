@@ -51,6 +51,14 @@ class Segment(str, Enum):
     LISANSSIZ_DAGITIM = "lisanssiz_dagitim"
     OZ_TUKETIM_SAATLIK = "oz_tuketim_saatlik"
 
+    @property
+    def etiket(self) -> str:   # v2.641 (02B-B5): musteri dili; web sozluk.segmentKisa ile ayni
+        return ETIKET[self.value]
+
+
+# v2.641 (02B-B5): kisa musteri etiketi (web/src/lib/sozluk.ts segmentKisa ile birebir)
+ETIKET = {"lisansli_serbest": "Lisanslı serbest", "lisansli_yekdem": "Lisanslı YEKDEM", "yeka": "YEKA", "lisanssiz_iletim": "Lisanssız iletim",
+          "lisanssiz_dagitim": "Lisanssız dağıtım", "oz_tuketim_saatlik": "Öz tüketim"}
 
 KURALLAR = pd.DataFrame([
     {"segment": Segment.LISANSLI_SERBEST, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG", "kupst": True, "fiyat": "PTF / ikili anlaşma", "uzlastirma": "saatlik"},

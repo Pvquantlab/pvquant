@@ -1021,6 +1021,37 @@ def alarm_kurallari_ayarla(plant_id: str, p: KuralIstek, claims=Depends(yazma_ye
     return r
 
 
+class AlarmDenemeIstek(BaseModel):
+    alicilar: list[str] | None = None   # None → santralın kayıtlı alıcıları
+
+
+@app.post("/v1/plants/{plant_id}/alarm-kurallari/deneme")
+@limiter.limit("5/hour")
+def alarm_deneme(request: Request, plant_id: str, p: AlarmDenemeIstek, claims=Depends(yazma_yetkisi())):
+    """v2.641 (Santralim denetimi Parti 2, 02C-B6): deneme e-postası — alerts yazmaz, webhook göndermez, PVQ_ALARM_TO'ya gitmez;
+    yalnız santral alıcılarına (ya da gövdedeki adreslere) posta. SMTP yapılandırılmamışsa 409 (sahte «gönderildi» yok)."""
+    from pvquant.services import alarm_service, posta_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if not posta_service.yapilandirildi():
+        raise HTTPException(409, "e-posta gönderimi bu kurulumda yapılandırılmamış; deneme gönderilemez (alarmlar panel zilinde ve webhook'ta görünür)")
+    try:
+        kime = alarm_service.deneme_alicilari(row, p.alicilar)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if not kime:
+        raise HTTPException(422, "alıcı yok: önce e-posta alıcılarını kaydedin")
+    konu = f"[PVQuant] Deneme alarmı — {row.get('name')}"
+    govde = (f"Bu bir deneme iletisidir; {row.get('name')} santralının alarm alıcı ayarını doğrulamak için gönderildi. "
+             "Gerçek alarmlar aynı adrese bu biçimde gelir; bu ileti panel alarm listesine yazılmadı.")
+    sonuc = {a: bool(posta_service.gonder(a, konu, govde)) for a in kime}
+    _denetim.kaydet("musteri", "alarm_deneme", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"alici_sayisi": len(kime), "gonderildi": sum(sonuc.values())})   # adresler izine yazılmaz
+    return {"gonderildi": [a for a, ok in sonuc.items() if ok], "basarisiz": [a for a, ok in sonuc.items() if not ok],
+            "not": "Deneme alarmı panel alarm listesine yazılmaz ve webhook'a gitmez."}
+
+
 @app.get("/v1/plants/{plant_id}/damga")
 def damga(plant_id: str, request: Request, claims=Depends(gecerli_kullanici)):
     """v2.265 — değişim damgası: son SCADA/koşu/alarm/skill/kalibrasyon zamanları; ETag ile If-None-Match → 304.
@@ -2011,25 +2042,37 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
     v2.517 (P2a): piyasa pozisyonu ayarı (program | uretim | sabit MWh/saat) — uzlaştırma hesabının EDM tabanı."""
     from datetime import date as _d
 
+    from pvquant.services import piyasa_service
+    from pvquant.services.calib_service import _pj as _pj_oku
+
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
     kap = float(row["capacity_kwp"])
     an: dict = {}
+    pj_mevcut = _pj_oku(row)   # v2.641 (Parti 3): kısmi istekte mevcut değerle birlikte doğrulanır (geçici kısıt, sabit pozisyon)
     verilen = p.model_fields_set   # yalnız istekte GEÇEN alanlar değişir; null = temizle
     if "eak_kw" in verilen:
         if p.eak_kw is not None and not (0 < p.eak_kw <= kap):
             raise HTTPException(422, f"eak_kw 0–{kap:g} kW aralığında olmalı")
-        an["eak_kw"] = float(p.eak_kw) if p.eak_kw is not None else None
+        an["eak_kw"] = round(float(p.eak_kw), 1) if p.eak_kw is not None else None   # v2.641 (Parti 3): 0,1 kW hassasiyet; EAK MW cinsinden 3 ondalık okunur
     if "gecici_kw" in verilen or "gecici_bitis" in verilen:
-        if p.gecici_kw and p.gecici_bitis:
+        # v2.641 (02B-B9): yalnız biri verilirse (ya da bitiş geçmişteyse) sessizce kaldırılmaz; 422. Kaldırmak için ikisi de boş gelir.
+        eski_g = (pj_mevcut.get("eak_gecici") or {}) if isinstance(pj_mevcut.get("eak_gecici"), dict) else {}
+        g_kw = p.gecici_kw if "gecici_kw" in verilen else eski_g.get("kw")
+        g_bitis = p.gecici_bitis if "gecici_bitis" in verilen else eski_g.get("bitis")
+        if g_kw and g_bitis:
             try:
-                _d.fromisoformat(p.gecici_bitis)
+                bitis_d = _d.fromisoformat(str(g_bitis))
             except ValueError:
                 raise HTTPException(422, "gecici_bitis YYYY-MM-DD olmalı")
-            if not (0 < p.gecici_kw <= kap):
+            if bitis_d < piyasa_service.piyasa_gunu():
+                raise HTTPException(422, f"gecici_bitis geçmişte ({bitis_d.isoformat()}); geçici kısıt bugünden ileri bir bitiş ister, kaldırmak için iki alanı da boş gönderin")
+            if not (0 < float(g_kw) <= kap):
                 raise HTTPException(422, "gecici_kw aralık dışı")
-            an["eak_gecici"] = {"kw": float(p.gecici_kw), "bitis": p.gecici_bitis}
+            an["eak_gecici"] = {"kw": round(float(g_kw), 1), "bitis": bitis_d.isoformat()}
+        elif g_kw or g_bitis:
+            raise HTTPException(422, "geçici kısıt için gecici_kw ve gecici_bitis birlikte gerekir; kaldırmak için ikisini de boş gönderin")
         else:
             an["eak_gecici"] = None
     if p.kupst_n is not None:
@@ -2056,6 +2099,11 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.pozisyon_sabit_mwh is not None and not (0 <= p.pozisyon_sabit_mwh <= kap / 1000.0):
             raise HTTPException(422, f"pozisyon_sabit_mwh 0–{kap / 1000.0:g} MWh/saat aralığında olmalı")
         an["pozisyon_sabit_mwh"] = float(p.pozisyon_sabit_mwh) if p.pozisyon_sabit_mwh is not None else None
+    if "pozisyon_kaynagi" in verilen or "pozisyon_sabit_mwh" in verilen:   # v2.641 (Parti 3): sabit pozisyon saatlik MWh'siz tanımsız
+        poz_k = an["pozisyon_kaynagi"] if "pozisyon_kaynagi" in verilen else pj_mevcut.get("pozisyon_kaynagi")
+        poz_s = an["pozisyon_sabit_mwh"] if "pozisyon_sabit_mwh" in verilen else pj_mevcut.get("pozisyon_sabit_mwh")
+        if poz_k == "sabit" and poz_s is None:
+            raise HTTPException(422, "pozisyon_kaynagi sabit için pozisyon_sabit_mwh (MWh/saat) gerekir")
     if "teminat_risk_katsayisi" in verilen:   # v2.522 (P2b)
         if p.teminat_risk_katsayisi is not None and not (0 < p.teminat_risk_katsayisi <= 10):
             raise HTTPException(422, "teminat_risk_katsayisi 0–10 aralığında olmalı")
@@ -2755,10 +2803,21 @@ def pr(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
 def _pr_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.249 — Dalga 1.4: IEC 61724-1 performans orani (olcumden). POA olcumu
     yoksa 'poa_yok' — GHI ile uydurulmaz (tire ilkesi)."""
+    from pvquant.services import performans_service as ps
     from pvquant.services import pr_service
     if not (7 <= gun <= 365):
         raise HTTPException(422, "gun 7-365 araliginda olmali")
-    return pr_service.pr_karti(claims["tenant_id"], plant_id, gun=gun)
+    k = pr_service.pr_karti(claims["tenant_id"], plant_id, gun=gun)
+    # v2.641 (Santralim denetimi Parti 2): yalnız yatay (GHI) sensör beyanında PR kartına uyarı — beyan hesabı yönlendirmez
+    if (k or {}).get("durum") == "ok":   # yalnız PR hesaplandıysa sensör beyanına bakılır; santral okunamazsa uyarı atlanır (kart düşmez)
+        try:
+            row = plant_service.getir(claims["tenant_id"], plant_id)
+        except Exception:   # noqa: BLE001 — ör. test santral kimliği UUID değil
+            row = None
+        uy = ps.isinim_uyarisi(ps.isinim_kaynagi(ps.sensorler_oku((row or {}).get("params_json"))), k.get("durum")) if row else None
+        if uy:
+            k["isinim_uyari"] = uy
+    return k
 
 
 @app.get("/v1/plants/{plant_id}/skill")
@@ -2897,7 +2956,7 @@ def sensorler_ayarla(plant_id: str, p: SensorlerIstek, claims=Depends(yazma_yetk
     if len(p.sensorler) > 20:
         raise HTTPException(422, "en çok 20 sensör")
     try:
-        temiz = [ps.sensor_dogrula(s) for s in p.sensorler]
+        temiz = ps.sensorler_dogrula(p.sensorler)   # v2.641 (02C-B8): gelecek tarih + (tur, olcum, seri_no) tekilliği
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, sensorler=temiz)
@@ -3035,6 +3094,8 @@ def veri_yolu_bulut_sinama(plant_id: str, p: BulutSinamaIstek, claims=Depends(ya
     vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
     if not vy or vy.get("tur") != "inverter_bulut_api":
         raise HTTPException(422, "bulut sınaması yalnız hedeflenen veri kaynağı inverter bulutu API iken yapılır")
+    if (vy.get("saglayici") or "").strip() and (vy.get("saglayici") or "").strip().lower() != (p.saglayici or "").strip().lower():   # v2.641 (02A-B4)
+        raise HTTPException(422, f"beyan edilen sağlayıcı «{vy['saglayici']}», sınanan «{p.saglayici}» — önce hedef sağlayıcıyı kaydedin, sonra sınayın")
     sonuc = bulut_sinama_service.sina(p.saglayici, p.kimlik or {}, bool(vy.get("salt_okuma_onayi")), p.bolge)
     plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "saglayici": vy.get("saglayici") or p.saglayici,
                                    "son_sinama": {"zaman": sonuc["zaman"], "durum": sonuc["durum"], "ozet": sonuc.get("ozet"), "aciklama": sonuc.get("aciklama"), "saglayici": p.saglayici}})

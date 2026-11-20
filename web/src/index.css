@@ -492,6 +492,9 @@ table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var
 .program-ozet { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
 .program-ozet .sayi-buyuk { font-size: 26px; }
 .program-ozet .cip, .program-ozet .rozet { align-self: center; }
+/* v2.641: izleyici rolünde yazma kontrolleri pasif — fieldset sarmalı görsel iz bırakmaz */
+.rol-alan { border: 0; padding: 0; margin: 0; min-width: 0; }
+.rol-alan:disabled { opacity: .75; }
 .program-ozet[aria-busy="true"] .sayi-buyuk, .program-ozet[aria-busy="true"] > .soluk { opacity: .45; transition: opacity .15s; }   /* 19.11 Bulgu 2: seviye değişti, yeni değer yolda */
 /* indirme grupları: etiketli iki küme (bildirim dosyası · toplayıcı) */
 .dugme-grubu { display: flex; flex-wrap: wrap; gap: 14px 32px; margin-top: 16px; }

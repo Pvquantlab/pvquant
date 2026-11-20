@@ -25,9 +25,11 @@ const KURAL_ADI: Record<string, string> = ALARM_KURALI;   // v2.528 (P10): tek k
 function ayrintiDugmesi(acik: string | null, ayarla: (v: string | null) => void, id: string) {
   const bu = acik === id;
   return (
-    <button type="button" className="ayar-ayrinti-dugme" aria-expanded={bu} aria-controls={`ayrinti-${id}`} onClick={() => ayarla(bu ? null : id)}>
+    // v2.641 inceleme: form denetimi DEĞİL (span role=button) — izleyici rolünde kart fieldset'i pasifken açıklamalar okunabilir kalsın
+    <span role="button" tabIndex={0} className="ayar-ayrinti-dugme" aria-expanded={bu} aria-controls={`ayrinti-${id}`} onClick={() => ayarla(bu ? null : id)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ayarla(bu ? null : id); } }}>
       <span className="bilgi" aria-hidden="true">i</span>{bu ? "Ayrıntıyı gizle" : "Ayrıntı"}
-    </button>);
+    </span>);
 }
 function ayrintiGovdesi(acik: string | null, id: string, icerik: ReactNode) {
   return acik === id ? <div id={`ayrinti-${id}`} className="ayar-ayrinti-govde" role="region" aria-label="Ayar ayrıntısı">{icerik}</div> : null;
@@ -47,6 +49,14 @@ const SENSOR_FORM_BOS: SensorForm = { tur: "piranometre", olcum: "poa", marka_mo
 const gunKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T00:00:00"));
 const anKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));   // v2.557: çekiş/alınma anı (yerel saat)
 /** 08.11 inceleme II (faz 4): bağlantı sınaması durum adları — anlık sonuç ve kalıcı «son sınama» satırı aynı sözlüğü kullanır */
+/** v2.641 (02A-B10): ölçüm sınırı seçenekleri — kaynak kıyası ve referans kıyası aynı listeyi kullanır (api kaynak_secim.SINIR_ETIKET ile birebir) */
+const SINIR_SECENEK = [["inverter_ac", "inverter AC çıkışı"], ["plant_gross_ac", "tesis brüt AC"], ["pcc_net", "bağlantı noktası net"], ["settlement", "uzlaştırma sayacı"]] as const;
+/** v2.641 (02B-B10): kirlenme modelinin sayısal terimleri (API'de vardı, UI'da yoktu); aralıklar fizik_service.SAYISAL ile birebir */
+const FT_SAYISAL = {
+  soiling_gunluk_kayip: { etiket: "Günlük kirlenme kaybı (oran)", aralik: "0–0,02", ornek: "örn. 0,002", ipucu: "Yağışsız her gün biriken kayıp oranı; 0,002 = günde %0,2" },
+  soiling_temizleme_mm: { etiket: "Temizleyen yağış (mm/gün)", aralik: "0,5–30", ornek: "örn. 5", ipucu: "Bu eşiği aşan günlük yağış birikimi sıfırlar" },
+  soiling_baslangic: { etiket: "Başlangıç kirlenmesi (oran)", aralik: "0–0,3", ornek: "örn. 0,02", ipucu: "Serinin başındaki birikmiş kayıp oranı" },
+} as const;
 const KAYNAK_ETIKET: Record<string, string> = { fusionsolar: "FusionSolar bulutu", scada_dosya: "SCADA dosyası", sayac_dosya: "sayaç dosyası", iec104: "IEC 104", modbus_sunspec: "Modbus / SunSpec", epias_seffaflik: "EPİAŞ Şeffaflık", bulut: "bulut API" };   // v2.550: gölge kartı; kod müşteri yüzüne çıkmaz
 const SINAMA_ETIKET: Record<string, string> = { ok: "bağlantı başarılı", kismi: "cihaza erişildi, inverter modeli yok", veri_modeli_yok: "cihaza erişildi, veri modeli desteklenmiyor", protokol_yaniti_yok: "istasyona ulaşıldı, 104 onayı yok", kimlik_hatasi: "kimlik doğrulanamadı", saglayici_desteklenmiyor: "sağlayıcı desteklenmiyor", saglayici_kapandi: "üretici API'si kapandı", onay_yok: "onay yok", adres_reddedildi: "adres reddedildi", ayar_hatasi: "ayar hatası", baglanti_hatasi: "ulaşılamadı" };
 const tarihSaatKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso));   // 08.11 inceleme II: değerlendirme anı
@@ -60,7 +70,7 @@ const KURAL_GRUPLARI: { ad: string; kurallar: string[] }[] = [
 /** 01.11 (ikinci dil turu): her kuralın koşulu düz cümle, güncel eşikle — kutunun altında ikinci satır (mono kısaltma «>%3 gelir» kalktı).
  *  Ek türeten sayılarda Türkçe ek sorunu olmasın diye eşik parantezde yazılır. Kaynak: alarm_service.ek_alarmlar / tara / worker zamanları. */
 const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
-  veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse. Kontrol: her gece 07:00",
+  veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse (hiç ölçüm gelmemiş santralda bu alarm üretilmez). Kontrol: her gece 07:00",   // v2.641 (02C-B5)
   skill_dustu: () => "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşınca. Kontrol: her gece 07:00",
   iletisim_kesintisi: (e) => `Son ölçüm ${sayiTr(e.iletisim_esik_saat ?? 6, 0)} saatten eskiyse. Kontrol: her saat`,
   pr_dustu: (e) => `30 günlük performans oranı eşiğin (${yuzdeTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
@@ -93,7 +103,8 @@ const ESIK_ALANLARI: { k: string; etiket: string; yuzde?: boolean; aralik: strin
   { k: "ariza_esik", etiket: "Arıza sayacı (adet)", aralik: "1–30" },
   { k: "sayac_eksik_esik_saat", etiket: "Eksik sayaç saati (adet)", aralik: "1–744" },   // v2.526 (P7b)
 ];
-import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
+import { sayiOku as sayiOkuTr, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // v2.641: dosyadaki yerel tarife sayiOku ile çakışmasın
+import { rolum } from "../../api/client";   // v2.641: izleyici rolünde yazma kontrolleri pasif
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
@@ -191,7 +202,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const depKaydet = (sil = false) => {
     if (!seg?.segment) { setDepMesaj("Önce piyasa segmentini seçin."); return; }
     setDepMesaj(null);
-    const g = sil ? { depolama_gucu_mw: null } : { depolama_gucu_mw: df.guc ? Number(df.guc.replace(",", ".")) : null, depolama_kapasite_mwh: df.kap ? Number(df.kap.replace(",", ".")) : null,
+    if (!sil && ((df.guc.trim() !== "" && sayiOkuTr(df.guc) === null) || (df.kap.trim() !== "" && sayiOkuTr(df.kap) === null))) { setDepMesaj("Güç ve kapasite sayı olmalı (örn. 12,5 ya da 12.000)."); return; }   // v2.641 (02B-B6)
+    const g = sil ? { depolama_gucu_mw: null } : { depolama_gucu_mw: sayiOkuTr(df.guc), depolama_kapasite_mwh: sayiOkuTr(df.kap),
       depolama_konfigurasyon: df.konf || null, depolama_uevcb: df.uevcb || null, depolama_kabul_tarihi: df.kabul || null, depolama_butunlesik: df.but };
     api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { depolama: g }).then((r) => { const d = (r as unknown as { depolama?: Depolama }).depolama; depDoldur(d); setDepMesaj(d?.var ? `Kaydedildi: ${sayiTr(d.guc_mw ?? 0, 1)} MW depolama ünitesi.` : "Kaydedildi: depolama beyanı kaldırıldı."); })
       .catch((e) => setDepMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`));
@@ -199,13 +211,12 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [yekGMesaj, setYekGMesaj] = useState<string | null>(null);
   const yekGKaydet = (v: boolean) => {
     if (!seg?.segment) { setYekGMesaj("Önce piyasa segmentini seçin."); return; }
-    setYekG(v);
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { yek_g_kayitli: v }).then(() => setYekGMesaj(v ? "Kaydedildi: YEK-G sisteminde kayıtlı." : "Kaydedildi: YEK-G kaydı yok."))
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { yek_g_kayitli: v }).then(() => { setYekG(v); setYekGMesaj(v ? "Kaydedildi: YEK-G sisteminde kayıtlı." : "Kaydedildi: YEK-G kaydı yok."); })   // v2.641 (02B-B7): kutu yalnız başarıda değişir
       .catch((e) => setYekGMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const dsgKaydet = () => {
     if (!seg?.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
-    const ld = ldyeum.trim() === "" ? null : Number(ldyeum.replace(/\./g, "").replace(",", "."));
+    const ld = ldyeum.trim() === "" ? 0 : Number(ldyeum.replace(/\./g, "").replace(",", "."));   // v2.641 (02B-B3): boş → 0 → sunucu siler (null «dokunma» demekti)
     if (ld !== null && (!Number.isFinite(ld) || ld < 0)) { setDsgMesaj("Lisanstaki yıllık üretim miktarı sayı olmalı (MWh)."); return; }
     api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici, piyasa_katilimcisi: katilimci.trim(), lisans_yillik_uretim_mwh: ld })
       .then(() => { setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
@@ -229,7 +240,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then((v) => { if (plantRef.current === plantId) setSg(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -238,12 +249,15 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [ftMesaj, setFtMesaj] = useState<string | null>(null);
   useEffect(() => { if (!ayarGorunur) return; api.fizikTerimleri(plantId).then((v) => { if (plantRef.current === plantId) setFt(v); }).catch(() => {}); }, [plantId, ds, ayarGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [ftSon, setFtSon] = useState<Record<string, string>>({});
-  const ftDegistir = (k: string, v: string) => {
-    setFtMesaj(null); setFtOn(null); setFtSon({ [k]: v });
-    api.fizikOnizle(plantId, { [k]: v }).then(setFtOn).catch((e) => setFtMesaj(String((e as Error).message ?? e)));
+  const ftDegistir = (k: string, v: string) => {   // v2.641 (02B-B10): birden çok terim birikir; önizleme ve Uygula tümünü gönderir (eskiden yalnız sonuncusu gidiyordu)
+    const aday: Record<string, string> = { ...ftSon, [k]: v };
+    if (ft && String((ft as unknown as Record<string, unknown>)[k] ?? "") === v) delete aday[k];   // mevcut değere dönüldüyse değişiklik değil (sayısal terimler metin olarak kıyaslanır)
+    setFtMesaj(null); setFtOn(null); setFtSon(aday);
+    if (Object.keys(aday).length === 0) return;
+    api.fizikOnizle(plantId, aday).then(setFtOn).catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
-  const ftUygula = (k: string, v: string) => {
-    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi. Bir sonraki tahminden itibaren geçerli."); })
+  const ftUygula = (aday: Record<string, string>) => {
+    api.fizikAyarla(plantId, aday).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj(`Kaydedildi (${Object.keys(aday).length} terim). Bir sonraki tahminden itibaren geçerli.`); })
       .catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
   // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
@@ -258,6 +272,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [kir, setKir] = useState<Kirlenme | null | undefined>(undefined);
   const [vy, setVy] = useState<VeriYoluOzet | null>(null);
   const [golge, setGolge] = useState<GolgeGorunum | null | undefined>(undefined);   // v2.550 (D5): gölge görünüm
+  const [golgeSinir, setGolgeSinir] = useState<string | null>(null);   // v2.641 (02A-B10): null = beyan edilen sınır (IEC 104 ayarı ya da Modbus profili)
   const [adaylar, setAdaylar] = useState<OlayAdaylari | null | undefined>(undefined);   // v2.555 (V2): olay adayları
   const [vyf, setVyf] = useState<{ tur: string; saglayici: string; periyot: string; onay: boolean; not: string; cekis: boolean; startdt: boolean }>({ tur: "", saglayici: "", periyot: "", onay: false, not: "", cekis: false, startdt: false });   // v2.548: startdt = IEC 104 sahip onayı
   const [vyMesaj, setVyMesaj] = useState<string | null>(null);
@@ -268,14 +283,20 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [pilot, setPilot] = useState<PilotDurum | null>(null);   // v2.560 (Aşama 4)
   const [edge, setEdge] = useState<{ toplayicilar: EdgeToplayici[]; not: string } | null>(null);   // v2.561 (Aşama 6)
   const [edgeYeni, setEdgeYeni] = useState<EdgeToplayiciYeni | null>(null);
-  const [refSinir, setRefSinir] = useState("inverter_ac");
+  const [refSinir, setRefSinir] = useState<string | null>(null);   // v2.641 (02A-B10): null = beyan edilen sınır
+  const beyanSinir = (v: VeriYoluOzet | null): string => v?.beyan?.iec104?.sinir || v?.profiller?.find((x) => x.kod === v?.beyan?.baglanti?.profil)?.sinir || "inverter_ac";
+  const refSinirEtkin = refSinir ?? beyanSinir(vy); const golgeSinirEtkin = golgeSinir ?? beyanSinir(vy);
   const [refMesaj, setRefMesaj] = useState<string | null>(null);
-  const pilotYukle = () => { api.pilot(plantId).then(setPilot).catch(() => setPilot(null)); api.edgeToplayicilar(plantId).then(setEdge).catch(() => setEdge(null)); };
-  const pilotKapi = (kod: string, tamam: boolean) => { const n = tamam ? window.prompt("Beyan notu (isteğe bağlı): izin belgesi, tarih, kişi", "") : null; if (tamam && n === null) return; api.pilotKapi(plantId, kod, { tamam, aciklama: n || null }).then(setPilot).catch(() => {}); };
+  const [pilotHata, setPilotHata] = useState<string | null>(null);   // v2.641 (02A-B13): okunamadıysa kart sessizce gizlenmez (404 = uç yok → eski davranış: gizli)
+  const pilotHatasi = (e: unknown) => { const m = String((e as Error).message ?? e); return m.startsWith("404") ? null : m; };
+  const pilotYukle = () => { setPilotHata(null); api.pilot(plantId).then(setPilot).catch((e) => { setPilot(null); setPilotHata((h) => h ?? pilotHatasi(e)); }); api.edgeToplayicilar(plantId).then(setEdge).catch((e) => { setEdge(null); setPilotHata((h) => h ?? pilotHatasi(e)); }); };   // inceleme (yarış): başarı hatayı silmez; ilk hata kalır
+  const yazabilir = rolum() !== "viewer";   // v2.641 (02A-B2/02C-B14): yalnız bilinen izleyici rolü pasif görür (örnek kipte/jetonsuz rol boş → açık); her çizimde okunur — oturum yenilemesi rolü değiştirirse kabuk yeniden çizer; sunucu 403 yine kapı
+  const [segMesaj, setSegMesaj] = useState<string | null>(null);
+  const pilotKapi = (kod: string, tamam: boolean) => { const n = tamam ? window.prompt("Beyan notu (isteğe bağlı): izin belgesi, tarih, kişi", "") : null; if (tamam && n === null) return; setRefMesaj(null); api.pilotKapi(plantId, kod, { tamam, aciklama: n || null }).then(setPilot).catch((e) => setRefMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`)); };   // v2.641: hata artık görünür
   const [refSaatSonu, setRefSaatSonu] = useState(false);   // v2.640: portal dışa aktarımında damga saat SONU ise 1 saat geri alınır
-  const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinir, refSaatSonu).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
-  const edgeOlustur = () => { const ad = window.prompt("Toplayıcı adı (ör. Kabin A)", "saha toplayıcısı"); if (ad === null) return; api.edgeToplayiciOlustur(plantId, ad || "saha toplayıcısı").then((r) => { setEdgeYeni(r); pilotYukle(); }).catch(() => {}); };
-  const edgeIptal = (id: string) => { if (!window.confirm("Toplayıcı anahtarı iptal edilsin mi? Bu anahtarla gelen veri reddedilir; gelmiş veri kalır.")) return; api.edgeToplayiciIptal(plantId, id).then(() => { setEdgeYeni(null); pilotYukle(); }).catch(() => {}); };
+  const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinirEtkin, refSaatSonu).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
+  const edgeOlustur = () => { const ad = window.prompt("Toplayıcı adı (ör. Kabin A)", "saha toplayıcısı"); if (ad === null) return; api.edgeToplayiciOlustur(plantId, ad || "saha toplayıcısı").then((r) => { setEdgeYeni(r); pilotYukle(); }).catch((e) => setRefMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`)); };
+  const edgeIptal = (id: string) => { if (!window.confirm("Toplayıcı anahtarı iptal edilsin mi? Bu anahtarla gelen veri reddedilir; gelmiş veri kalır.")) return; api.edgeToplayiciIptal(plantId, id).then(() => { setEdgeYeni(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`)); };
   const [bk, setBk] = useState<BulutKimlikDurum | null>(null);   // v2.556 (K1): kayıtlı şifreli kimlik durumu (gizli yok)
   const [bkOnay, setBkOnay] = useState(false);
   const [bkDegistir, setBkDegistir] = useState(false);   // 10.11 inceleme II: kimlik kayıtlıyken kimlik alanları ve saklama onayı yalnız «Kimliği değiştir» ile açılır
@@ -300,7 +321,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [bkKiyasMesaj, setBkKiyasMesaj] = useState<{ sg: string; metin: string } | null>(null);   // v2.565: birim kıyası yükleme durumu · 10.11 inceleme: hangi sağlayıcıya ait olduğunu taşır
   const bkAyarla = (sg: string, g: { cekis_acik?: boolean; birim_dogrulandi?: boolean }) => { setBkKiyasMesaj(null); api.bulutKimlikAyarla(plantId, sg, g).then(bkYukle).catch((e) => setBkKiyasMesaj({ sg, metin: String((e as Error).message ?? e) })); };
   const bkKiyas = (sg: string, dosya: File | null) => { if (!dosya) return; setBkKiyasMesaj({ sg, metin: "kıyaslanıyor…" }); api.bulutBirimKiyas(plantId, sg, dosya).then((r) => { setBkKiyasMesaj(r.isaret_kaldirildi ? { sg, metin: "«Birim doğrulandı» işareti kaldırıldı: yeni kıyas belge yorumunu doğrulamadı. Saatler kaynak kıyasına yazılmıyor." } : null); bkYukle(); }).catch((e) => setBkKiyasMesaj({ sg, metin: `Kıyaslanamadı: ${String((e as Error).message ?? e)}` })); };
-  const bkSil = (sg: string) => { if (!window.confirm("Kayıtlı kimlik silinsin mi? Düzenli çekiş durur; çekilmiş saatler kalır.")) return; api.bulutKimlikSil(plantId, sg).then(() => { setBkSonuc(null); setBkDegistir(false); bkYukle(); }).catch(() => {}); };
+  const bkSil = (sg: string) => { if (!window.confirm("Kayıtlı kimlik silinsin mi? Düzenli çekiş durur; çekilmiş saatler kalır.")) return; api.bulutKimlikSil(plantId, sg).then(() => { setBkSonuc(null); setBkDegistir(false); bkYukle(); }).catch((e) => setBkKiyasMesaj({ sg, metin: `Silinemedi: ${String((e as Error).message ?? e)}` })); };
   const vyBulutSina = () => { setVyMesaj(null); setSinama("bekliyor"); api.veriYoluBulutSina(plantId, { saglayici: vyf.saglayici, kimlik: Object.fromEntries(Object.entries(bulutKimlik).filter(([, v]) => v)), bolge: bulutBolge })
     .then((r) => { setSinama(r); setBulutKimlik({}); api.veriYolu(plantId).then((v) => { if (v) setVy(v); }).catch(() => {}); })
     .catch((e) => setSinama({ durum: "baglanti_hatasi", zaman: new Date().toISOString(), aciklama: String((e as Error).message ?? e) })); };
@@ -364,7 +385,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
   useEffect(() => { api.kullanilabilirlik(plantId).then((v) => { if (plantRef.current === plantId) setKu(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setSens(null); api.sensorler(plantId).then((v) => { if (plantRef.current === plantId) setSens(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!santralGorunur) return; setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); api.pilot(plantId).then((v) => { if (plantRef.current === plantId) setPilot(v); }).catch(() => { if (plantRef.current === plantId) setPilot(null); }); api.edgeToplayicilar(plantId).then((v) => { if (plantRef.current === plantId) setEdge(v); }).catch(() => { if (plantRef.current === plantId) setEdge(null); }); setBk(null); setBkSonuc(null); setBkOnay(false); setBkDegistir(false); api.bulutKimlik(plantId).then((v) => { if (plantRef.current === plantId) setBk(v); }).catch(() => { if (plantRef.current === plantId) setBk(null); }); setGolge(undefined); api.golgeSaatlik(plantId).then((v) => { if (plantRef.current === plantId) setGolge(v); }).catch(() => { if (plantRef.current === plantId) setGolge(null); }); setAdaylar(undefined); api.olayAdaylari(plantId).then((v) => { if (plantRef.current === plantId) setAdaylar(v); }).catch(() => { if (plantRef.current === plantId) setAdaylar(null); }); }, [plantId, santralGorunur]);   // v2.550/v2.555
+  useEffect(() => { if (!santralGorunur) return; api.golgeSaatlik(plantId, golgeSinirEtkin).then((v) => { if (plantRef.current === plantId) setGolge(v); }).catch(() => { if (plantRef.current === plantId) setGolge(null); }); }, [plantId, santralGorunur, golgeSinirEtkin]);   // v2.641 (02A-B10): sınır seçilince yeniden çekilir; eski veri yüklenirken kalır
+  useEffect(() => { if (!santralGorunur) return; setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); setPilotHata(null); api.pilot(plantId).then((v) => { if (plantRef.current === plantId) setPilot(v); }).catch((e) => { if (plantRef.current === plantId) { setPilot(null); setPilotHata(pilotHatasi(e)); } }); api.edgeToplayicilar(plantId).then((v) => { if (plantRef.current === plantId) setEdge(v); }).catch((e) => { if (plantRef.current === plantId) { setEdge(null); setPilotHata((h) => h ?? pilotHatasi(e)); } }); setBk(null); setBkSonuc(null); setBkOnay(false); setBkDegistir(false); api.bulutKimlik(plantId).then((v) => { if (plantRef.current === plantId) setBk(v); }).catch(() => { if (plantRef.current === plantId) setBk(null); }); setGolge(undefined); setGolgeSinir(null); setAdaylar(undefined); api.olayAdaylari(plantId).then((v) => { if (plantRef.current === plantId) setAdaylar(v); }).catch(() => { if (plantRef.current === plantId) setAdaylar(null); }); }, [plantId, santralGorunur]);   // v2.550/v2.555
   useEffect(() => {   // v2.564: sağlayıcıdan dönüş «?bulut_oauth=<sağlayıcı>:<durum>» — yalnız kod okunur, adres çubuğundan silinir
     const q = new URLSearchParams(window.location.search).get("bulut_oauth"); if (!q) return;
     const durum = (q.split(":")[1] ?? "hata").replace(/[^a-z_]/g, ""); setBkOAuth(OAUTH_MESAJ[durum] ?? OAUTH_MESAJ.hata);
@@ -426,11 +448,10 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
   useEffect(() => { if (!ayarGorunur) return; api.alarmKurallari(plantId).then((v) => { if (plantRef.current === plantId) setAk(v); }).catch(() => {}); }, [plantId, ds, ayarGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const akDegistir = (kural: string, acik: boolean) => {
-    if (!ak) return;
-    const k = acik ? [...ak.secili, kural] : ak.secili.filter((x) => x !== kural);
-    api.alarmKurallariAyarla(plantId, k, ak.esik).then(setAk).catch(() => {});
-  };
+  // v2.641 (02C-B4): kural kutusu artık taslağı değiştirir; tek «Kaydet» kuralları, eşikleri ve alıcıları birlikte yazar (eskiden anında PUT eşik taslağını siliyordu)
+  const [akSecili, setAkSecili] = useState<string[]>([]);
+  const akDokunuldu = useRef(false);   // inceleme: taslak varken damga değişimi (yeni koşu/ölçüm) ak'ı yeniden yükleyip taslağı ezmesin
+  const akDegistir = (kural: string, acik: boolean) => { akDokunuldu.current = true; setAkSecili((s) => (acik ? Array.from(new Set([...s, kural])) : s.filter((x) => x !== kural))); };
   // v2.519 (P7a): yeni kuralların eşikleri ve santral bazlı alıcılar — tek Kaydet; alıcılar yalnız burada gönderilir
   const [akEsik, setAkEsik] = useState<Record<string, string>>({});
   const [akAlici, setAkAlici] = useState("");
@@ -439,18 +460,25 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const vadeGecti = !!sens?.sensorler.some((x) => x.durum === "gecti");   // v2.608 (F5-E): sensör kartı katlaması bu sinyalle açık başlar
   useEffect(() => {
     if (!ak) return;
+    if (akDokunuldu.current) return;   // kaydedilmemiş taslak korunur; Kaydet başarısında bayrak düşer ve sunucu değeri yüklenir
     setAkEsik(Object.fromEntries(ESIK_ALANLARI.map((a) => { const v = ak.esik[a.k]; return [a.k, v == null ? "" : String(a.yuzde ? Math.round(v * 1000) / 10 : v).replace(".", ",")]; })));
-    setAkAlici((ak.alicilar ?? []).join(", "));
+    setAkAlici((ak.alicilar ?? []).join(", ")); setAkSecili(ak.secili);
   }, [ak]);
   const akKaydet = () => {
     if (!ak) return;
     const esik = { ...ak.esik };
-    for (const a of ESIK_ALANLARI) { const v = Number((akEsik[a.k] ?? "").replace(",", ".")); if (akEsik[a.k] !== "" && Number.isFinite(v)) esik[a.k] = a.yuzde ? v / 100 : v; }
+    for (const a of ESIK_ALANLARI) {   // v2.641 (02C-B2): okunamayan eşik sessizce atlanmaz
+      const ham = (akEsik[a.k] ?? "").trim(); if (ham === "") continue;
+      const v = sayiOkuTr(ham); if (v === null) { setAkMesaj(`Geçersiz eşik: «${a.etiket}» sayı olmalı (${a.aralik}).`); return; }
+      esik[a.k] = a.yuzde ? v / 100 : v;
+    }
     const alicilar = akAlici.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
     setAkMesaj(null);
-    api.alarmKurallariAyarla(plantId, ak.secili, esik, alicilar).then((r) => { setAk(r); setAkMesaj("Kaydedildi."); })
+    api.alarmKurallariAyarla(plantId, akSecili, esik, alicilar).then((r) => { akDokunuldu.current = false; setAk(r); setAkMesaj("Kaydedildi."); })
       .catch((e) => setAkMesaj(String((e as Error).message ?? e)));
   };
+  const akKirli = !!ak && (akSecili.length !== ak.secili.length || akSecili.some((k) => !ak.secili.includes(k)));
+  const akDeneme = () => { setAkMesaj(null); api.alarmDeneme(plantId).then((r) => setAkMesaj(r.gonderildi.length ? `Deneme gönderildi: ${r.gonderildi.join(", ")}${r.basarisiz.length ? ` · gönderilemedi: ${r.basarisiz.join(", ")}` : ""}` : `Deneme gönderilemedi: ${r.basarisiz.join(", ")}`)).catch((e) => setAkMesaj(`Deneme gönderilemedi: ${String((e as Error).message ?? e)}`)); };   // v2.641 (02C-B6)
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
@@ -765,7 +793,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             <div><dt>Performans oranı (PR, 30 gün)</dt>
               <dd>{pr?.durum === "ok" && pr.PR != null
                 ? <>{yuzdeTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` (sıcaklık düzeltmeli ${yuzdeTr(pr.PR_sicaklik * 100, 1)})`}
-                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(pr.son_olcum.length === 10 ? pr.son_olcum + "T00:00:00" : pr.son_olcum))}` : ""}{(pr.kirpma_saat ?? 0) > 0 && pr.PR_kirpma_disi != null ? `; AC sınırında kırpılan ${sayiTr(pr.kirpma_saat ?? 0)} saat dışında ${yuzdeTr(pr.PR_kirpma_disi * 100, 1)}` : ""}</span></>
+                    {pr.isinim_uyari && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 6 }} title={pr.isinim_uyari}>yatay sensör beyanı</span>}
+                    <span className="kunye-not">{pr.isinim_uyari ? `${pr.isinim_uyari} ` : ""}{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(pr.son_olcum.length === 10 ? pr.son_olcum + "T00:00:00" : pr.son_olcum))}` : ""}{(pr.kirpma_saat ?? 0) > 0 && pr.PR_kirpma_disi != null ? `; AC sınırında kırpılan ${sayiTr(pr.kirpma_saat ?? 0)} saat dışında ${yuzdeTr(pr.PR_kirpma_disi * 100, 1)}` : ""}</span></>
                 : pr?.durum === "poa_yok"
                   ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin ${yuzdeTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">ölçüm birikmedi</span></>}</dd></div>
@@ -806,6 +835,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
       {/* v2.544 (P4b hazırlık, IH-023): veri kaynakları ve bağlantı durumu — kaynak türü, tanımlı mı, son geliş, tazelik; protokol/bulut API için hazırlık listesi; bağlayıcı yazılmadı */}
       <Kart baslik="Veri kaynakları ve bağlantı durumu" alt={`Santralınızın üretim verilerinin hangi kaynaklardan alındığını, ne zaman güncellendiğini ve yeni bağlantılar için gereken bilgileri buradan takip edersiniz. ${vy?.bulut?.hesap_durumu ? `Bu santralın bulut hesabında çekiş başarılı; ${vy.bulut.hesap_durumu.birim_dogrulandi ? "birim doğrulandı" : "birim doğrulaması bekliyor"}. Diğer protokol ve bulut bağlantıları` : "Protokol ve bulut bağlantıları"} gerçek cihaz ya da hesapla henüz doğrulanmadı; sınanabilenler ve düzenli çekişi açılabilenler aşağıda işaretlidir.`}
         sag={vy?.baglanti_durumu ? <span className="cip">hedef: {vy.hedef?.kisa ?? "seçilmedi"} · {vy.baglanti_durumu.etiket}</span> : null}>
+        <fieldset className="rol-alan" disabled={!yazabilir}>{!yazabilir && <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>İzleyici rolü: bağlantı ayarları salt okunur.</p>}
         {vy && (
           <>
             {/* 09.11 inceleme III (faz 6): üç bölüm — A mevcut kaynaklar, B yeni bağlantı, C gereksinimler; bağlantı durumu tek koddan (baglanti_durumu) */}
@@ -825,7 +855,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 <select className="girdi" style={{ maxWidth: "100%" }} value={vyf.tur} aria-label="Hedeflenen veri kaynağı" onChange={(e) => { const t = e.target.value; setVyf({ ...vyf, tur: t }); if (t === "iec104" && (!vyb.port || vyb.port === "502")) setVyb({ ...vyb, port: "2404" }); else if (t === "modbus_sunspec" && (!vyb.port || vyb.port === "2404")) setVyb({ ...vyb, port: "502" }); }}>   {/* v2.547: protokole göre varsayılan port */}
                   <option value="">Hedef bağlantı seçilmedi</option>{vy.yollar.map((y) => <option key={y.tur} value={y.tur}>{y.kisa} · {yolDurumu(vy, y).etiket}</option>)}</select></label>
               {(() => { const yon = vy.yollar.find((y) => y.tur === vyf.tur)?.yon; const baglanti = !!vyf.tur && yon !== "dosya"; return <>   {/* 08.11 inceleme (faz 4): dosya kaynağında sağlayıcı/aralık/onay alanları anlamsız — yalnız bağlantı kaynaklarında */}
-              {baglanti && (vyf.tur !== "inverter_bulut_api" || !vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici)) && <label className="girdi-etiket">{vyf.tur === "inverter_bulut_api" ? "Sağlayıcı adı (talep olarak not edilir)" : vyf.tur === "iec104" ? "SCADA / kayıt cihazı (isteğe bağlı)" : "Cihaz / sistem (isteğe bağlı)"}
+              {baglanti && (vyf.tur !== "inverter_bulut_api" || !vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici)) && <label className="girdi-etiket">{vyf.tur === "inverter_bulut_api" ? "Sağlayıcı adı (yalnız santral ayarına ve denetim izine yazılır)" : vyf.tur === "iec104" ? "SCADA / kayıt cihazı (isteğe bağlı)" : "Cihaz / sistem (isteğe bağlı)"}
                 <input className="girdi" maxLength={64} placeholder={vyf.tur === "inverter_bulut_api" ? "ör. Deye Cloud" : vyf.tur === "iec104" ? "ör. Inavitas, SmartLogger3000" : "ör. SMA, Huawei SUN2000"} value={vyf.saglayici} onChange={(e) => setVyf({ ...vyf, saglayici: e.target.value })} /></label>}
               {baglanti && vyf.tur !== "inverter_bulut_api" && <label className="girdi-etiket">Veri aralığı (dakika)
                 <input className="girdi" inputMode="numeric" style={{ width: 90 }} placeholder="15" value={vyf.periyot} onChange={(e) => setVyf({ ...vyf, periyot: e.target.value.replace(/[^0-9]/g, "") })} /></label>}
@@ -954,7 +984,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 {sinama.not && <span className="soluk"> · {sinama.not}</span>}
               </p>)}
             {vyf.tur === "inverter_bulut_api" && vy.bulut && !vy.bulut.saglayicilar.some((x) => x.kod === vyf.saglayici) && (
-              <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>Bu sağlayıcı için bağlantı yok: {vy.bulut.diger_etiketi ?? "kaydederseniz talep olarak not edilir"}. Desteklenen sağlayıcılar (hiçbiri gerçek hesapla henüz doğrulanmadı): {vy.bulut.saglayicilar.filter((x) => x.durum !== "kapandi").map((x) => x.ad).join(", ")}. Devre dışı: {vy.bulut.saglayicilar.filter((x) => x.durum === "kapandi").map((x) => x.ad).join(", ") || "—"}. {vy.bulut.henuz_yok_etiketi ?? "Planlanan"}: {vy.bulut.henuz_yok.join(", ")}.</p>)}
+              <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>Bu sağlayıcı için bağlantı yok: {vy.bulut.diger_etiketi ?? "kaydederseniz yalnız santral ayarına ve denetim izine yazılır; talep listesi ya da bildirim yoktur"}. Desteklenen sağlayıcılar (hiçbiri gerçek hesapla henüz doğrulanmadı): {vy.bulut.saglayicilar.filter((x) => x.durum !== "kapandi").map((x) => x.ad).join(", ")}. Devre dışı: {vy.bulut.saglayicilar.filter((x) => x.durum === "kapandi").map((x) => x.ad).join(", ") || "—"}. {vy.bulut.henuz_yok_etiketi ?? "Planlanan"}: {vy.bulut.henuz_yok.join(", ")}.</p>)}
             {(() => { const h = vy.yollar.find((y) => y.tur === vyf.tur) ?? vy.hedef; const y = h?.yetenekler; return h ? (
               <>
                 <div className="kart-bolum">Bağlantı gereksinimleri</div>
@@ -978,19 +1008,20 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               </>) : <details className="aciklama" style={{ marginTop: 10 }}><summary>Teknik ayrıntılar</summary><p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{vy.not}</p></details>; })()}
           </>
         )}
+        </fieldset>
         {!vy && <p className="soluk" style={{ margin: 0 }}>Veri kaynağı bilgisi şu anda alınamadı.</p>}
       </Kart>
       {golge ? (   /* v2.550 (D5) + v2.555 (V2): gölge görünüm ve cihaz olay adayları — tahmin bu görünümü kullanmaz; örnek kipte ve API yokken gizli */
         <Kart baslik="Kaynak kıyası ve cihaz durumu" alt="Canlı okumalardan türetilen saatlerin üretim serisiyle yan yana görünümü; cihaz durumundan olay adayları. Tahmin ve doğruluk bu görünümü kullanmaz.">
           <div className="t-ikincil" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-            <span className="rozet rozet-kucuk rozet-notr">{golge.sinir_etiketi}</span>
+            <label className="girdi-etiket" style={{ margin: 0 }}>Ölçüm sınırı <select className="girdi" style={{ padding: "2px 6px" }} value={golgeSinirEtkin} aria-label="Kaynak kıyası ölçüm sınırı" onChange={(e) => setGolgeSinir(e.target.value)}>{SINIR_SECENEK.map(([d, e]) => <option key={d} value={d}>{e}</option>)}</select></label>   {/* v2.641 (02A-B10): eskiden hep inverter_ac; IEC 104 kullanıcısı boş tablo görüyordu */}
             <span className="rozet rozet-kucuk rozet-notr">{sayiTr(golge.ozet.n_saat)} saat</span>
             <span className={`rozet rozet-kucuk ${golge.ozet.n_tam ? "rozet-ok" : "rozet-notr"}`}>{sayiTr(golge.ozet.n_tam)} tam saat ölçümü</span>
             <span className={`rozet rozet-kucuk ${golge.ozet.n_kismi ? "rozet-uyari" : "rozet-notr"}`}>{sayiTr(golge.ozet.n_kismi)} kısmi saat (üretim serisine yazılmadı)</span>
             <span className={`rozet rozet-kucuk ${golge.ozet.n_fark_05kwh ? "rozet-uyari" : "rozet-notr"}`}>{sayiTr(golge.ozet.n_fark_05kwh)} saatte fark &gt; 0,5 kWh</span>
             {golge.uyari ? <span className="rozet rozet-kucuk rozet-uyari">{golge.uyari}</span> : null}
           </div>
-          {golge.saatler.length === 0 ? <p className="soluk t-ikincil" style={{ margin: 0 }}>Son 7 günde canlı okumadan türetilmiş saat yok. Modbus / SunSpec ya da IEC 104 çekişi açıldığında saatler burada üretim serisiyle karşılaştırılır.</p> : (
+          {golge.saatler.length === 0 ? <p className="soluk t-ikincil" style={{ margin: 0 }}>Son 7 günde «{golge.sinir_etiketi}» sınırında canlı okumadan türetilmiş saat yok{golge.sinir !== beyanSinir(vy) ? "; beyan edilen sınır farklı, seçimi kontrol edin" : ""}. Modbus / SunSpec ya da IEC 104 çekişi açıldığında saatler burada üretim serisiyle karşılaştırılır.</p> : (
             <div style={{ overflowX: "auto" }}>
               <table className="veri dar">
                 <thead><tr><th>Saat (UTC)</th><th>Seçilen kaynak</th><th>Nitelik</th><th>kWh</th><th>Üretim serisi kWh</th><th>Fark</th><th>Neden</th></tr></thead>
@@ -1026,6 +1057,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             fizik_service, alarm_service — açıklamalar koddan doğrulandı, tahmin yok. */}
       <div ref={ayarRef}>
         <Kart baslik="Santral ayarları" alt="Piyasa kimliği, satış tarifesi, üretim programı sınırları, fiziksel model terimleri ve alarm bildirimleri.">
+          <fieldset className="rol-alan" disabled={!yazabilir}>{!yazabilir && <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>İzleyici rolü: santral ayarları salt okunur; değişiklik için editör ya da yönetici rolü gerekir.</p>}
           <div className="ayar-izgara">   {/* 17.11: kısa ayar blokları geniş ekranda iki sütun (ÖLÇÜLDÜ: tek sütunda kart 3561 px, yanında 2400 px boşluk) */}
           <div className="ayar">
             <div><div className="ayar-ad">Piyasa segmenti</div>
@@ -1035,12 +1067,13 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             <div className="ayar-kontrol">
               <label className="girdi-etiket">Segment (uzlaştırma hesapları için gerekli)
                 <select className="girdi" value={seg?.segment ?? ""}
-                  onChange={(e) => api.segmentAyarla(plantId, e.target.value, uevcb || undefined).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
+                  onChange={(e) => { setSegMesaj(null); api.segmentAyarla(plantId, e.target.value, uevcb || undefined).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch((err) => setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`)); }}>
                   <option value="" disabled>seçiniz</option>
                   {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
                 </select>
               </label>
               {seg?.dengesizlik_sahibi && <span className="ayar-durum">Dengesizlik sorumlusu: {seg.dengesizlik_sahibi}</span>}
+              {segMesaj && <span className="ayar-durum hata">{segMesaj}</span>}
             </div>
             {ayrintiGovdesi(ayrinti, "segment", <>
                 <p><b>Ne zaman değiştirilir:</b> lisans ya da YEKDEM durumu değiştiğinde (örneğin YEKDEM süresi bitince serbest piyasaya geçiş) ve toplayıcı ya da görevli tedarik şirketi (GTŞ) portföyüne giriş-çıkışta.</p>
@@ -1240,7 +1273,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 </p></>}
               <div className="satir-tam">
                 <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
-                <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
+                <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => { setTarife({ tip: "sabit" }); setTarifeMetin({}); setTarifeMesaj("Kaldırıldı."); }).catch((e) => setTarifeMesaj(`Kaldırılamadı: ${String((e as Error).message ?? e)}`))}>Kaldır</button>
                 {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
               </div>
             </div>
@@ -1362,7 +1395,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                           <div className="kural-izgara">
                             {kurallar.map((k) => { const sabit = ak.varsayilan.includes(k); return (
                               <label key={k} className={`kural-satir${sabit ? " sabit" : ""}`}>
-                                <input type="checkbox" checked={sabit || ak.secili.includes(k)} disabled={sabit} onChange={(e) => akDegistir(k, e.target.checked)} />
+                                <input type="checkbox" checked={sabit || akSecili.includes(k)} disabled={sabit} onChange={(e) => akDegistir(k, e.target.checked)} />
                                 <span className="kural-metin">
                                   <span className="kural-ad">{ak.etiket[k] ?? KURAL_ADI[k] ?? k}{sabit && <span className="soluk"> (her santralde açık)</span>}</span>
                                   <span className="kural-kosul">{(KURAL_KOSULU[k] ?? (() => ""))(ak.esik)}</span>
@@ -1379,17 +1412,19 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                     <div className="form-izgara form-alarm" style={{ marginTop: 0 }}>
                       {ESIK_ALANLARI.map((a) => (
                         <label key={a.k} className="girdi-etiket" title={`Geçerli aralık: ${a.aralik}`}>{a.etiket}
-                          <input className="girdi" inputMode="decimal" placeholder={a.aralik} value={akEsik[a.k] ?? ""} onChange={(e) => setAkEsik({ ...akEsik, [a.k]: e.target.value })} /></label>))}
+                          <input className="girdi" inputMode="decimal" placeholder={a.aralik} value={akEsik[a.k] ?? ""} onChange={(e) => { akDokunuldu.current = true; setAkEsik({ ...akEsik, [a.k]: e.target.value }); }} /></label>))}
                       <p className="form-not form-tam">Kural cümlelerindeki değerler bu eşiklerden gelir. Düşük fiyat eşiği 0 ise sıfır ve negatif fiyatlı saatler sayılır; YEKDEM'li santralde yarının YEK fiyatı (Cetvel I günün kuruyla, 7189 aylık ilan) kullanılır.</p>
                     </div>
                   </Katla>
                   <div className="etiket-ust form-tam">Bildirim alıcıları</div>
                   <label className="girdi-etiket form-tam">E-posta alıcıları (virgülle ayırın; en çok 10; isteğe bağlı)
-                    <input className="girdi" value={akAlici} onChange={(e) => setAkAlici(e.target.value)} placeholder="sahip@ornek.com, saha@ornek.com" /></label>
+                    <input className="girdi" value={akAlici} onChange={(e) => { akDokunuldu.current = true; setAkAlici(e.target.value); }} placeholder="sahip@ornek.com, saha@ornek.com" /></label>
                   <p className="form-not form-tam">Alarmlar paneldeki zile{ak.ortam_alicisi ? ", PVQuant izleme adresine" : ""} ve Kuruluş sayfasındaki «alarm.yeni» webhook alıcılarına da gider.</p>
                   <div className="form-tam satir-tam">
                     <button className="dugme kucuk" onClick={akKaydet}>Kaydet</button>
-                    {akMesaj && <span className={`ayar-durum ${akMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{akMesaj}</span>}
+                    <button className="dugme kucuk" onClick={akDeneme} title="Kayıtlı alıcılara deneme e-postası; alarm listesine yazılmaz, webhook'a gitmez">Deneme e-postası gönder</button>
+                    {akKirli && !akMesaj && <span className="ayar-durum">Kural seçimi değişti; kaydedilmedi.</span>}
+                    {akMesaj && <span className={`ayar-durum ${/^(Kayded|Deneme gönderildi)/.test(akMesaj) ? "ok" : "hata"}`}>{akMesaj}</span>}
                   </div>
                 </div>
               </> : <span className="ayar-durum">—</span>}
@@ -1417,11 +1452,16 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                         {ft.secenekler[k].map((sc) => <option key={sc} value={sc}>{sc === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${YONTEM_ADI[sc] ?? sc.replace("_", " ")})` : "")}</option>)}
                       </select>
                     </label>))}
+                  {(ftSon.soiling_model ?? ft.soiling_model) !== "none" && (Object.keys(FT_SAYISAL) as (keyof typeof FT_SAYISAL)[]).map((k) => (   /* v2.641 (02B-B10): kirlenme açıkken sayısal terimler; boş = sunucu varsayılanı; Türkçe ondalık okunur; önizleme alan terk edilince */
+                    <label key={`${k}-${ft[k] ?? ""}`} className="girdi-etiket" title={FT_SAYISAL[k].ipucu}>{FT_SAYISAL[k].etiket} <span className="soluk">({FT_SAYISAL[k].aralik})</span>
+                      <input className="girdi" inputMode="decimal" placeholder={FT_SAYISAL[k].ornek} defaultValue={ft[k] != null ? String(ft[k]).replace(".", ",") : ""} aria-label={FT_SAYISAL[k].etiket}
+                        onBlur={(e) => { const ham = e.target.value.trim(); if (ham === "") return; const v = sayiOkuTr(ham); if (v === null) { setFtMesaj(`${FT_SAYISAL[k].etiket}: sayı olmalı (${FT_SAYISAL[k].aralik}).`); return; } ftDegistir(k, String(v)); }} />
+                    </label>))}
                   {ftOn && <div className="ayar-panel">
                     <span>Önizleme (7 gün, yalnız fiziksel model): <b>{ftOn.toplam_fark_pct == null ? "—" : yuzdeTr(ftOn.toplam_fark_pct, 2)}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
                     {!ftOn.nem_var && <span className="soluk">nem verisi yok; spektral düzeltme etkisiz</span>}
                     {!ftOn.kar_var && <span className="soluk">kar verisi yok; kar örtüsü etkisiz</span>}
-                    <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
+                    <button className="dugme" onClick={() => { if (Object.keys(ftSon).length > 0) ftUygula(ftSon); }}>Uygula{Object.keys(ftSon).length > 1 ? ` (${Object.keys(ftSon).length} terim)` : ""}</button>
                   </div>}
                   {ftMesaj && <span className={`ayar-durum ${ftMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{ftMesaj}</span>}
                 </> : <span className="ayar-durum">—</span>}
@@ -1437,6 +1477,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 </>)}
             </div>
           </Katla>
+          </fieldset>
         </Kart>
       </div>
       </section>
@@ -1448,6 +1489,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
       {/* v2.542 (P8b-2, IH-092): sensör envanteri — ışınım kaynağı etiketi (PR kartı), IEC 61724-1:2021 sınıfı, kalibrasyon vadesi (türetilir), vadesi geçen için alarm kuralı */}
       <Kart baslik="Sensörler ve kalibrasyon" alt="Işınım, modül sıcaklığı ve hava sensörlerinin beyanı. Kalibrasyon vadesi son kalibrasyon tarihi ve periyottan türetilir; vadesi geçen sensör için alarm kuralı seçilebilir."
         sag={sens ? <span className="cip">{sayiTr(sens.sensorler.length)} sensör · {sens.isinim.duzlem ? (sens.isinim.duzlem === "poa" ? "düzlem-içi ışınım" : "yatay ışınım") : "ışınım sensörü yok"}</span> : null}>
+        <fieldset className="rol-alan" disabled={!yazabilir}>
         {/* v2.608 (Faz 5 F5-E) aşamalı açılım: envanter ve ekleme formu katlı; başlık çipi sayıyı ve ışınım kaynağını söyler, vadesi geçen sensör varsa açık başlar */}
         <Katla ozet="Sensör envanteri ve ekleme" not={vadeGecti ? "vadesi geçen sensör var" : undefined} acik={vadeGecti}>
           {sens && sens.sensorler.length > 0 && (
@@ -1491,11 +1533,13 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
           {sensMesaj && <span className={`ayar-durum ${sensMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{sensMesaj}</span>}
           <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>{sens?.not ?? "IEC 61724-1:2021 izleme sınıfları A ve B. Kalibrasyon periyodu üreticinin ya da izleme sınıfının şartına göre girilir; varsayılan 24 ay beyandır."}</p>
         </Katla>
+        </fieldset>
       </Kart>
 
       {/* v2.544 (dalga 3 kalanı, IH-090/092): kirlenme ve ölçüm tutarlılığı — ön tanı göstergesi; v2.545 kayıp satırı ayrı etiketli tahmin; sensör/modül ayrımı açık gün PR çapraz okumasıyla */}
       {pilot ? (   /* v2.560 (Aşama 4) + v2.561 (Aşama 6): pilot kapıları, referans kıyası, saha toplayıcısı — örnek kipte ve API yokken gizli */
         <Kart baslik="Pilot kapıları ve saha toplayıcısı" alt="Sahaya bağlanmadan önce kapanması gereken kapılar, referans dışa aktarımıyla kıyas ve saha toplayıcısı kimlikleri. Beyanlar sorumluluğu adlandırır; sahadaki gerçeği kanıtlamaz.">
+          <fieldset className="rol-alan" disabled={!yazabilir}>
           <div className="t-ikincil" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
             <span className={`rozet rozet-kucuk ${pilot.sahaya_hazir ? "rozet-ok" : "rozet-uyari"}`}>{pilot.sahaya_hazir ? "P0 kapıları kapalı: sahaya bağlantı başlatılabilir" : `açık P0 kapısı: ${pilot.p0_acik.join(", ")}`}</span>
           </div>
@@ -1511,10 +1555,10 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               <input className="girdi" type="file" accept=".csv,text/csv" onChange={(e) => pilotRef(e.target.files?.[0] ?? null)} />
               <span className="soluk t-ikincil">sütunlar: zaman (saat dilimli), kWh · yalnız tam ölçülmüş saatler kıyaslanır</span></label>
             <label className="girdi-etiket">Ölçüm sınırı
-              <select className="girdi" value={refSinir} aria-label="Referans ölçüm sınırı" onChange={(e) => setRefSinir(e.target.value)}><option value="inverter_ac">inverter AC çıkışı</option><option value="plant_gross_ac">tesis brüt AC</option><option value="pcc_net">bağlantı noktası net</option><option value="settlement">uzlaştırma sayacı</option></select></label>
+              <select className="girdi" value={refSinirEtkin} aria-label="Referans ölçüm sınırı" onChange={(e) => setRefSinir(e.target.value)}>{SINIR_SECENEK.map(([d, e]) => <option key={d} value={d}>{e}</option>)}</select></label>
             <label className="ayar-onay" title="Bazı portal dışa aktarımlarında zaman damgası saatin SONUNU gösterir (10:00 satırı 09:00–10:00 üretimidir). İşaretlerseniz damgalar 1 saat geri alınır.">
               <input type="checkbox" checked={refSaatSonu} onChange={(e) => setRefSaatSonu(e.target.checked)} /> damga saat sonunu gösteriyor</label>
-            {refMesaj && <span className={`ayar-durum ${refMesaj.startsWith("Kıyaslanamadı") ? "hata" : ""}`}>{refMesaj}</span>}
+            {refMesaj && <span className={`ayar-durum ${/^(Kıyaslanamadı|Kaydedilemedi)/.test(refMesaj) ? "hata" : ""}`}>{refMesaj}</span>}
           </div>
           {pilot.referans_sonuc && (() => { const r = pilot.referans_sonuc; return (<>
             <p className="t-ikincil" style={{ margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma ${yuzdeTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.n_atlanan ? `, ${sayiTr(r.n_atlanan)} satır atlandı` : ""}{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span>
@@ -1532,6 +1576,10 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               <button className="dugme" style={{ marginTop: 6 }} onClick={edgeOlustur}>Toplayıcı anahtarı üret</button>
               <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{edge.not}</p>
             </div>)}
+          </fieldset>
+        </Kart>) : pilotHata ? (
+        <Kart baslik="Pilot kapıları ve saha toplayıcısı" alt="Pilot bilgisi bu kez okunamadı; kart gizlenmedi.">
+          <p className="ayar-durum hata" style={{ margin: 0 }}>Pilot kapıları ya da saha toplayıcısı okunamadı: {pilotHata}. Sayfayı yenileyin; sürerse destek.</p>
         </Kart>) : null}
         </div>
       <Kart baslik="Kirlenme ve ölçüm tutarlılığı" alt="Açık günlerde ölçülen ışınımın açık-gök modeline oranı ile açık gün performans oranı birlikte okunur: sapma sensörde mi, modüllerde mi? Ön tanı göstergesidir; kayıp satırı ayrı etiketli bir tahmindir."
@@ -1548,16 +1596,18 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               <Kpi etiket="Açık gün PR (son 7 açık gün)" deger={kir.pr_acik_7g != null ? yuzdeTr(kir.pr_acik_7g * 100, 1) : "—"} alt={kir.pr_egim_pct_ay != null ? `eğilim ${kir.pr_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.pr_egim_pct_ay, 1)} %/ay` : "eğilim için açık gün yetersiz"} />
               <Kpi etiket="Son yağış (hava tahmini arşivi)" deger={kir.son_yagis?.gun_once != null ? `${sayiTr(kir.son_yagis.gun_once)} gün önce` : "—"} alt={kir.son_yagis?.mm != null ? `son ölçüm gününe göre · ${sayiTr(kir.son_yagis.mm, 1)} mm tahmin, ölçülen yağış değil` : (kir.son_yagis?.not ?? "")} />
             </div>
-            {kir.yorum && <p className="t-ikincil" style={{ margin: "0 0 10px", lineHeight: 1.5 }}>
-              <span className={`rozet rozet-kucuk ${kir.yorum.kod === "kararli" || kir.yorum.kod === "toparlanma" ? "rozet-ok" : kir.yorum.kod === "yetersiz" || kir.yorum.kod === "atmosfer" ? "rozet-notr" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{kir.yorum.baslik}</span>
+            {kir.yorum && <p className="t-ikincil" style={{ margin: "0 0 10px", lineHeight: 1.5 }}>   {/* v2.641 (02C-B12): bayat veride yorum geçmiş zaman ve nötr rozet */}
+              <span className={`rozet rozet-kucuk ${kir.tazelik?.bayat ? "rozet-notr" : kir.yorum.kod === "kararli" || kir.yorum.kod === "toparlanma" ? "rozet-ok" : kir.yorum.kod === "yetersiz" || kir.yorum.kod === "atmosfer" ? "rozet-notr" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{kir.yorum.baslik}{kir.tazelik?.bayat ? " (o tarihte)" : ""}</span>
               <span className="soluk">{kir.yorum.metin}</span>
-              {kir.yorum.kod !== "yetersiz" && <> <b style={{ fontWeight: 500 }}>{kir.yorum.tur === "olcum" ? "Ölçüm sapması; üretim kaybı değil." : kir.yorum.tur === "uretim" ? "Üretim kaybı olası." : "Eylem gerekmez."}</b></>}</p>}
+              {kir.yorum.kod !== "yetersiz" && <> <b style={{ fontWeight: 500 }}>{kir.tazelik?.bayat
+                ? (kir.yorum.tur === "olcum" ? "Son ölçüm tarihinde ölçüm sapması vardı; üretim kaybı değil." : kir.yorum.tur === "uretim" ? "Son ölçüm tarihinde üretim kaybı olasıydı; bugünkü durum bilinmiyor." : "O tarihte eylem gerekmiyordu.")
+                : (kir.yorum.tur === "olcum" ? "Ölçüm sapması; üretim kaybı değil." : kir.yorum.tur === "uretim" ? "Üretim kaybı olası." : "Eylem gerekmez.")}</b></>}</p>}
             {kir.son_temizlik && <p className="soluk t-ikincil" style={{ margin: "0 0 10px" }}>Son temizlik {gunKisa(kir.son_temizlik.tarih)} (son ölçüm gününe göre {sayiTr(kir.son_temizlik.gun_once)} gün önce){kir.kayip?.referans_kaynak ? `; temiz referans: ${kir.kayip.referans_kaynak}` : ""}.</p>}
             {/* 08.11 inceleme (faz 1): kayıp satırı güvenilirlik sınıfına göre — anlamlı: tahmin + temizlik karşılaştırması; zayıf/belirsiz: şartlı senaryo, karşılaştırma yok; sensör şüphesi: askıda, sayı yok */}
             {kir.kayip && (kir.kayip.durum === "ok" ? (
               <p className="t-ikincil" style={{ margin: "0 0 10px", lineHeight: 1.5 }}>
-                <span className={`rozet rozet-kucuk ${kir.kayip.nitelik === "tahmin" ? "rozet-uyari" : "rozet-notr"}`} style={{ marginRight: 8 }}>{kir.kayip.nitelik === "tahmin" ? "kirlenme kaybı tahmini" : "kirlenme kaybı · şartlı senaryo"}</span>
-                Son ölçüme kadar {sayiTr(kir.kayip.son30_gun ?? 30)} gün: <b style={{ fontWeight: 500 }}>{sayiTr((kir.kayip.son30_kayip_kwh ?? 0) / 1000, 1)} MWh</b>{kir.kayip.son30_kayip_tl != null ? <> · <b style={{ fontWeight: 500 }}>{sayiTr(kir.kayip.son30_kayip_tl, 0)} TL</b></> : <> · TL karşılığı yok (satış fiyatı tanımlı değil)</>}
+                <span className={`rozet rozet-kucuk ${kir.kayip.nitelik === "tahmin" && !kir.tazelik?.bayat ? "rozet-uyari" : "rozet-notr"}`} style={{ marginRight: 8 }}>{kir.kayip.nitelik === "tahmin" ? "kirlenme kaybı tahmini" : "kirlenme kaybı · şartlı senaryo"}{kir.tazelik?.bayat ? " (o tarihte)" : ""}</span>
+                Son ölçüme kadar {sayiTr(kir.kayip.son30_gun ?? 30)} gün: <b className={kir.kayip.nitelik !== "tahmin" ? "soluk" : undefined} style={{ fontWeight: kir.kayip.nitelik !== "tahmin" ? 400 : 500 }} title={kir.kayip.nitelik !== "tahmin" ? "şartlı senaryo: güvenilirlik zayıf/belirsiz; karşılaştırma için değil" : undefined}>{sayiTr((kir.kayip.son30_kayip_kwh ?? 0) / 1000, 1)} MWh</b>{kir.kayip.son30_kayip_tl != null ? <> · <b className={kir.kayip.nitelik !== "tahmin" ? "soluk" : undefined} style={{ fontWeight: kir.kayip.nitelik !== "tahmin" ? 400 : 500 }}>{sayiTr(kir.kayip.son30_kayip_tl, 0)} TL</b></> : <> · TL karşılığı yok (satış fiyatı tanımlı değil)</>}
                 {kir.kayip.son7_gunluk_kayip_pct != null ? <> · son 7 günde günlük ortalama {yuzdeTr(kir.kayip.son7_gunluk_kayip_pct, 1)}</> : null}; temiz referans PR {yuzdeTr((kir.kayip.referans_pr ?? 0) * 100, 1)}.
                 {kir.kayip.temizlik ? <> Temizlik maliyeti {sayiTr(kir.kayip.temizlik.maliyet_tl, 0)} TL: {kir.kayip.temizlik.son30_karsilar ? "son 30 günün tahmini kaybı karşılıyor" : "son 30 günün tahmini kaybı henüz karşılamıyor"}{kir.kayip.temizlik.geri_odeme_gun != null ? `, geri ödeme yaklaşık ${sayiTr(kir.kayip.temizlik.geri_odeme_gun)} gün` : ""}.</>
                   : kir.kayip.temizlik_neden ? <> Temizlik karşılaştırması yok: {kir.kayip.temizlik_neden}.</> : kir.kayip.nitelik === "tahmin" ? <> Temizlik maliyeti girilmedi (Santral ayarları).</> : null}

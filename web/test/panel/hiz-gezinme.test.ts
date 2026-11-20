@@ -32,7 +32,7 @@ test("Santralim: her veri efekti yarış korumalı, ikincil kartlar özet gelinc
   assert.match(s, /const \[santralRef, santralGorunur\] = useGorunur<HTMLElement>\(\);/);
   assert.match(s, /const \[ayarRef, ayarGorunur\] = useGorunur<HTMLDivElement>\(\);/);
   assert.match(s, /const \[altRef, altGorunur\] = useGorunur<HTMLElement>\(\);/);
-  assert.equal((s.match(/if \(!santralGorunur\) return;/g) ?? []).length, 2, "santral bölümü kapısı");
+  assert.equal((s.match(/if \(!santralGorunur\) return;/g) ?? []).length, 3, "santral bölümü kapısı");   // v2.641 (02A-B10): gölge görünümü ayrı efekt (ölçüm sınırı seçilince yalnız o yeniden çekilir)
   assert.equal((s.match(/if \(!ayarGorunur\) return;/g) ?? []).length, 3, "ayarlar kapısı");
   assert.equal((s.match(/if \(!altGorunur\) return;/g) ?? []).length, 3, "sayfa altı kapısı");
   for (const uc of ["api.pr(plantId)", "api.saglik(plantId)", "api.sensorler(plantId)", "api.dengesizlik(plantId, 14)"])

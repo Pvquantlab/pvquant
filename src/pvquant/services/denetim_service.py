@@ -29,6 +29,7 @@ EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sif
                     "bulut_oauth_baslat", "bulut_oauth_donus", "bulut_birim_kiyas",   # v2.564/v2.565: sahip onayı (OAuth) başlatma ve dönüş (kod/belirteç yazılmaz)
                     "pilot_kapi", "pilot_referans", "edge_toplayici_olustur", "edge_toplayici_iptal",   # v2.560/v2.561: pilot kapıları, saha toplayıcısı
                     "rapor_donem_indir", "rapor_gonderim_ayar", "rapor_gonderim",
+                    "alarm_deneme",   # v2.641 (Santralim denetimi Parti 2): deneme alarmı e-postası (alerts yazmaz)
                     "mutabakat_saatlik_yukle", "mutabakat_saatlik_indir",
                     "kurulus_ekle", "kurulus_guncelle", "portfoy_ekle", "portfoy_guncelle", "uyelik_ekle", "uyelik_guncelle",
                     "sozlesme_ekle", "sozlesme_guncelle",   # v2.588 (Faz 3 F3-A)

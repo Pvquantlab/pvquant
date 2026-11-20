@@ -445,7 +445,7 @@ def ozet(tenant_id, plant: dict, simdi: datetime | None = None) -> dict:
              "bolgeler": list(BOLGELER), "henuz_yok": HENUZ_YOK, "henuz_yok_etiketi": "Planlandı (anahtar ve örnek çıktı gelince)",
              "kasa": __import__("pvquant.guvenlik.kasa", fromlist=["kek_durum"]).kek_durum(),   # v2.556 (K1): şifreli saklama bu kurulumda açık mı (anahtar dönmez)
              "hesap_durumu": hesap_durumu(etkin),
-             "diger_etiketi": "desteklenmiyor — kaydederseniz talep olarak not edilir", "not": "Anahtar sınamada kullanılır; yalnız sahibin iki onayıyla şifreli saklanır ve düzenli çekişte çözülür."}
+             "diger_etiketi": "desteklenmiyor — kaydederseniz yalnız santral ayarına ve denetim izine yazılır; talep listesi ya da bildirim yoktur", "not": "Anahtar sınamada kullanılır; yalnız sahibin iki onayıyla şifreli saklanır ve düzenli çekişte çözülür."}
     from pvquant.io.canli.profiller import liste as profil_listesi
     return {"etkin": etkin, "beyan": beyan, "hedef": hedef, "asamalar": asamalar(beyan, etkin), "baglanti_durumu": baglanti_durumu(beyan, etkin), "profiller": profil_listesi(),
             "yollar": [_yol(k) for k in VERI_YOLLARI], "bulut": bulut,

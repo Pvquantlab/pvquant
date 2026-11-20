@@ -1144,7 +1144,8 @@ export const api = {
   bulutBirimKiyas: (p: string, sg: string, dosya: File): Promise<BulutBirimKiyas> => dosyaGonder(`/v1/plants/${p}/bulut-kimlik/${sg}/birim-kiyas`, dosya),   // v2.565: portal dışa aktarımıyla birim kıyası (özet kayda iner)
   bulutOAuthBaslat: (p: string, g: { saglayici: string; bolge?: string | null; onaylar: { yalniz_okuma: boolean; sifreli_saklama: boolean } }): Promise<BulutOAuthBaslat> => gonder(`/v1/plants/${p}/bulut-kimlik/oauth/baslat`, "POST", g),   // v2.564: sahip onayı — dönen adrese tarayıcı gider
   /** v2.550 (D5): gölge saatlik görünüm (son 7 gün); örnek kipte null */
-  golgeSaatlik: async (p: string): Promise<GolgeGorunum | null> => { if (TABAN == null) return null; try { return await getir<GolgeGorunum>(`/v1/plants/${p}/golge-saatlik`); } catch { return null; } },
+  golgeSaatlik: async (p: string, sinir?: string): Promise<GolgeGorunum | null> => {   // v2.641 (02A-B10): ölçüm sınırı seçilebilir (eskiden hep inverter_ac)
+    if (TABAN == null) return null; try { return await getir<GolgeGorunum>(`/v1/plants/${p}/golge-saatlik${sinir ? `?sinir=${encodeURIComponent(sinir)}` : ""}`); } catch { return null; } },
   /** v2.555 (V2): cihaz durumundan olay adayları; örnek kipte null */
   olayAdaylari: async (p: string): Promise<OlayAdaylari | null> => { if (TABAN == null) return null; try { return await getir<OlayAdaylari>(`/v1/plants/${p}/olay-adaylari`); } catch { return null; } },
   veriYoluBulutSina: (p: string, g: { saglayici: string; kimlik: Record<string, string>; bolge?: string | null }): Promise<VeriYoluSinama> => gonder(`/v1/plants/${p}/veri-yolu/bulut-sinama`, "POST", g),   // v2.547: kimlik yalnız bu istekte gider, saklanmaz
@@ -1181,6 +1182,8 @@ export const api = {
     try { return await getir<Yekdem>(`/v1/plants/${p}/yekdem?gun=${gun}`); } catch { return null; }
   },
   kunyeTarihler: (p: string, g: Record<string, string | number | null>): Promise<{ kunye: KunyeTarihler }> => gonder(`/v1/plants/${p}/kunye-tarihler`, "PUT", g),
+  /** v2.641: deneme alarmı e-postası — alerts yazmaz; kayıtlı alıcılara (SMTP yoksa 409). */
+  alarmDeneme: (p: string): Promise<{ gonderildi: string[]; basarisiz: string[]; not: string }> => gonder(`/v1/plants/${p}/alarm-kurallari/deneme`, "POST", {}),
   /** v2.640 (Santralim denetimi, Parti 1 — kritik): işletme ayarlarının kayıtlı değerleri — form bununla ön dolar, yalnız dokunulan alanı gönderir. */
   eak: async (p: string): Promise<EakDurum | null> => { if (TABAN == null) return null; try { return await getir<EakDurum>(`/v1/plants/${p}/eak`); } catch { return null; } },
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */

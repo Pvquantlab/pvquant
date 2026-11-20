@@ -34,7 +34,7 @@ test("Santralim: UEVÇB boş dize gönderilir; referans saat sonu + uyarılar; t
   const s = oku("../../src/features/santralim/Santralim.tsx");
   assert.match(s, /api\.segmentAyarla\(plantId, seg\.segment, kod\.trim\(\)\)/);
   assert.doesNotMatch(s, /kod\.trim\(\) \|\| undefined/);
-  assert.match(s, /api\.pilotReferans\(plantId, dosya, refSinir, refSaatSonu\)/);
+  assert.match(s, /api\.pilotReferans\(plantId, dosya, refSinirEtkin, refSaatSonu\)/);
   assert.match(s, /damga saat sonunu gösteriyor/);
   assert.match(s, /r\.uyarilar\.map\(\(u, i\) => <li key=\{i\}>\{u\}<\/li>\)/);
   assert.match(s, /vy\.baglanti_durumu\.kod === "veri_akisi_toplayici"/);

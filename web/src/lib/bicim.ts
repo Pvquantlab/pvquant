@@ -57,3 +57,17 @@ export function zamanTr(s: string | null | undefined): string {
   // 15.11.2026 (Genel bakış turu): gün ve ay iki haneli — «1.10.2026 03:55» ile «24.10.2026 06:12» aynı kolonda farklı genişlikteydi.
   return s ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s)) : "—";
 }
+
+/** v2.641 (Parti 3, 02B-B6): Türkçe yazılmış sayıyı okur — «12.000,5» → 12000.5, «12,5» → 12.5, «12.5» → 12.5, «12.000» → 12000
+ *  (yalnız nokta ve 3'lü gruplar → binlik ayracı). Boş ya da okunamayan → null. Number("12.000".replace(",", ".")) = 12 tuzağının yerine. */
+export function sayiOku(metin: string | null | undefined): number | null {
+  const s = (metin ?? "").trim().replace(/\s/g, "");
+  if (s === "") return null;
+  let duz: string;
+  if (s.includes(",") && s.includes(".")) duz = s.replace(/\./g, "").replace(",", ".");
+  else if (s.includes(",")) duz = s.replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) duz = s.replace(/\./g, "");
+  else duz = s;
+  const v = Number(duz);
+  return Number.isFinite(v) ? v : null;
+}

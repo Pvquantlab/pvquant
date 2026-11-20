@@ -8,6 +8,9 @@ import http from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 // 19.11 Bulgu 7 (sürüm kayması): her yanıt X-PVQ-Yazilim taşır; değer web/.sahte-surum dosyasından okunur (yoksa «sahte-1») — dosyayı değiştirip kaymayı taklit et
 const SURUM_DOSYASI = new URL("../../../../web/.sahte-surum", import.meta.url);
+// v2.641 (Santralim denetimi Parti 2): oturum rolü web/.sahte-rol dosyasından (yoksa «admin») — izleyici rolünün salt-okunur görünümünü önizlemek için
+const ROL_DOSYASI = new URL("../../../../web/.sahte-rol", import.meta.url);
+function rolOku() { try { const r = readFileSync(ROL_DOSYASI, "utf8").trim(); return ["admin", "editor", "viewer"].includes(r) ? r : "admin"; } catch { return "admin"; } }
 const surumOku = () => { try { return existsSync(SURUM_DOSYASI) ? readFileSync(SURUM_DOSYASI, "utf-8").trim() || "sahte-1" : "sahte-1"; } catch { return "sahte-1"; } };
 const TAKVIM = JSON.parse(readFileSync(new URL("./sahte-takvim.json", import.meta.url), "utf-8"));   // v2.518 (P3a)
 delete TAKVIM.luy_rejimi;   // v2.541: lisanslı a1 için null; a4 (lisanssız) yolda eklenir, JSON anahtarı yayılmayı ezmesin
@@ -692,6 +695,9 @@ http.createServer((req, res) => {
         saat: 528, guvenilirlik: "Kısmi karşılaştırma", nedenler: ["dönemin 744 saatinden 528 saati için üretim ve program verisi var"], bildirim: { surum: "nihai bildirim", zaman: "2026-11-02T09:12+03:00" }, hata: null } : null,
       kaynaklar: ["Üretim: SCADA saatlik ölçümü (geçerli saatler)", "Beklenen: tahmin arşivi, gün başı P50", "Olaylar ve kullanılabilirlik: olay kaydı", "Uzlaştırma: PVQuant yeniden hesabı + yüklü EPİAŞ bildirimi (Mutabakat)", "PR: ölçülen düzlem ışınımı yok"], notlar: ["Beklenen = gün başlamadan verilmiş tahminin günlük P50 toplamı (arşiv; geriye dönük değişmez); sapma yalnız iki değerin de bulunduğu günlerde.", "Üretim SCADA ölçümüdür (geçerli saatler); EPİAŞ uzlaştırmaya esas sayaç verisi değildir.", ay ? "Uzlaştırma kalemleri PVQuant'ın yürürlükteki kuralla yeniden hesabıdır; EPİAŞ bildirimi esastır." : "Uzlaştırma kalemlerinin yeniden hesabı yalnız ay döneminde verilir; çeyrek ve yıl için Mutabakat sayfasına bakın."],
       uretim_zamani: "2026-11-02T04:50+03:00" }); }
+  // v2.641 (Parti 3 doğrulaması): fizik terimleri önizleme + uygula — aday anahtarları yankılar (çoklu seçim sınaması)
+  if (/^\/v1\/plants\/[^/]+\/fizik-terimleri\/onizle$/.test(yol) && req.method === "POST") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { b = {}; } const n = Object.keys(b.ayar || {}).length; yanit(200, { gun: [], toplam_mevcut_kwh: 120000, toplam_aday_kwh: 120000 * (1 + 0.004 * n), toplam_fark_pct: 0.4 * n, nem_var: true, kar_var: false, yagis_var: true, kaynak: "sahte", aday_anahtarlar: Object.keys(b.ayar || {}) }); }); return; }
+  if (/^\/v1\/plants\/[^/]+\/fizik-terimleri$/.test(yol) && req.method === "PUT") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { b = {}; } yanit(200, { ...VERI["fizik-terimleri"], ...(b.ayar || {}) }); }); return; }
   if (/^\/v1\/plants\/[^/]+\/rapor-gonderim$/.test(yol) && req.method === "GET") return yanit(200, { aktif: true, gun: 3, alicilar: ["mali@edikli.com"], son_gonderim: "2026-10-03T08:10+03:00", son_durum: "gonderildi", son_donem: "2026-09", varsayilan_alicilar: ["ops@edikli.com"], posta_yapilandirildi: true });
   if (/^\/v1\/plants\/[^/]+\/rapor-gonderim$/.test(yol) && req.method === "PUT") { req.on("data", () => {}); req.on("end", () => yanit(200, { aktif: true, gun: 3, alicilar: ["mali@edikli.com"], son_gonderim: "2026-10-03T08:10+03:00", son_durum: "gonderildi", son_donem: "2026-09", varsayilan_alicilar: ["ops@edikli.com"], posta_yapilandirildi: true })); return; }
   if (/^\/v1\/plants\/[^/]+\/rapor-gonderim\/dene$/.test(yol) && req.method === "POST") { req.on("data", () => {}); req.on("end", () => yanit(200, { durum: "gonderildi", donem: "2026-10", etiket: "Ekim 2026", alici: 1, zaman: "2026-11-02T04:55+03:00" })); return; }
@@ -819,7 +825,7 @@ http.createServer((req, res) => {
     res.writeHead(303, { location: `http://localhost:4273/?bulut_oauth=${sg}:${durum}#santralim/${plant}`, "cache-control": "no-store" }); return res.end();
   }
   if (yol === "/v1/plants") return yanit(200, PLANTS);
-  if (yol === "/v1/oturum/yenile") return yanit(200, { token: "x." + Buffer.from('{"role":"admin"}').toString("base64url") + ".y", role: "admin", firma: "Deneme Lab", email: "deneme@example.com" });
+  if (yol === "/v1/oturum/yenile") { const rol = rolOku(); return yanit(200, { token: "x." + Buffer.from(JSON.stringify({ role: rol })).toString("base64url") + ".y", role: rol, firma: "Deneme Lab", email: "deneme@example.com" }); }
   // ---- v2.609 (Faz 6 F6-D): müşteri aboneliği (yetki_service.musteri_gorunumu biçimi) + teklif/yükseltme talebi
   if (yol === "/v1/abonelik" && req.method === "GET") {
     const KE = { saglikli: "sınırın altında", dikkat: "sınıra yaklaşıyor", dolu: "sınıra ulaşıldı", asildi: "sınır aşıldı", sinirsiz: "sınırsız", olculmuyor: "ölçülmüyor" };

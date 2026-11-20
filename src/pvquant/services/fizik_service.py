@@ -75,7 +75,8 @@ def ayar_yaz(tenant_id, plant_id, ayar: dict) -> dict:
 
 
 def onizle(tenant_id, plant: dict, aday: dict, gun: int = 7) -> dict:
-    """Arşivdeki son koşu meteosuyla salt fizik: mevcut spec ↔ aday spec; günlük kWh ve toplam fark."""
+    """Canlı Open-Meteo 7 gün tahmini meteosuyla salt fizik (arşiv değil; v2.641 docstring düzeltmesi, 02B-B10): mevcut spec ↔ aday spec;
+    günlük kWh ve toplam fark. Birden çok terim birlikte verilebilir; aday spec tümüyle uygulanır."""
     from pvquant.io.meteo import OpenMeteoClient
     from pvquant.pipeline.forecast import forecast_7day
     from pvquant.services.plant_spec_service import params_json as _pj, plant_spec_kur

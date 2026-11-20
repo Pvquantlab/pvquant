@@ -72,6 +72,8 @@ def test_segment_kapisi_lisanssiz_dagitim_ve_segment_yok():
     pv2, fo2 = fe.saatlik(g2)
     out2 = fe.uzlastirma_bilesenleri_saf(g2["donem"], g2["izgara"], pv2, fo2, ds.segment_bilgisi({}), g2["kat"], False)
     assert fe.NOT_SEGMENT_YOK in _bil(out2, "dengesizlik")["notlar"] and _bil(out2, "dengesizlik")["toplanir"] is True
+    k2 = _bil(out2, "kupst")   # v2.641: segment seçilmemişken KÜPST hesaplanmaz (Doğruluk/dengesizlik ile tek politika)
+    assert k2["toplanir"] is False and "segment seçilmedi" in (k2.get("aciklama") or k2.get("neden") or str(k2))
 
 
 def test_dsg_yerine_koyma_ve_bos_cerceve():

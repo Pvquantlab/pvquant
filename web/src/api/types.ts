@@ -26,7 +26,8 @@ export interface SantralOzeti {
 }
 
 /** /pr yaniti — v2.249 (IEC 61724-1, olcumden; POA yoksa 'poa_yok'). */
-export interface PrKarti {
+/** v2.641: PR kartı (isinim_uyari: yalnız GHI beyanında — PR düzlem-içi sütuna dayanır). */
+export interface PrKarti { isinim_uyari?: string | null;
   durum: "ok" | "poa_yok" | "veri_yok"; gun: number; saat: number; poa_orani: number | null;
   Y_r: number | null; Y_f: number | null; PR: number | null; PR_sicaklik: number | null;
   CF: number | null; t_ref: number | null; pencere_gun: number;
@@ -708,7 +709,7 @@ export interface Kirlenme { durum: "ok" | "egim_yok" | "poa_yok" | "acik_gun_yok
   sensor: IsinimKaynagi; tazelik?: { son_olcum: string; veri_yasi_gun: number; bayat: boolean; not: string | null }; pencere?: { bas: string; bit: string }; yontem?: string[];
   acik_gun?: number; acik_gun_30?: number; age_7g?: number; pr_acik_7g?: number | null; age_egim_pct_ay?: number | null; pr_egim_pct_ay?: number | null;
   yorum?: { kod: "sensor" | "modul" | "atmosfer" | "ikisi" | "toparlanma" | "kararli" | "yetersiz"; baslik: string; metin: string; tur: "olcum" | "uretim" | "bilgi"; uretim_kaybi: "yok" | "olasi" | "belirsiz" };
-  son_yagis?: { tarih: string | null; mm: number | null; gun_once: number | null; referans?: string; kaynak?: string; not?: string };
+  son_yagis?: { tarih: string | null; mm: number | null; gun_once: number | null; referans?: string; kaynak?: string; not?: string; arsiv?: boolean };
   gunler?: { gun: string; acik_saat: number; age: number; pr_acik: number | null }[];
   /** v2.545 (IH-090): kirlenme kaybı tahmini — temiz referans PR kantili; yalnız «modül»/«ikisi» yorumunda anlamlı */
   kayip?: { durum: "ok" | "yetersiz" | "askida"; nitelik?: "tahmin" | "senaryo"; not: string; aciklama?: string; neden?: string; bitis?: string; referans_pr?: number; referans_kaynak?: string;
@@ -795,7 +796,7 @@ export interface BulutOAuthBaslat { durum: string; aciklama?: string; yetki_url?
 
 /** v2.560 (Aşama 4): pilot kapıları ve referans kıyası */
 export interface PilotKapi { kod: string; ad: string; kaynak: "saha" | "kod"; p0: boolean; aciklama: string; tamam: boolean; not: string | null; zaman: string | null; aktor_id: string | null; durum_etiketi: string }
-export interface ReferansKiyasOzet { sonuc: "uyumlu" | "uyumsuz" | "yetersiz"; metin: string; n_referans: number; n_ortak: number; n_tolerans_ici: number; tolerans_orani: number | null; n_golge_yok: number; n_golge_kismi_disi: number; mape_pct: number | null; maks_mutlak_fark_kwh: number; toplam_fark_pct: number | null; sinir?: string; bas?: string; bit?: string; dosya?: string | null; zaman?: string; uyarilar?: string[]; n_atlanan?: number; tolerans_disi_saatler?: { ts_utc: string; referans_kwh: number; golge_kwh: number; fark_kwh: number; kaynak: string | null }[] }
+export interface ReferansKiyasOzet { sinir_etiketi?: string; sonuc: "uyumlu" | "uyumsuz" | "yetersiz"; metin: string; n_referans: number; n_ortak: number; n_tolerans_ici: number; tolerans_orani: number | null; n_golge_yok: number; n_golge_kismi_disi: number; mape_pct: number | null; maks_mutlak_fark_kwh: number; toplam_fark_pct: number | null; sinir?: string; bas?: string; bit?: string; dosya?: string | null; zaman?: string; uyarilar?: string[]; n_atlanan?: number; tolerans_disi_saatler?: { ts_utc: string; referans_kwh: number; golge_kwh: number; fark_kwh: number; kaynak: string | null }[] }
 export interface PilotDurum { kapilar: PilotKapi[]; p0_acik: string[]; sahaya_hazir: boolean; referans_sonuc: ReferansKiyasOzet | null; not: string }
 /** v2.640: GET/PUT /eak ortak gövdesi — işletme ayarlarının kayıtlı değerleri (form ön doldurması). */
 export interface EakDurum { eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null;

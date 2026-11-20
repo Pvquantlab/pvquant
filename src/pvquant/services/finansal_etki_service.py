@@ -399,7 +399,7 @@ NOT_UZLASTIRMA = ("Enerji dengesizlik tutarı ve KGÜP sapma tutarı PVQuant'ın
                   "EPİAŞ uzlaştırma sonucu değildir. İşaret: artı santral lehine (alacak), eksi aleyhine (borç).")
 NOT_DSG = ("DSG içindeki tutar tek başına dengesizlik tutarının yerine geçer, onunla toplanmaz; üyelik ve dağıtım anahtarı sözleşme verisi "
            "olmadığından senaryo niteliğindedir.")
-NOT_SEGMENT_YOK = "Piyasa segmenti seçilmedi; lisanslı güneş varsayıldı (Santralim › Santral ayarları)."
+NOT_SEGMENT_YOK = "Piyasa segmenti seçilmedi; dengesizlik tutarı lisanslı güneş varsayımıyla hesaplandı, KÜPST hesaplanmadı (Santralim › Santral ayarları)."   # v2.641: Doğruluk/dengesizlik ile tek politika
 NOT_B4 = ("Mutabakat sayfasındaki fark saatlik alacak/borç toplamıyla hesaplanır; burada 19.10.2026'dan geçerli EDTA/EDTB ayrık toplama kuralı "
           "kullanıldığından alacak ve borç dağılımı farklı olabilir, net tutar aynıdır.")
 
@@ -468,7 +468,9 @@ def uzlastirma_bilesenleri_saf(donem: dict, izgara: pd.DatetimeIndex, pv: pd.Dat
     elif segment is None:
         edt.notlar.append(NOT_SEGMENT_YOK)
     # --- KÜPST
-    if not kupst_uygulanir(segment):
+    if not segment:   # v2.641 (Santralim denetimi Parti 2): dengesizlik sayfası «segment seçilmedi, hesaplanmadı» derken burada lisanslı varsayılıp hesaplanıyordu (None ve boş dize)
+        k = fn.Bilesen.eksik(KOD_KUPST, "KGÜP sapma tutarı (KÜPST)", "Piyasa segmenti seçilmedi; KÜPST hesaplanmadı (Santralim › Santral ayarları).", kaynak="segment seçilmedi", toplanir=False)
+    elif not kupst_uygulanir(segment):
         k = fn.Bilesen.eksik(KOD_KUPST, "KGÜP sapma tutarı (KÜPST)", "Bu segmentte KGÜP yükümlülüğü ve KÜPST uygulanmaz.", kaynak="segment tablosu", toplanir=False)
     elif bos:
         k = fn.Bilesen.eksik(KOD_KUPST, "KGÜP sapma tutarı (KÜPST)", "Program ve ölçüm birlikte olan saat yok.", kaynak="PVQuant yeniden hesabı")

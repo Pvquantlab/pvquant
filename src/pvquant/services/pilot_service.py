@@ -24,8 +24,10 @@ KAPILAR = [
     {"kod": "G04", "ad": "Referans dışa aktarım", "kaynak": "saha", "p0": True,
      "aciklama": "Aynı cihazın, aynı ölçüm sınırında, pilot dönemini tam kapsayan referans saatlik dışa aktarımı elde; tolerans yöntemi önceden yazılı."},
     {"kod": "G05", "ad": "Tipli çözümleme ve tam aralık", "kaynak": "kod", "p0": True,
+     "referans": "tests/test_asama1_dogruluk_v2549.py, tests/test_asama1_db_v2550.py, tests/test_sunspec_7xx_v2551.py (CI her mühürde koşar)",
      "aciklama": "Tipli sentinel ve sonlu değer denetimi, kapanış örneğiyle tam saat, kısmi saatin ayrı sınıfı — PVQuant testleri (v2.549–v2.551)."},
     {"kod": "G06", "ad": "MBAP ve cihaz/akış kimliği", "kaynak": "kod", "p0": True,
+     "referans": "tests/test_asama1_dogruluk_v2549.py, tests/test_asama1_db_v2550.py, tests/test_v3_v5_v2558.py (CI her mühürde koşar)",
      "aciklama": "MBAP başlık doğrulaması, bağlantı başına zaman aşımı; cihaz, kaynak, ölçüm sınırı kimliği ve revizyon — PVQuant testleri (v2.549–v2.550, v2.558)."},
     {"kod": "G07", "ad": "Huawei bağlantısı", "kaynak": "saha", "p0": False,
      "aciklama": "FusionSolar Northbound hesabı (kurulumcu yöneticisi açar) ve birim semantiği gerçek yanıtla doğrulanmış; SmartLogger haritası gerçek cihazla."},
@@ -59,7 +61,7 @@ def durum(plant: dict) -> dict:
     for k in KAPILAR:
         b = kap.get(k["kod"]) or {}
         tamam = bool(b.get("tamam")) if k["kaynak"] == "saha" else True
-        out.append({**k, "tamam": tamam, "not": b.get("not"), "zaman": b.get("zaman"), "aktor_id": b.get("aktor_id"),
+        out.append({**k, "tamam": tamam, "not": b.get("not") or k.get("referans"), "zaman": b.get("zaman"), "aktor_id": b.get("aktor_id"),   # v2.641 (02A-B8): kod kapisinin notu test referansi
                     "durum_etiketi": ("kod testleriyle kapalı; gerçek cihazda doğrulanmadı" if k["kaynak"] == "kod" else ("sahibin beyanıyla kapalı" if tamam else "açık"))})
     acik_p0 = [k["kod"] for k in out if k["p0"] and not k["tamam"]]
     return {"kapilar": out, "p0_acik": acik_p0, "sahaya_hazir": not acik_p0, "referans_sonuc": pil.get("referans_sonuc"),
@@ -153,6 +155,8 @@ def referans_csv_coz(metin: str, saat_sonu: bool = False) -> tuple[list[dict], d
         u.append(f"{meta['tzsiz']} satırda saat dilimi yok; UTC varsayıldı")
     if saat_sonu:
         u.append("damgalar saat sonu etiketi sayıldı; 1 saat geri alındı")
+    if out and (max(r["ts_utc"] for r in out) - min(r["ts_utc"] for r in out)) > timedelta(days=31):   # v2.641 (02A-B14): golge gorunum penceresiyle ayni sinir (31 gun)
+        raise ValueError("referans aralığı en çok 31 gün (gölge görünüm penceresi); dosyayı bölün")
     return out, meta
 
 
@@ -218,7 +222,10 @@ def referans_degerlendir(tenant_id, plant: dict, referans: list[dict], sinir: st
     uy = referans[0].get("_uyari")
     k["uyarilar"] = list((meta or {}).get("uyarilar") or []) + ([uy] if uy and not meta else []) + ([gg["uyari"]] if gg.get("uyari") else [])
     k["n_atlanan"] = int((meta or {}).get("atlanan") or 0)
-    ozet = {**{a: k[a] for a in ("sonuc", "metin", "n_referans", "n_ortak", "n_tolerans_ici", "tolerans_orani", "n_golge_yok", "n_golge_kismi_disi", "mape_pct", "maks_mutlak_fark_kwh", "toplam_fark_pct", "uyarilar", "n_atlanan")},
+    k["sinir_etiketi"] = ks.SINIR_ETIKET.get(sinir, sinir)
+    if k["n_golge_yok"]:   # v2.641 (02A-B10): kaynak kiyasinda olmayan saatlerin nedeni acikca soylenir (sinir secimi / cekis kapsami)
+        k["uyarilar"].append(f"{k['n_golge_yok']} referans saati «{k['sinir_etiketi']}» sınırında kaynak kıyasında yok (o saatlerde bu sınırda tam ölçüm türetilmemiş); ölçüm sınırı seçimi ya da çekiş kapsamı farklı olabilir.")
+    ozet = {**{a: k[a] for a in ("sonuc", "metin", "n_referans", "n_ortak", "n_tolerans_ici", "tolerans_orani", "n_golge_yok", "n_golge_kismi_disi", "mape_pct", "maks_mutlak_fark_kwh", "toplam_fark_pct", "uyarilar", "n_atlanan", "sinir_etiketi")},
             "sinir": sinir, "bas": bas.isoformat(), "bit": bit.isoformat(), "dosya": dosya, "zaman": datetime.now(timezone.utc).isoformat(timespec="minutes"), "aktor_id": str(aktor_id) if aktor_id else None}
     pil = _pj(plant).get("pilot") if isinstance(_pj(plant).get("pilot"), dict) else {}
     plant_service.params_birlestir(tenant_id, plant["id"], pilot={**pil, "referans_sonuc": ozet})

@@ -46,7 +46,7 @@ export const SOZLUK = {
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
     // v2.602 (Faz 4 F4-H) — izsiz uçlar iz bırakır; v2.603 platform temizliği
-    santral_ekle: "Santral eklendi", tarife_ayar: "Satış tarifesi değiştirildi", alarm_kural_ayar: "Alarm kuralları değiştirildi", fizik_terim_ayar: "Fizik terimleri değiştirildi",
+    santral_ekle: "Santral eklendi", tarife_ayar: "Satış tarifesi değiştirildi", alarm_kural_ayar: "Alarm kuralları değiştirildi", alarm_deneme: "Deneme alarmı e-postası gönderildi", fizik_terim_ayar: "Fizik terimleri değiştirildi",
     epias_uretim_ayar: "EPİAŞ santral kimliği değiştirildi", paylasim_ekle: "Veri paylaşımı açıldı", paylasim_iptal: "Veri paylaşımı iptal edildi",
     elle_kosu: "Tahmin elle istendi", scada_yukle: "SCADA dosyası yüklendi", iki_adim_kapat: "İki adımlı doğrulama kapatıldı", iki_adim_kurtarma_yenile: "Kurtarma kodları yenilendi",
     webhook_dene: "Webhook denemesi gönderildi", denetim_temizlik: "Denetim izi saklama temizliği",   // uretim_dosyasi_itme ve sayac_ayar zaten yukarıda/aşağıda
