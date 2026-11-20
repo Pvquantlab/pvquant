@@ -19,24 +19,12 @@ mae24, mae72 = _MAE24, _MAE72
 # --- günlük sapma dağılımı (F − A) [MWh/gün]
 # Tek kaynak: ortalama −0,2 · standart sapma 2,0 · 116 geçerli gün.
 # Histogram, medyan ve yüzdelikler bu tek dağılımdan türetilir.
-import math
 MU, SD, NDAYS = _MU, _SD, _NDAYS
-_cdf = lambda x: 0.5 * (1 + math.erf((x - MU) / (SD * math.sqrt(2))))
-BINS = [(lo, lo + 1, round(NDAYS * (_cdf(lo + 1) - _cdf(lo)))) for lo in range(-6, 6)]
-TOTAL = sum(b[2] for b in BINS)
-
-
-def pct(p):
-    """Binlenmiş dağılımdan yüzdelik: eğrinin üzerinde duran nokta."""
-    hedef, kum = p / 100 * TOTAL, 0
-    for lo, hi, c in BINS:
-        if kum + c >= hedef:
-            return lo + (hedef - kum) / c
-        kum += c
-    return 6.0
-
-
+# v2.639: binler ve eksen aralığı dağılımdan (pvq.sapma_binleri); kanonikte −6..+6 / 1 birebir.
+BINS, TOTAL, R_SAPMA, BIN_W = sapma_binleri(MU, SD, NDAYS)
+pct = lambda p: bin_yuzdelik(BINS, TOTAL, p, R_SAPMA)
 P10, P50, P90 = pct(10), pct(50), pct(90)
+_isaretli = lambda v: "—" if v is None else (("+" if v > 0 else "") + tr(v))
 
 
 def panel_frame(o, ox, oy, pw, ph, xmax, ymax, xstep, ystep, xlab, ylab, fs,
@@ -185,30 +173,34 @@ _F83 = "" if MATRIS_HATA is None else ("""
 def fig82(W=1000, H=310, fs=13):
     pw, ph = 380, 190
     o = []
-    ymax = max(b[2] for b in BINS) + 4
-    X, Y = panel_frame(o, 46, 16, pw, ph, 6, ymax, 2, 5, "Sapma (tahmin − gerçekleşen) [MWh/gün]",
+    ymax = max([b[2] for b in BINS] or [0]) + 4
+    R = R_SAPMA
+    X, Y = panel_frame(o, 46, 16, pw, ph, 6, ymax, 2, eksen_adimi(ymax),
+                       "Sapma (tahmin − gerçekleşen) [MWh/gün]",
                        "Gün sayısı", fs, xticks=False, xlabmul=4.6)
-    sx = lambda v: 46 + pw * (v + 6) / 12
+    sx = lambda v: 46 + pw * (v + R) / (2 * R)
     for lo, hi, c in BINS:
         o.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#D9B871" '
                  'stroke="#fff" stroke-width="1"/>'
                  % (sx(lo), Y(c), sx(hi) - sx(lo), Y(0) - Y(c)))
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#B9C4CA" stroke-width="1.2"/>'
              % (sx(0), 16, sx(0), Y(0)))
-    o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="2.2" '
-             'stroke-dasharray="6 4"/>' % (sx(P50), 16, sx(P50), Y(0), BRAND))
-    o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d" '
-             'font-weight="600" fill="%s">medyan %s</text>'
-             % (sx(P50) - 5, 27, fs, BRAND, tr(P50)))
+    if P50 is not None:   # v2.639: toplam 0 ise medyan çizilmez (sayı uydurulmaz)
+        o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="2.2" '
+                 'stroke-dasharray="6 4"/>' % (sx(P50), 16, sx(P50), Y(0), BRAND))
+        o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d" '
+                 'font-weight="600" fill="%s">medyan %s</text>'
+                 % (sx(P50) - 5, 27, fs, BRAND, tr(P50)))
     o.append('<text x="%.1f" y="%.1f" font-family="PlexSans" font-size="%d" font-weight="500" '
              'fill="#7C868C">sıfır</text>' % (sx(0) + 5, 27, fs - 1))
     o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
              'font-weight="500" fill="#5B686F">← beklentiden fazla üretildi</text>'
-             % (sx(-3.2), Y(0) + fs * 3, fs - 1))
+             % (sx(-R * 3.2 / 6), Y(0) + fs * 3, fs - 1))
     o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
              'font-weight="500" fill="#5B686F">beklentinin altında kalındı →</text>'
-             % (sx(3.2), Y(0) + fs * 3, fs - 1))
-    for v in (-6, -3, 0, 3, 6):
+             % (sx(R * 3.2 / 6), Y(0) + fs * 3, fs - 1))
+    TIK = (-R, -R // 2, 0, R // 2, R)   # kanonik −6 −3 0 +3 +6
+    for v in TIK:
         o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
                  'font-size="%d" font-weight="500" fill="#2B3439">%s</text>'
                  % (sx(v), Y(0) + fs * 1.5, fs, ("+%d" % v) if v > 0 else str(v)))
@@ -216,16 +208,18 @@ def fig82(W=1000, H=310, fs=13):
     ox2 = 46 + pw + 90
     X2, Y2 = panel_frame(o, ox2, 16, 380, ph, 100, 100, 25, 25, "Sapma [MWh/gün]",
                          "Kümülatif [%]", fs, xticks=False)
-    cx = lambda v: ox2 + 380 * (v + 6) / 12
-    kum, pts = 0, [(cx(-6), Y2(0))]
+    cx = lambda v: ox2 + 380 * (v + R) / (2 * R)
+    kum, pts = 0, [(cx(-R), Y2(0))]
     for lo, hi, c in BINS:
         kum += c
         pts.append((cx(hi), Y2(kum / TOTAL * 100)))
     o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="2.8" stroke-linejoin="round"/>'
              % (" L ".join("%.1f,%.1f" % p for p in pts), BRAND))
     for v, p, lab in ((P10, 10, "P10"), (P50, 50, "P50"), (P90, 90, "P90")):
+        if v is None:
+            continue
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#B9C4CA" '
-                 'stroke-width="1.1" stroke-dasharray="4 3"/>' % (cx(-6), Y2(p), cx(v), Y2(p)))
+                 'stroke-width="1.1" stroke-dasharray="4 3"/>' % (cx(-R), Y2(p), cx(v), Y2(p)))
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#B9C4CA" '
                  'stroke-width="1.1" stroke-dasharray="4 3"/>' % (cx(v), Y2(p), cx(v), Y2(0)))
         o.append('<circle cx="%.1f" cy="%.1f" r="4.4" fill="#D9B871" stroke="%s" '
@@ -234,7 +228,7 @@ def fig82(W=1000, H=310, fs=13):
         o.append('<text x="%.1f" y="%.1f" font-family="PlexSans" font-size="%d" '
                  'font-weight="600" fill="%s">%s = %s%s</text>'
                  % (cx(v) + 9, Y2(p) + dy, fs, INK, lab, "+" if v > 0 else "", tr(v)))
-    for v in (-6, -3, 0, 3, 6):
+    for v in TIK:
         o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
                  'font-size="%d" font-weight="500" fill="#2B3439">%s</text>'
                  % (cx(v), Y2(0) + fs * 1.5, fs, ("+%d" % v) if v > 0 else str(v)))
@@ -306,9 +300,11 @@ BODY = """<div class="page"><div class="sheet">
       mutlak hata öğlede büyür çünkü üretim büyüktür; oransal hata gün boyu sabittir.</div>
 
   """ + fig82(H=228) + """
-    <div class="figcap"><b>Şekil 8.2</b>&nbsp;&nbsp;Günlük sapma (tahmin eksi gerçekleşen), 116 geçerli gün.
-      Medyan """ + tr(P50) + """ MWh — sıfıra çok yakın, sistematik yanlılık yok; günlerin
-      %80'i """ + tr(P10) + """ ile +""" + tr(P90) + """ MWh arasında. İki panel tek dağılımdan türetilir.</div>
+    <div class="figcap"><b>Şekil 8.2</b>&nbsp;&nbsp;Günlük sapma (tahmin eksi gerçekleşen), """ + str(NDAYS) + """ geçerli gün.
+      Medyan """ + _isaretli(P50).lstrip("+") + """ MWh — """ + (
+          "sıfıra çok yakın, sistematik yanlılık yok" if abs(MU) <= 0.25 * SD
+          else "ortalama " + _isaretli(MU) + " MWh, sistematik yanlılık var") + """; günlerin
+      %80'i """ + _isaretli(P10) + """ ile """ + _isaretli(P90) + """ MWh arasında. İki panel tek dağılımdan türetilir.</div>
 """ + _F83 + """
   <h2>Karnenin bütünlük kuralları</h2>
   <table>

@@ -705,10 +705,17 @@ def _anlati(ctx, J):
         zy, zm, zd = (int(x) for x in z["date"].split("-"))
         n["s07_baslik"] = "%d %s: dönemin en zayıf günü" % (zd, AY_UZUN[zm - 1])
         kaz = z.get("skill")
+        # v2.639: kazanç negatifse model o gün naif referansın gerisindedir —
+        # cümle bunu söyler, «kazanç %-36» gibi ters işaret basmaz.
+        if kaz is None:
+            _kz = ""
+        elif kaz < 0:
+            _kz = "; model o gün naif referansın gerisinde kaldı (kazanç −%%%s)" % _tr(-100 * kaz, 0)
+        else:
+            _kz = ", kazanç %%%s" % _tr(100 * kaz, 0)
         n["s07_govde"] = ("O gün gün-öncesi hata %%%s olarak ölçüldü%s. Zayıf günler "
                           "karneden çıkarılmaz; ortalamaya girer.") % (
-                          _tr(z["wmape_0_24"], 1),
-                          (", kazanç %%%s" % _tr(100 * kaz, 0)) if kaz is not None else "")
+                          _tr(z["wmape_0_24"], 1), _kz)
     n["s09_prose"] = ("Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan "
                       "katsayıların fiziksel olarak anlamlı olup olmadığına bakılarak "
                       "anlaşılır; katsayılar fiziksel aralık denetiminden geçirilir.")

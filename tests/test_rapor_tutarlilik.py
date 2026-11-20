@@ -620,3 +620,124 @@ def test_rapor_denetim_hatasi_bulgu_tasir():
     from pvquant.services.report_html_service import RaporDenetimHatasi
     e = RaporDenetimHatasi("gecemedi", [{"kod": "D4", "seviye": "hata"}])
     assert e.bulgular[0]["kod"] == "D4" and isinstance(e, RuntimeError)
+
+
+# ---------------------------------------------------------------- v2.639: Karapınar 422 kapısı
+def test_d4_negatif_skill_veri_kusuru_degil():
+    """19.11 canlı vakası: model naif referansın gerisinde kaldığı gün skill
+    negatiftir (03.11: wmape 26,73 / naif 19,66 → −0,3596) ve özdeşlik tutar.
+    Eski (0,1) kapısı bu dürüst kötü günü veri kusuru sayıp raporu durduruyordu."""
+    d = _yuzey()
+    wm, sk, nf = list(d["KARNE_WM"]), list(d["KARNE_SK"]), list(d["KARNE_NAIF"])
+    i = max(k for k in range(len(wm)) if wm[k] is not None)
+    wm[i], nf[i], sk[i] = 26.73, 19.66, round(1 - 26.73 / 19.66, 4)
+    d["KARNE_WM"], d["KARNE_SK"], d["KARNE_NAIF"] = wm, sk, nf
+    b = denetim.denetle(d)
+    assert "D4" not in {x.kod for x in b if x.seviye == "hata"}, b
+    # özdeşliği bozan negatif skill yine yakalanır
+    sk[i] = -0.9; d["KARNE_SK"] = sk
+    assert "D4" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d4_skill_bir_ustu_imkansiz():
+    d = _yuzey(); sk = list(d["KARNE_SK"]); sk[-1] = 1.2; d["KARNE_SK"] = sk
+    h = [x for x in denetim.denetle(d) if x.kod == "D4" and x.seviye == "hata"]
+    assert h and "skill > 1" in h[0].mesaj
+
+
+def test_d8_sig_dalgalanma_gecer():
+    """19.11 canlı 422'nin kendisi: medyan günde 12–13 dilimi 118.573 kW,
+    komşuları 127.777 / 119.148 (çukur payı %0,45) — tahmin gürültüsü, çukur değil."""
+    d = _yuzey()
+    d["BASE_KW"] = [0, 0, 0, 28839, 106894, 125942, 127777, 118573, 119148, 115021,
+                    105213, 38052, 0, 0, 0]
+    d["MATRIS_OLCEK_MWH"] = sum(d["BASE_KW"]) / 1000.0
+    b = [x for x in denetim.denetle(d) if x.kod == "D8"]
+    assert b == [], b           # ne hata ne uyarı
+    assert denetim._d8_cukur(d["BASE_KW"])[0] < denetim.D8_CUKUR_UYARI
+
+
+def test_d8_w_profil_uyari_rapor_cikar():
+    """Karapınar koşusunda 15 günün 11'i böyle: 10'da tepe, 12'de %12 çukur,
+    14–15'te ikinci tepe. Tahminin özelliğidir (kısıt/kalibrasyon izi), raporun
+    iç tutarlılık kusuru değil — UYARI, hata değil; rapor üretilir."""
+    d = _yuzey()
+    d["BASE_KW"] = [0, 0, 0, 51229, 143880, 150425, 139048, 129650, 137059, 147223,
+                    146034, 54679, 0, 0, 0]
+    d["MATRIS_OLCEK_MWH"] = sum(d["BASE_KW"]) / 1000.0
+    b = [x for x in denetim.denetle(d) if x.kod == "D8"]
+    assert [x.seviye for x in b] == ["uyari"], b
+    assert "12–13 dilimi 129.650 kW" in b[0].mesaj and "%11,9" in b[0].bulunan
+    pay, i = denetim._d8_cukur(d["BASE_KW"])
+    assert i == 7 and 0.11 < pay < 0.12
+
+
+def test_d8_cokus_komsu_bazli_olcumu_kandiramaz():
+    """bozuk_6 fikstürü: 3.412 → 401 → 190 → 232 → 583 → 8.610. Dibin komşuları
+    yakın (401/232) — komşu farkı ölçülürse kanyon kaçar; yan tepelere göre pay %94."""
+    J = json.loads((VERI_DATA / "bozuk_6_ogle_cukuru_d8.json").read_text(encoding="utf-8"))
+    pay, i = denetim._d8_cukur(J["hourly_typical"]["base_kw"])
+    assert pay > denetim.D8_CUKUR_HATA and i == 5
+
+
+def test_s05_saat_iddialari_veriden(tmp_path):
+    """Şekil 5.1 alt yazısı: başlangıç / tepe / bitiş dilimleri BASE_KW'den.
+    Kanonik metin birebir (05–06 · 12–13 · 19–20); Kasım profili farklı söyler."""
+    m = taze_veri(KANONIK)
+    assert (m.URETIM_BAS, m.TEPE_SAAT, m.URETIM_SON) == ("05:00–06:00", "12:00–13:00", "19:00–20:00")
+    assert m.TEPE_SAAT_V == 7
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    J["hourly_typical"]["base_kw"] = [0, 0, 0, 28839, 106894, 125942, 127777, 118573,
+                                      119148, 115021, 105213, 38052, 0, 0, 0]
+    yol = tmp_path / "kasim.json"; yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    m2 = taze_veri(yol)
+    assert (m2.URETIM_BAS, m2.TEPE_SAAT, m2.URETIM_SON) == ("08:00–09:00", "11:00–12:00", "16:00–17:00")
+    src = (MOTOR / "build_s05.py").read_text(encoding="utf-8")
+    assert "{{URETIM_BAS}}" in src and "{{TEPE_SAAT}}" in src and "{{URETIM_SON}}" in src
+    assert "12:00–13:00 arasında" not in src and "X(12.5)" not in src
+
+
+def test_s07_negatif_kazanc_metni_pinleri():
+    """Negatif kazanç tipografik eksiyle basılır (s08/s09/s10 ile aynı); anlatı
+    «kazanç %-36» yerine modelin naifin gerisinde kaldığını söyler."""
+    s07 = (MOTOR / "build_s07.py").read_text(encoding="utf-8")
+    assert 'replace("-", "\\u2212")' in s07
+    svc = (KOK / "src" / "pvquant" / "services" / "report_html_service.py").read_text(encoding="utf-8")
+    assert "naif referansın gerisinde kaldı (kazanç −%" in svc
+    den = (MOTOR / "denetim.py").read_text(encoding="utf-8")
+    for ic in ('"kat_saat"', '"kat_eta"', '"kat_bif"'):
+        assert ic not in den, ic      # iç alan adı müşteri yüzüne çıkmaz (D5/D7 uyarıları)
+
+
+def test_s08_sapma_binleri_dagilimdan():
+    """v2.639: bin genişliği/aralık SD'den. Kanonik (−0,2 · 2,0 · 116) → −6..+6 / 1 ve
+    −2,8 / −0,2 / +2,4 (Çizelge/altyazı birebir); Karapınar (30,2 · 181,9 · 40) → 100 MWh
+    binler, ±600, yüzdelikler dolu (eski kod: bütün binler 0 → sıfıra bölme)."""
+    import pvq
+    b, top, r, w = pvq.sapma_binleri(-0.2, 2.0, 116)
+    assert (r, w, len(b), b[0][:2]) == (6, 1, 12, (-6, -5)) and top > 100
+    def p(q):
+        return round(pvq.bin_yuzdelik(b, top, q, r), 1)
+    assert (p(10), p(50), p(90)) == (-2.8, -0.2, 2.4)
+    b, top, r, w = pvq.sapma_binleri(30.2, 181.9, 40)
+    assert (w, r, len(b)) == (100, 600, 12) and top >= 38
+    assert 0 < pvq.bin_yuzdelik(b, top, 50, r) < 100
+    assert pvq.bin_yuzdelik(b, top, 10, r) < 0 < pvq.bin_yuzdelik(b, top, 90, r)
+    # boş bin atlanır, toplam 0 → None
+    assert pvq.bin_yuzdelik([(0, 1, 0), (1, 2, 4)], 4, 50, 6) == 1.5
+    assert pvq.bin_yuzdelik([], 0, 50, 6) is None
+    assert pvq.sapma_binleri(0.0, 0.0, 10) == ([], 0, 6, 1)
+
+
+def test_s08_karapinar_dagilimi_uretilir(tmp_path):
+    """16 sayfalık yol Karapınar ölçeğinde (SD 181,9 MWh/gün) çökmez; altyazı gün sayısını
+    ve işaretli yüzdelikleri veriden basar."""
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    J["error_dist"].update({"mu": 30.2, "sd": 181.9, "ndays": 40})
+    yol = tmp_path / "karapinar_sapma.json"
+    yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    p = uret_kos(yol, tmp_path / "c")
+    assert p.returncode == 0, p.stdout + p.stderr
+    s08 = next((tmp_path / "c").glob("*_s08_*.html")).read_text(encoding="utf-8")
+    assert "40 geçerli gün" in s08 and "116 geçerli gün" not in s08
+    assert "+600" in s08 and "sistematik yanlılık yok" in s08   # |μ| < 0,25·SD

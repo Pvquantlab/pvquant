@@ -153,6 +153,46 @@ def build(name, css, body, title):
 
 
 # ---------------------------------------------------------------- sütun grafiği
+def eksen_adimi(ymax, hedef=6):
+    """v2.639: eksen tik adımı — en çok `hedef` aralık (kanonik 12 MW → 2, %20 → 5;
+    Karapınar 165 MW → 50, naif %430 → 100). Sabit adım canlı santralda yüzlerce
+    etiketi üst üste bindiriyordu (s05/s07, 20.11 Karapınar provası)."""
+    for s in (1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000):
+        if ymax / s <= hedef:
+            return s
+    return 10000
+
+
+def sapma_binleri(mu, sd, ndays):
+    """v2.639 (s08): günlük sapma histogramı — bin genişliği ve aralık DAĞILIMDAN.
+    Eski −6..+6 MWh/gün sabiti kanonik SD 2,0'a aitti; Karapınar'da (SD 181,9)
+    bütün binler 0 → TOTAL 0 → pct() sıfıra bölüyordu. Genişlik = eksen_adimi(3·SD)
+    (kanonik 6 → 1 · Karapınar 546 → 100); yarı aralık = en az 6 bin, |μ|+2,5·SD'yi
+    kapsar. Döner: (binler [(lo, hi, sayı)], toplam, yarı_aralık, genişlik)."""
+    import math as _m
+    if sd is None or sd <= 0 or not ndays:
+        return [], 0, 6, 1
+    w = eksen_adimi(3 * sd)
+    n_yarim = max(6, _m.ceil((abs(mu) + 2.5 * sd) / w))
+    r = n_yarim * w
+    cdf = lambda x: 0.5 * (1 + _m.erf((x - mu) / (sd * _m.sqrt(2))))
+    binler = [(lo, lo + w, round(ndays * (cdf(lo + w) - cdf(lo)))) for lo in range(-r, r, w)]
+    return binler, sum(b[2] for b in binler), r, w
+
+
+def bin_yuzdelik(binler, toplam, p, r):
+    """Binlenmiş dağılımdan yüzdelik (eğrinin üzerinde duran nokta). Boş bin
+    atlanır (sıfıra bölme yok); toplam 0 → None (sayı uydurulmaz, '—' basılır)."""
+    if toplam <= 0:
+        return None
+    hedef, kum = p / 100 * toplam, 0
+    for lo, hi, c in binler:
+        if c > 0 and kum + c >= hedef:
+            return lo + (hedef - kum) / c * (hi - lo)
+        kum += c
+    return float(r)
+
+
 def bar_chart(vals, band, labels, xtitle, ytitle, ymax=80, step=20, W=1000, H=270,
               ml=58, mb=58, fs=16, bar=BRAND2, whisk="#0C3123"):
     MR, MT = 8, 12

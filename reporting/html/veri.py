@@ -491,6 +491,18 @@ GUN_YMAX = int(_math.ceil(max(v + (h or 0) for v, h in zip(P50_GUN, HW_GUN)) / 1
 # canlı santralde matris sütunları günlük P50'yi tanım gereği tutar (D3).
 MATRIS_OLCEK_MWH = sum(BASE_KW) / 1000.0
 
+# v2.639: Şekil 5.1 alt yazısındaki saatler VERİDEN — eski «05:15 / 12:00–13:00 /
+# 19:45» kanonik (Konya, Ağustos) sabitleriydi ve canlı Kasım raporunda yanlıştı;
+# D8 artık W-profilli tahmini durdurmadığından tepe saati iddiası veriden gelmelidir.
+# BASE_KW dilimleri 05–06 … 19–20 (indeks i → saat 5+i). Hepsi sıfırsa iddia yok: '—'.
+def _dilim(i):
+    return "%02d:00–%02d:00" % (5 + i, 6 + i)
+_DOLU_DILIM = [i for i, v in enumerate(BASE_KW) if v > 0]
+TEPE_SAAT_V = BASE_KW.index(max(BASE_KW)) if _DOLU_DILIM else None   # dilim indeksi (kanonik 7 = 12–13)
+TEPE_SAAT = _dilim(TEPE_SAAT_V) if TEPE_SAAT_V is not None else "—"
+URETIM_BAS = _dilim(_DOLU_DILIM[0]) if _DOLU_DILIM else "—"
+URETIM_SON = _dilim(_DOLU_DILIM[-1]) if _DOLU_DILIM else "—"
+
 # v2.135: şelaledeki iyileşme yüzdesi TEK yerde türetilir (spec #7 — baş/sondan
 # yeniden hesaplanabilir; denetim D12 bayat/elle değere karşı bekçiler).
 IYILESME_PCT = (round((SELALE_BAS - SELALE_BIT) / SELALE_BAS * 100, 1)
@@ -629,6 +641,7 @@ def doldur(s):
         "MIN_HW": _tr(HW_GUN[i_min]) if BANT_VAR else "—",  # v2.181
         "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))
                           / (sum(BASE_KW) / 1000)),
+        "TEPE_SAAT": TEPE_SAAT, "URETIM_BAS": URETIM_BAS, "URETIM_SON": URETIM_SON,  # v2.639
         # B3b-1: alan makamdır; display-split geri-ayrıştırması söküldü
         "SEBEKE": ("%s MWe" % _tr(SEBEKE_AC_MWE))
                   if SEBEKE_AC_MWE is not None else "—",

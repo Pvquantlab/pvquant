@@ -2,6 +2,7 @@ from pvq import *
 
 # --- tipik gün: saat ortası değerleri [MW]; toplamı 65,8 MWh — BASE_KW'den türetilir
 from veri import BASE_KW, P50_GUN, GUN_ETIKET, AY_YIL, BANT_VAR
+from veri import TEPE_SAAT_V   # v2.639: tepe etiketi tepenin olduğu dilime çizilir (kanonik 12–13)
 
 # v2.182: bantsız koşuda temsilî bant, fan lejantları, bant figcap cümlesi ve
 # "Aralık" kolonu düşer — s04 bloğu "bant üretilmedi" derken s05 bant basamaz.
@@ -15,15 +16,20 @@ _FIGCAP_BANT = (" Kum\n      rengi alan %80 olasılık aralığıdır; gerçekle
 _ARALIK_KOLON = '    <div>\n      <h2>Aralık neden öğlen genişliyor?</h2>\n      <p>Mutlak belirsizlik üretimin yüksek olduğu saatlerde büyür; oransal olarak ise gün\n      boyunca benzer kalır. Doğruluk ölçümünde bu yüzden üretimle ağırlıklandırılmış hata\n      kullanılır.</p>\n    </div>\n' if BANT_VAR else ""
 BASE = [(5.0, 0.0)] + [(5.5 + i, BASE_KW[i] / 1000) for i in range(len(BASE_KW))] + [(20.0, 0.0)]
 DAILY = P50_GUN[:8]
-MEAN = 64.8 / 65.8
+# v2.639: «64,8 / 65,8» kanonik sabitleri (ortalama gün / tipik gün MWh) VERİDEN —
+# Karapınar'da (tipik gün ~1.000 MWh) sabit 65,8 böleni eğriyi 17 kat ezip ekseni
+# 2.456 MW'a şişiriyordu. Kanonikte birebir: tipik 65,8 · ortalama 64,8.
+TIPIK_MWH = sum(BASE_KW) / 1000.0
+MEAN = (sum(P50_GUN) / len(P50_GUN)) / TIPIK_MWH
 
 # c5/3 (v2.168): sabit 10 MW tavan CANLI kirpma yapiyordu — kanonik ust bant
 # tepesi 10,034 MW, min(10,...) sessizce duzlestiriyordu. Tavan artik iki
 # figurun ortak tepesinden turer (paylasilan eksen), 2 MW adima yuvarli;
 # kirpma kalkti — turetilmis tavan tepeyi tanimi geregi kapsar.
 _BANT_UST = 1.13
-_TEPE = max(v for _, v in BASE) * max(MEAN, max(DAILY) / 65.8) * _BANT_UST
-S05_YMAX = int(-(-_TEPE // 2)) * 2
+_TEPE = max(v for _, v in BASE) * max(MEAN, max(DAILY) / TIPIK_MWH) * _BANT_UST
+S05_ADIM = eksen_adimi(_TEPE)                      # v2.639: kanonik 2, Karapınar 50
+S05_YMAX = int(-(-_TEPE // S05_ADIM)) * S05_ADIM
 
 
 def bez(pts, start=True):
@@ -45,7 +51,7 @@ def profile(W=1000, H=292, ml=54, mb=50, fs=15):
     X = lambda h: ml + PW * h / 24
     Y = lambda v: MT + PH * (S05_YMAX - v) / S05_YMAX
     o = []
-    for t in range(0, S05_YMAX + 1, 2):
+    for t in range(0, S05_YMAX + 1, S05_ADIM):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, Y(t), W - MR, Y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
@@ -71,11 +77,17 @@ def profile(W=1000, H=292, ml=54, mb=50, fs=15):
     o.append('<text transform="translate(14,%.1f) rotate(-90)" text-anchor="middle" '
              'font-family="PlexSans" font-size="%d" font-weight="600" fill="%s">[MW]</text>'
              % (MT + PH / 2, fs + 1, INK))
-    # tepe açıklaması
+    # tepe açıklaması — v2.639: konum veriden (eski 12,5 saat / 8,9–10 MW kanonik
+    # sabitleriydi; 130 MW'lık santralda etiket eksenin dibine düşüyordu).
+    # Kanonikte birebir aynı: tepe 8,880 → 8,9 · 9,9 · 10,0 (1 ondalığa yuvarlı).
+    _tx = X(5.5 + (TEPE_SAAT_V if TEPE_SAAT_V is not None else 7))
+    _tp = max(v for _, v in mid)
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#8FA4AE" '
-             'stroke-width="1.2" stroke-dasharray="5 4"/>' % (X(12.5), Y(8.9), X(12.5), Y(9.9)))
+             'stroke-width="1.2" stroke-dasharray="5 4"/>'
+             % (_tx, Y(round(_tp, 1)), _tx, Y(round(_tp * 1.112, 1))))
     o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
-             'font-weight="600" fill="%s">tepe {{TEPE_TIPIK}} MW</text>' % (X(12.5), Y(10) - 3, fs, INK))
+             'font-weight="600" fill="%s">tepe {{TEPE_TIPIK}} MW</text>'
+             % (_tx, Y(round(_tp * 1.124, 1)) - 3, fs, INK))
     return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
             'aria-label="Tipik gun profili">%s</svg>' % (W, H, "".join(o)))
 
@@ -92,10 +104,10 @@ def multiples(W=1000, H=402, fs=13):
         r, c = divmod(k, cols)
         ox = c * (cw + gx) + padl
         oy = 16 + r * (ph + 14 + 44 + gyr) + 14
-        sc = DAILY[k] / 65.8
+        sc = DAILY[k] / TIPIK_MWH
         X = lambda h: ox + pwd * h / 24
         Y = lambda v: oy + ph * (S05_YMAX - v) / S05_YMAX
-        for t in range(0, S05_YMAX + 1, 2):
+        for t in range(0, S05_YMAX + 1, S05_ADIM):
             o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                      'stroke-width="1.1"/>' % (ox, Y(t), ox + pwd, Y(t), GRID))
             o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" '
@@ -152,8 +164,8 @@ BODY = """<div class="page"><div class="sheet">
 
   """ + profile() + """
     <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>""" + _FAN_SPAN1 + """</div>
-    <div class="figcap"><b>Şekil 5.1</b>&nbsp;&nbsp;Tipik gün profili. Üretim 05:15 civarında
-      başlar, 12:00–13:00 arasında {{TEPE_TIPIK}} MW tepe değerine ulaşır ve 19:45'te sona erer.""" + _FIGCAP_BANT + """</div>
+    <div class="figcap"><b>Şekil 5.1</b>&nbsp;&nbsp;Tipik gün profili. Üretim {{URETIM_BAS}} diliminde
+      başlar, {{TEPE_SAAT}} arasında {{TEPE_TIPIK}} MW tepe değerine ulaşır ve {{URETIM_SON}} diliminde sona erer.""" + _FIGCAP_BANT + """</div>
 
   <div class="two">
     <div>

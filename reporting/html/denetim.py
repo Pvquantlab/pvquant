@@ -13,12 +13,15 @@ D2  şelale: fizik + Σ adım == holdout                 tolerans 0,1 puan
 D3  saat×gün matrisi sütun toplamı == günlük P50      tolerans 0,1 MWh
     (matris s06 ile aynı formülle, MATRIS_OLCEK_MWH üzerinden kurulur)
 D4  karne satırı: skill == 1 − wmape/naif             tolerans 0,5 puan
-    (v2.137: naif ÖLÇÜMdür — KARNE_NAIF; türetilmişse totoloji uyarısı)
+    (v2.137: naif ÖLÇÜMdür — KARNE_NAIF; türetilmişse totoloji uyarısı;
+     v2.639: skill NEGATİF olabilir — model naifin gerisinde kaldığı gün
+     veri kusuru değildir; yalnız skill > 1 imkânsızdır)
 D5  kalibrasyon saati <= pencere_gün × 14  (pencere KART İDDİASINDAN okunur)
 D6  SCADA arşiv saati <= dönem_gün × 24 × 1,01  (v2.132: üst-sınır — aşım imkânsızdır)
 D7  katsayı aralıkları: η_BoS ∈ [0,80–0,98] · bifacial ∈ [%0–12]
     aralık dışı → hata + "şüpheli kalibrasyon" bayrağı (denetim.json)
-D8  saatlik profil tek tepeli: gündüz saatlerinde yerel minimum yok
+D8  saatlik profil tek tepeli: gündüz çukuru (v2.639 kademeli: < %2 sığ
+    dalgalanma geçer · %2–%50 uyarı, rapor çıkar · > %50 çöküş = hata)
 D9  gösterilen tarihler ∈ [tahmin başı, tahmin sonu]
     (v2.131: s05 panelleri ve s14 hedefi GUN_ETIKET + AY_YIL ayından
      basılır; ay-sınırı aşan dönemde yanlış ay adı burada yakalanır)
@@ -235,11 +238,23 @@ def _d4(veri, ekle):
             continue          # v2.140: ölçülmemiş gün özdeşliğe girmez (D18 bekçiler)
         if w is None or s is None:
             kotu.append((i, "ölçülü satırda değer yok")); continue
-        if not (0.0 < s < 1.0):
-            kotu.append((i, "skill ∉ (0,1): %s" % _tr(s, 3))); continue
+        if s > 1.0:
+            # 19.11 canlı vakası (Karapınar RT-2579): skill NEGATİF OLABİLİR —
+            # model o gün naif referansın gerisindedir (01.11 −%5, 03.11 −%36;
+            # 0-24 ufku) ve özdeşlik yine tutar. Eski (0,1) kapısı dürüst bir
+            # kötü günü veri kusuru sayıp raporu durduruyordu. Yalnız s > 1
+            # imkânsızdır: wmape negatif olmalıydı.
+            kotu.append((i, "skill > 1 (wmape negatif olmalıydı): %s" % _tr(s, 3))); continue
         if n is None or n <= 0:
             kotu.append((i, "naif ≤ 0/yok")); continue
-        if abs(s - (1.0 - w / n)) > 0.005:      # 0,5 puan
+        # v2.639: wmape ve naif 1 ondalık ALANLARDIR (±0,05 yuvarlama); özdeşlik
+        # ancak bu aralığa kadar denetlenebilir. Naif küçükken (canlı 20.10:
+        # naif 2,4 / wmape 13,5 / skill −4,6525) yuvarlama özdeşliği ±0,1
+        # oynatır — sabit ±0,005 o satırı «tutarsız» sayıyordu. Tolerans:
+        # girdilerin yuvarlama aralığından türeyen [s_alt, s_ust] + 0,5 puan.
+        s_alt = 1.0 - (w + 0.05) / max(n - 0.05, 1e-9)
+        s_ust = 1.0 - (w - 0.05) / (n + 0.05)
+        if not (s_alt - 0.005 <= s <= s_ust + 0.005):
             kotu.append((i, "skill=%s ≠ 1−%s/%s" % (_tr(s, 2), _tr(w), _tr(n))))
     if not kotu:
         return ekle("D4", "gecti", "her karne satırında skill = 1 − wmape/naif "
@@ -248,7 +263,7 @@ def _d4(veri, ekle):
     ekle("D4", "hata",
          "karne satırı ölçülmüş naifle tutarsız (%d satır; ilki: %d. satır, %s)"
          % (len(kotu), i + 1, neden),
-         "skill = 1 − wmape/naif (±0,5 puan)", "satır %d" % (i + 1))
+         "skill = 1 − wmape/naif (±0,5 puan + 1 ondalık yuvarlama payı)", "satır %d" % (i + 1))
 
 
 def _d5(veri, ekle):
@@ -258,7 +273,7 @@ def _d5(veri, ekle):
     if saat is None:
         return ekle("D5", "uyari", "kalibrasyon saati alanı yok — denetlenemedi "
                     "(kartta '—' basılması dürüst-eksiklik kuralına uygundur)",
-                    "kat_saat", "eksik")
+                    "kalibrasyon saati alanı", "eksik")
     # v2.132: pencere GÖMÜLÜ 120 değil, kartın bastığı iddiadan (KAL_PENCERE
     # ", N gün") okunur. İddia yoksa kart pencere söylemiyor demektir —
     # uydurulmuş bir pencereye karşı denetlemek alan icat etmek olurdu.
@@ -336,7 +351,8 @@ def _d7(veri, ekle):
         bif = _sayi(_al(veri, "KAT_BIF"))
     bayrak = False
     if eta is None:
-        ekle("D7", "uyari", "η_BoS alanı yok — aralık denetlenemedi", "kat_eta", "eksik")
+        ekle("D7", "uyari", "η_BoS alanı yok — aralık denetlenemedi",
+             "sistem verimi (η_BoS) katsayı alanı", "eksik")
     elif ETA_ARALIK[0] <= eta <= ETA_ARALIK[1]:
         ekle("D7", "gecti", "η_BoS fiziksel aralıkta",
              "%s–%s" % (_tr(ETA_ARALIK[0], 2), _tr(ETA_ARALIK[1], 2)), _tr(eta, 3))
@@ -345,7 +361,8 @@ def _d7(veri, ekle):
         ekle("D7", "hata", "η_BoS fiziksel aralığın dışında — ŞÜPHELİ KALİBRASYON bayrağı",
              "%s–%s" % (_tr(ETA_ARALIK[0], 2), _tr(ETA_ARALIK[1], 2)), _tr(eta, 3))
     if bif is None:
-        ekle("D7", "uyari", "bifacial alanı yok — aralık denetlenemedi", "kat_bif", "eksik")
+        ekle("D7", "uyari", "bifacial alanı yok — aralık denetlenemedi",
+             "bifacial kazanç katsayı alanı", "eksik")
     elif BIF_ARALIK[0] <= bif <= BIF_ARALIK[1]:
         ekle("D7", "gecti", "bifacial kazanç fiziksel aralıkta",
              "%%%s–%%%s" % (_tr(BIF_ARALIK[0], 0), _tr(BIF_ARALIK[1], 0)), "%" + _tr(bif))
@@ -357,22 +374,60 @@ def _d7(veri, ekle):
     return bayrak
 
 
+D8_CUKUR_HATA = 0.50    # çukur derinliği / yanındaki tepelerin küçüğü — bunun üstü veri kusuru
+D8_CUKUR_UYARI = 0.02   # bunun altı sığ dalgalanma (tahmin gürültüsü), çukur sayılmaz
+
+
+def _kw(v):
+    """Müşteri yüzü binlik ayraç: 129650 → '129.650'."""
+    return f"{round(v):,}".replace(",", ".")
+
+
+def _d8_cukur(taban):
+    """Profildeki en derin gündüz çukuru: (pay, dilim) ya da None.
+    Derinlik = min(soldaki azami, sağdaki azami) − çukur; pay = derinlik / aynı
+    küçük tepe. Komşu-bazlı ölçüm yanıltır: iki saatte inen kanyonun dibi
+    komşularına yakındır (bozuk_6 fikstürü)."""
+    en, yer = 0.0, None
+    for i in range(1, len(taban) - 1):
+        if taban[i] < taban[i - 1] and taban[i] < taban[i + 1]:
+            tepe = min(max(taban[:i]), max(taban[i + 1:]))
+            if tepe > 0 and (tepe - taban[i]) / tepe > en:
+                en, yer = (tepe - taban[i]) / tepe, i
+    return (en, yer) if yer is not None else None
+
+
 def _d8(veri, ekle):
+    """v2.639 (19.11 canlı vakası, Karapınar RT-2579): eski kural toleranssızdı —
+    binde 4,5'lik dalgalanma (127.777 / 118.573 / 119.148 kW) raporu durdurdu.
+    Üstelik aynı santralın koşusunda 15 günün 11'i «W» profilli (10'da tepe,
+    12'de %12 çukur, 14–15'te ikinci tepe): sistematik bir TAHMİN özelliği
+    (kalibrasyonun ölçümdeki öğle kısıtını öğrenmesi muhtemel), raporun iç
+    tutarlılık kusuru değil — rapor onu gizlemez, gösterir. Canlı 6 koşu × 4
+    santral × 83 günde azami çukur payı %25; kanyon fikstüründe %94. Kademeler:
+    < %2 sığ dalgalanma (geçti) · %2–%50 gündüz çukuru (UYARI, rapor çıkar) ·
+    > %50 öğlende çöken profil = veri/zaman kusuru (HATA)."""
     taban = _al(veri, "BASE_KW") or []
     if len(taban) < 3:
         return ekle("D8", "uyari", "saatlik taban yok/kısa — denetlenemedi",
                     "BASE_KW (≥3 dilim)", "eksik")
-    cukur = [i for i in range(1, len(taban) - 1)
-             if taban[i] < taban[i - 1] and taban[i] < taban[i + 1]]
-    if not cukur:
-        return ekle("D8", "gecti", "saatlik profil tek tepeli (gündüz yerel minimumu yok)",
-                    "yerel minimum: 0", "0")
-    i = cukur[0]
-    ekle("D8", "hata",
-         "saatlik profilde gündüz çukuru: güneş öğlene doğru inip tekrar çıkmaz "
-         "(%02d–%02d dilimi %s kW; komşuları %s / %s kW)"
-         % (5 + i, 6 + i, _tr(taban[i], 0), _tr(taban[i - 1], 0), _tr(taban[i + 1], 0)),
-         "yerel minimum: 0", "%d çukur (ilki %02d–%02d)" % (len(cukur), 5 + i, 6 + i))
+    c = _d8_cukur(taban)
+    if c is None or c[0] < D8_CUKUR_UYARI:
+        return ekle("D8", "gecti", "saatlik profil tek tepeli (gündüz çukuru yok ya da sığ dalgalanma)",
+                    "çukur payı < %%%s" % _tr(100 * D8_CUKUR_UYARI, 0),
+                    "%%%s" % _tr(100 * c[0], 1) if c else "0")
+    pay, i = c
+    yer = "%02d–%02d dilimi %s kW; komşuları %s / %s kW" % (
+        5 + i, 6 + i, _kw(taban[i]), _kw(taban[i - 1]), _kw(taban[i + 1]))
+    if pay > D8_CUKUR_HATA:
+        return ekle("D8", "hata",
+                    "saatlik profil öğlende çöküyor: çukur yanındaki tepelerin yarısından derin — "
+                    "veri ya da zaman kusuru (%s)" % yer,
+                    "çukur payı ≤ %%%s" % _tr(100 * D8_CUKUR_HATA, 0), "%%%s" % _tr(100 * pay, 1))
+    ekle("D8", "uyari",
+         "saatlik profil tek tepeli değil: gündüz çukuru var (%s) — tahminin kendi özelliği "
+         "(bulut, kısıt ya da kalibrasyon izi); rapor üretilir, profil olduğu gibi gösterilir" % yer,
+         "çukur payı < %%%s" % _tr(100 * D8_CUKUR_UYARI, 0), "%%%s" % _tr(100 * pay, 1))
 
 
 def _d9(veri, ekle):

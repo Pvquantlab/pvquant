@@ -24,7 +24,8 @@ def _kosular(*seriler):
     if len(cur) > 1:
         runs.append(cur)
     return runs
-tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
+# v2.639: kazanç negatif olabilir (model naifin gerisinde) — tipografik eksi (s08/s09/s10 ile aynı)
+tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
 
 def karne(W=1000, H=272, ml=60, mb=52, fs=15):
@@ -35,10 +36,12 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
     cx = lambda i: ml + step * i
     # c5 (v2.109): eksen serilerin tepesinden, 5'e yuvarlı — kanonikte 20'yi üretir
     _dolu = [v for seri in (wm, h72, naif) for v in seri if v is not None]
-    k_ymax = max(20, int(-(-max(_dolu) // 5)) * 5)
+    # v2.639: adım eksen boyundan (kanonik %20 → 5; Karapınar naif %430 → 100)
+    _adim = eksen_adimi(max(20, max(_dolu)))
+    k_ymax = max(20, int(-(-max(_dolu) // _adim)) * _adim)
     y = lambda v: MT + PH * (k_ymax - v) / k_ymax
     o = []
-    for t in range(0, k_ymax + 1, 5):
+    for t in range(0, k_ymax + 1, _adim):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, y(t), W - MR, y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
