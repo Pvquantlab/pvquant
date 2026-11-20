@@ -103,8 +103,13 @@ import { Cubuklar } from "./Cubuklar";
  *  AYNI olcekle cizilir — profiller karsilastirilabilir kalsin. */
 /** 10.11 inceleme: tür düzeyindeki «bağlantı henüz kurulmadı» etiketi, santralin kendi bağlantı durumuyla çelişmesin.
  *  Santralin beyan ettiği türde tek durum kodu (baglanti_durumu) gösterilir; diğer türlerde tür etiketi kalır. */
+// v2.640: EAK kaynağı müşteri etiketi (iç kod «kurulu_guc» mesaja sızıyordu) ve MW altı güçte kW gösterimi («0,00 MW» yerine «2 kW»)
+const EAK_KAYNAK_ETIKET: Record<string, string> = { kurulu_guc: "kurulu güç", ac_tavani: "AC sınırı", eak_alani: "EAK alanı", gecici: "geçici kısıt", olay: "olay kaydı" };
+function eakKaynakEtiketi(kaynak: string): string { return kaynak.split("+").map((p) => EAK_KAYNAK_ETIKET[p] ?? p).join(" + "); }
+function eakGucMetni(mw: number): string { return mw >= 1 ? `${sayiTr(mw, 2)} MW` : `${sayiTr(Math.round(mw * 1000))} kW`; }
+
 function yolDurumu(vy: VeriYoluOzet, y: VeriYolu): { etiket: string; ok: boolean } {
-  if (y.durum === "kurulmadi" && vy.beyan?.tur === y.tur && vy.baglanti_durumu) return { etiket: vy.baglanti_durumu.etiket, ok: vy.baglanti_durumu.kod === "veri_akisi" };
+  if (y.durum === "kurulmadi" && vy.beyan?.tur === y.tur && vy.baglanti_durumu) return { etiket: vy.baglanti_durumu.etiket, ok: vy.baglanti_durumu.kod === "veri_akisi" || vy.baglanti_durumu.kod === "veri_akisi_toplayici" };   // v2.640: toplayıcı akışı ayrı kod
   return { etiket: y.durum_etiketi, ok: y.durum === "mevcut" };
 }
 const buyukBas = (s: string) => (s ? s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1) : s);
@@ -217,7 +222,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [uevcbAday, setUevcbAday] = useState<UevcbArama | null | "yok">(null);
   const uevcbKaydet = (kod: string) => {
     if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
-    api.segmentAyarla(plantId, seg.segment, kod.trim() || undefined).then(() => { setUevcb(kod.trim()); setUevcbMesaj(kod.trim() ? `Kaydedildi: ${kod.trim()}` : "Kaydedildi."); }).catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+    // v2.640: boş dize SİLER (eskiden undefined → sunucu dokunmuyor, UI «Kaydedildi» diyordu)
+    api.segmentAyarla(plantId, seg.segment, kod.trim()).then(() => { setUevcb(kod.trim()); setUevcbMesaj(kod.trim() ? `Kaydedildi: ${kod.trim()}` : "Kaydedildi."); }).catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const uevcbAra = () => {
     setUevcbMesaj(null); setUevcbAday(null);
@@ -266,7 +272,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [refMesaj, setRefMesaj] = useState<string | null>(null);
   const pilotYukle = () => { api.pilot(plantId).then(setPilot).catch(() => setPilot(null)); api.edgeToplayicilar(plantId).then(setEdge).catch(() => setEdge(null)); };
   const pilotKapi = (kod: string, tamam: boolean) => { const n = tamam ? window.prompt("Beyan notu (isteğe bağlı): izin belgesi, tarih, kişi", "") : null; if (tamam && n === null) return; api.pilotKapi(plantId, kod, { tamam, aciklama: n || null }).then(setPilot).catch(() => {}); };
-  const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinir).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
+  const [refSaatSonu, setRefSaatSonu] = useState(false);   // v2.640: portal dışa aktarımında damga saat SONU ise 1 saat geri alınır
+  const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinir, refSaatSonu).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
   const edgeOlustur = () => { const ad = window.prompt("Toplayıcı adı (ör. Kabin A)", "saha toplayıcısı"); if (ad === null) return; api.edgeToplayiciOlustur(plantId, ad || "saha toplayıcısı").then((r) => { setEdgeYeni(r); pilotYukle(); }).catch(() => {}); };
   const edgeIptal = (id: string) => { if (!window.confirm("Toplayıcı anahtarı iptal edilsin mi? Bu anahtarla gelen veri reddedilir; gelmiş veri kalır.")) return; api.edgeToplayiciIptal(plantId, id).then(() => { setEdgeYeni(null); pilotYukle(); }).catch(() => {}); };
   const [bk, setBk] = useState<BulutKimlikDurum | null>(null);   // v2.556 (K1): kayıtlı şifreli kimlik durumu (gizli yok)
@@ -318,12 +325,39 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [pozKaynak, setPozKaynak] = useState<"program" | "uretim" | "sabit" | null>(null);
   const [pozSabit, setPozSabit] = useState<string>("");
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
+  // v2.640 (Santralim denetimi, Parti 1 — kritik): form SUNUCUDAKİ değerlerle açılır ve yalnız DOKUNULAN alanlar gönderilir.
+  // Eskiden form boş açılıyor, «Ayarları kaydet» göndermediği alanları null ile siliyordu (20.11 canlı prova: yalnız temizlik
+  // maliyeti girilince kayıtlı EAK kurulu güce düştü). Kaydet mesajı iç kodu değil müşteri etiketini, MW altını kW olarak yazar.
+  const eakDokunulan = useRef<Set<string>>(new Set());
+  const dokun = <T,>(ad: string, ayarla: (v: T) => void) => (v: T) => { eakDokunulan.current.add(ad); ayarla(v); };
+  const eakSayi = (x: number | null | undefined) => (x == null ? "" : String(x).replace(".", ","));
+  const eakYukle = () => api.eak(plantId).then((d) => { if (!d || plantRef.current !== plantId) return; if (eakDokunulan.current.size > 0) return;   // inceleme: damga değişimi kaydedilmemiş girdiyi ezmesin
+    setEakKw(d.eak_kw != null ? String(d.eak_kw) : ""); setGecKw(d.eak_gecici ? String(d.eak_gecici.kw) : ""); setGecBitis(d.eak_gecici?.bitis ?? "");
+    setDengelemeBirimi(!!d.dengeleme_birimi); setArizaAy(d.ariza_sayisi_ay ? String(d.ariza_sayisi_ay) : ""); setTeminatKat(eakSayi(d.teminat_risk_katsayisi));
+    setKullSoz(d.kullanilabilirlik_sozlesme != null ? eakSayi(Math.round(d.kullanilabilirlik_sozlesme * 1000) / 10) : ""); setButceMwh(d.butce_kwh_yil != null ? eakSayi(d.butce_kwh_yil / 1000) : ""); setPrRef(d.pr_referans != null ? eakSayi(Math.round(d.pr_referans * 1000) / 10) : "");
+    setTemizlikTl(eakSayi(d.temizlik_maliyeti_tl)); setSonTemizlik(d.son_temizlik_tarihi ?? ""); setDosyaSiklik(d.dosya_yukleme_sikligi_gun != null ? String(d.dosya_yukleme_sikligi_gun) : "");
+    setLuyIstisna(d.luy_istisna ? true : null); setPozKaynak(d.pozisyon?.kaynak ?? null); setPozSabit(eakSayi(d.pozisyon?.sabit_mwh)); }).catch(() => {});
+  useEffect(() => { eakYukle(); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(butceMwh !== "" ? { butce_kwh_yil: Number(butceMwh.replace(/\./g, "").replace(",", ".")) * 1000 } : {}), ...(prRef !== "" ? { pr_referans: (() => { const v = Number(prRef.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(temizlikTl !== "" ? { temizlik_maliyeti_tl: Number(temizlikTl.replace(/\./g, "").replace(",", ".")) } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
-      ...(sonTemizlik !== "" ? { son_temizlik_tarihi: sonTemizlik } : {}), ...(dosyaSiklik !== "" ? { dosya_yukleme_sikligi_gun: Number(dosyaSiklik) } : {}),   // v2.546
-      ...(pozKaynak ? { pozisyon_kaynagi: pozKaynak, pozisyon_sabit_mwh: pozKaynak === "sabit" && pozSabit ? Number(pozSabit.replace(",", ".")) : null } : {}) })
-      .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
+    const d = eakDokunulan.current; const g: Parameters<typeof api.eakAyarla>[1] = {};
+    const ondalik = (s: string) => Number(s.replace(",", ".")); const binlik = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
+    if (d.has("eak_kw")) g.eak_kw = eakKw ? Number(eakKw) : null;
+    if (d.has("gecici")) { g.gecici_kw = gecKw ? Number(gecKw) : null; g.gecici_bitis = gecBitis || null; }
+    if (d.has("dengeleme_birimi")) g.dengeleme_birimi = dengelemeBirimi;
+    if (d.has("ariza")) g.ariza_sayisi_ay = arizaAy !== "" ? Number(arizaAy) : null;
+    if (d.has("teminat")) g.teminat_risk_katsayisi = teminatKat !== "" ? ondalik(teminatKat) : null;
+    if (d.has("kullSoz")) g.kullanilabilirlik_sozlesme = kullSoz !== "" ? (() => { const v = ondalik(kullSoz); return v > 1 ? v / 100 : v; })() : null;
+    if (d.has("butce")) g.butce_kwh_yil = butceMwh !== "" ? binlik(butceMwh) * 1000 : null;
+    if (d.has("prRef")) g.pr_referans = prRef !== "" ? (() => { const v = ondalik(prRef); return v > 1 ? v / 100 : v; })() : null;
+    if (d.has("temizlik")) g.temizlik_maliyeti_tl = temizlikTl !== "" ? binlik(temizlikTl) : null;
+    if (d.has("luy")) g.luy_istisna = !!luyIstisna;
+    if (d.has("sonTemizlik")) g.son_temizlik_tarihi = sonTemizlik || null;
+    if (d.has("dosyaSiklik")) g.dosya_yukleme_sikligi_gun = dosyaSiklik !== "" ? Number(dosyaSiklik) : null;
+    if (d.has("pozisyon")) { g.pozisyon_kaynagi = pozKaynak ?? "program"; g.pozisyon_sabit_mwh = pozKaynak === "sabit" && pozSabit ? ondalik(pozSabit) : null; }
+    if (Object.keys(g).length === 0) { setEakMesaj("Değişiklik yok."); return; }
+    api.eakAyarla(plantId, g)
+      .then((r) => { eakDokunulan.current.clear(); eakYukle(); setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${eakGucMetni(r.eak_bugun.eak_mw)} (${eakKaynakEtiketi(r.eak_bugun.kaynak)})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`); })
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
@@ -1232,51 +1266,51 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 {/* 08.11 inceleme II (faz 1): alanlar beş gruba ayrıldı — anahtarlar, doğrulama ve hesaplar değişmedi */}
                 <div className="form-tam ayar-grup">Üretim programı ve piyasa</div>
                 <label className="girdi-etiket">Verilebilecek en yüksek güç (EAK), kW
-                  <input className="girdi" inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
+                  <input className="girdi" inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => dokun("eak_kw", setEakKw)(e.target.value)} /></label>
                 <label className="girdi-etiket">Geçici kısıt (kW, isteğe bağlı)
-                  <input className="girdi" inputMode="numeric" placeholder="ör. 8.000" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
+                  <input className="girdi" inputMode="numeric" placeholder="ör. 8.000" value={gecKw} onChange={(e) => dokun("gecici", setGecKw)(e.target.value)} /></label>
                 <label className="girdi-etiket">Kısıt bitişi (bitiş günü dâhil)
-                  <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
+                  <input className="girdi" type="date" value={gecBitis} onChange={(e) => dokun("gecici", setGecBitis)(e.target.value)} /></label>
                 <label className="girdi-etiket">Piyasa pozisyonu
-                  <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
+                  <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => dokun("pozisyon", setPozKaynak)(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
                     <option value="program">programa eşit satış</option>
                     <option value="uretim">üretildiği kadar satış</option>
                     <option value="sabit">sabit miktar (baz yük)</option>
                   </select></label>
                 {pozKaynak === "sabit" && (
                   <label className="girdi-etiket">Sabit satış (MWh/saat)
-                    <input className="girdi" inputMode="decimal" placeholder="ör. 2,5" value={pozSabit} onChange={(e) => setPozSabit(e.target.value)} /></label>)}
+                    <input className="girdi" inputMode="decimal" placeholder="ör. 2,5" value={pozSabit} onChange={(e) => dokun("pozisyon", setPozSabit)(e.target.value)} /></label>)}
                 <div className="form-tam ayar-grup">Performans ve üretim hedefleri</div>
                 <label className="girdi-etiket">Yıllık üretim bütçesi (MWh, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => setButceMwh(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => dokun("butce", setButceMwh)(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 <label className="girdi-etiket" title="Tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilmezse beklenen üretim santralın kendi son 12 ay ölçülen PR'ına göre hesaplanır ve EPI kendi geçmişine göre okunur.">Referans performans oranı (%, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 82" value={prRef} onChange={(e) => setPrRef(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 82" value={prRef} onChange={(e) => dokun("prRef", setPrRef)(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 <label className="girdi-etiket">Kullanılabilirlik sözleşme eşiği (%, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 98" value={kullSoz} onChange={(e) => setKullSoz(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 98" value={kullSoz} onChange={(e) => dokun("kullSoz", setKullSoz)(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 <div className="form-tam ayar-grup">Bakım ve temizlik</div>
                 <label className="girdi-etiket" title="Son modül temizliğinin tarihi. Girilirse kirlenme kaybı tahmininin temiz referansı bu tarihten sonraki açık günlere bağlanır (en az 3 açık gün gerekir).">Son temizlik tarihi (isteğe bağlı)
-                  <input className="girdi" type="date" max={new Date().toISOString().slice(0, 10)} value={sonTemizlik} onChange={(e) => setSonTemizlik(e.target.value)} /></label>
+                  <input className="girdi" type="date" max={new Date().toISOString().slice(0, 10)} value={sonTemizlik} onChange={(e) => dokun("sonTemizlik", setSonTemizlik)(e.target.value)} /></label>
                 <label className="girdi-etiket" title="Santralın tamamı için BİR temizlik işleminin toplam bedeli (TL; modül başına değil). Kirlenme kaybı tahmini bu bedelle karşılaştırılır ve geri ödeme süresi gösterilir.">Santral temizlik maliyeti (TL, bir temizlik; isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 45.000" value={temizlikTl} onChange={(e) => setTemizlikTl(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 45.000" value={temizlikTl} onChange={(e) => dokun("temizlik", setTemizlikTl)(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 {/* v2.608 (Faz 5 F5-E) aşamalı açılım: seyrek değişen alanlar katlı; aynı Kaydet hepsini yazar, alanlar DOM'da */}
                 <Katla className="form-tam" ozet="Gelişmiş alanlar" not="dengeleme birimi ve istisnalar, veri güncelliği, risk ve arıza kayıtları">
                   <div className="form-izgara" style={{ marginTop: 0 }}>
                     <div className="form-tam ayar-grup">Dengeleme ve istisnalar</div>
                     <div className="onay-grubu form-tam">
                       <label className="ayar-onay" title="Yalnız dengeleme güç piyasasındaki dengeleme birimleri için; ardışık saatler arasında 200 MWh ve üzeri farkta 15 dakikalık program satırları (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir.">
-                        <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dakikalık program satırları)</label>
+                        <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => dokun("dengeleme_birimi", setDengelemeBirimi)(e.target.checked)} /> Dengeleme birimi (15 dakikalık program satırları)</label>
                       {seg?.segment === "lisanssiz_iletim" && (   /* v2.510 (Ç3): yalnız iletime bağlı lisanssız segmentte anlamlı (Karar 14907 Md.5) */
                         <label className="ayar-onay" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
-                          <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
+                          <input type="checkbox" checked={!!luyIstisna} onChange={(e) => dokun("luy", setLuyIstisna)(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
                     </div>
                     <div className="form-tam ayar-grup">Veri güncelliği</div>
                     <label className="girdi-etiket" title="SCADA ya da sayaç dosyasını kaç günde bir yüklediğiniz (1–90). Veri kaynakları kartında yükleme, bu sürenin iki katından eskiyse uyarı alır; girilmezse 30 gün.">Dosya yükleme sıklığı (gün, isteğe bağlı)
-                      <input className="girdi" inputMode="numeric" style={{ width: 110 }} placeholder="ör. 7" value={dosyaSiklik} onChange={(e) => setDosyaSiklik(e.target.value.replace(/[^0-9]/g, ""))} /></label>
+                      <input className="girdi" inputMode="numeric" style={{ width: 110 }} placeholder="ör. 7" value={dosyaSiklik} onChange={(e) => dokun("dosyaSiklik", setDosyaSiklik)(e.target.value.replace(/[^0-9]/g, ""))} /></label>
                     <div className="form-tam ayar-grup">Risk ve arıza kayıtları</div>
                     <label className="girdi-etiket">Teminat risk katsayısı (isteğe bağlı)
-                      <input className="girdi" inputMode="decimal" placeholder="ör. 1,5" value={teminatKat} onChange={(e) => setTeminatKat(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                      <input className="girdi" inputMode="decimal" placeholder="ör. 1,5" value={teminatKat} onChange={(e) => dokun("teminat", setTeminatKat)(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                     <label className="girdi-etiket">Bu ay arıza kaydı (adet; Olay kaydı sayfası varsa oradan sayılır)
-                      <input className="girdi" inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
+                      <input className="girdi" inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => dokun("ariza", setArizaAy)(e.target.value.replace(/[^0-9]/g, ""))} /></label>
                   </div>
                 </Katla>
                 <div className="form-tam satir-tam">
@@ -1478,10 +1512,14 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               <span className="soluk t-ikincil">sütunlar: zaman (saat dilimli), kWh · yalnız tam ölçülmüş saatler kıyaslanır</span></label>
             <label className="girdi-etiket">Ölçüm sınırı
               <select className="girdi" value={refSinir} aria-label="Referans ölçüm sınırı" onChange={(e) => setRefSinir(e.target.value)}><option value="inverter_ac">inverter AC çıkışı</option><option value="plant_gross_ac">tesis brüt AC</option><option value="pcc_net">bağlantı noktası net</option><option value="settlement">uzlaştırma sayacı</option></select></label>
+            <label className="ayar-onay" title="Bazı portal dışa aktarımlarında zaman damgası saatin SONUNU gösterir (10:00 satırı 09:00–10:00 üretimidir). İşaretlerseniz damgalar 1 saat geri alınır.">
+              <input type="checkbox" checked={refSaatSonu} onChange={(e) => setRefSaatSonu(e.target.checked)} /> damga saat sonunu gösteriyor</label>
             {refMesaj && <span className={`ayar-durum ${refMesaj.startsWith("Kıyaslanamadı") ? "hata" : ""}`}>{refMesaj}</span>}
           </div>
-          {pilot.referans_sonuc && (() => { const r = pilot.referans_sonuc; return (
-            <p className="t-ikincil" style={{ margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma ${yuzdeTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span></p>); })()}
+          {pilot.referans_sonuc && (() => { const r = pilot.referans_sonuc; return (<>
+            <p className="t-ikincil" style={{ margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma ${yuzdeTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.n_atlanan ? `, ${sayiTr(r.n_atlanan)} satır atlandı` : ""}{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span>
+              {r.uyarilar && r.uyarilar.length > 0 && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 6 }} title={r.uyarilar.join(" · ")}>uyarı {sayiTr(r.uyarilar.length)}</span>}</p>
+            {r.uyarilar && r.uyarilar.length > 0 && <ul className="soluk t-ikincil" style={{ margin: "4px 0 0", paddingLeft: 18 }}>{r.uyarilar.map((u, i) => <li key={i}>{u}</li>)}</ul>}</>); })()}   {/* v2.640: atlanan satır, çift damga, UTC varsayımı artık görünür; liste paragraf DIŞINDA (DOM iç içelik) */}
           <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{pilot.not}</p>
           {edge && (
             <div style={{ marginTop: 12 }}>

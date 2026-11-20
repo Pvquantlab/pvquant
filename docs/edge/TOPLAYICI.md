@@ -22,6 +22,7 @@ python3 -m venv /opt/pvquant-edge && /opt/pvquant-edge/bin/pip install "pvquant 
 - Her örnek `sira` (artan) ile `YYYY-MM-DD.jsonl` dosyasına fsync ile yazılır; `sira.txt` son sırayı, `ack.txt` sunucunun kabul ettiği son sırayı tutar.
 - Gönderim partisi ≤200; yanıt `ack_sira` kalıcı yazım sonrası döner; toplayıcı yalnız ack'a kadar olanları gönderilmiş sayar.
 - Aynı sıra farklı içerikle gelirse sunucu «çatışma» döner ve ack ilerlemez (journal bozulması işareti; elle inceleme).
+- v2.640 makullük sınırları: `ts_utc` sunucu saatinden en çok 15 dk ileri ve en çok 30 gün geri olabilir (daha eski veri dosya yüklemesiyle); `guc_w`, `enerji_wh`, `dc_guc_w` negatif olamaz ve kurulu DC gücün 1,5 katını aşamaz; `kisit_yuzde` 0–100. Sınır dışı örnek `hatali` listesinde döner ve **ack o sıradan itibaren durur**: toplayıcı hatalı örneği düzeltip (ya da atlayıp yeni sıra vererek) kaldığı yerden sürdürür. Uç 120 istek/dk ile sınırlıdır.
 - Ack'lanmamış satır içeren dosya hiçbir koşulda silinmez. Tamamı ack'lanmış ve `--sakla-gun`'den eski dosyalar silinir.
 - Journal `--azami-mb` eşiğini aşınca `[ALARM]` satırı yazılır; sessiz silme yoktur. Kalıcı bağlantı kesintisi = disk dolar = alarm; veri kaybı değil.
 

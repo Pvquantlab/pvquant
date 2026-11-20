@@ -86,8 +86,14 @@ def kapi_ayarla(tenant_id, plant_id, kod: str, tamam: bool, not_: str | None, ak
     return durum(row)
 
 
-def referans_csv_oku(metin: str) -> list[dict]:
-    """CSV: zaman/ts, kwh/enerji_kwh (ayraç , ya da ;). Saat dilimi yoksa UTC varsayılır ve işaretlenir. Döner [{ts_utc, kwh}] (saat başına yuvarlanmış)."""
+def referans_csv_coz(metin: str, saat_sonu: bool = False) -> tuple[list[dict], dict]:
+    """v2.640 (Santralim denetimi, Parti 1): CSV: zaman/ts, kwh/enerji_kwh (ayraç , ya da ;). Döner (saat başına [{ts_utc, kwh}], meta).
+    Eski okuyucu bozuk satırı SESSİZCE atlıyor, aynı saate düşen damgaları çift sayıyor, negatif kWh'yi kabul ediyor ve UTC varsayımını
+    çıktıya taşımıyordu (20.11 canlı prova, Golden 33). Şimdi: hiçbir satır sessiz düşmez — sayılır ve ilk üç örneğiyle bildirilir;
+    aynı dakika damgası yinelenirse atlanır (yinelenen satır), aynı saate düşen FARKLI damgalar saat içinde toplanır (saat altı dışa
+    aktarım); negatif kWh reddedilir; saat dilimsiz damga UTC varsayılır ve sayılır; saat_sonu=True damgaları 1 saat geri alır (portal
+    dışa aktarımlarında etiket saat SONUdur). meta: atlanan, atlanan_ornek[{satir, neden}], cift_satir, toplanan_satir, toplanan_saat,
+    negatif, tzsiz, uyarilar[str]."""
     metin = metin.lstrip("\ufeff")
     ayrac = ";" if metin.count(";") > metin.count(",") else ","
     r = csv.DictReader(io.StringIO(metin), delimiter=ayrac)
@@ -98,23 +104,63 @@ def referans_csv_oku(metin: str) -> list[dict]:
     kwh_k = next((alan[a] for a in ("kwh", "enerji_kwh", "energy_kwh", "uretim_kwh") if a in alan), None)
     if not ts_k or not kwh_k:
         raise ValueError("CSV'de zaman (ts/zaman) ve kWh (kwh/enerji_kwh) sütunları gerekli")
-    out, tzsiz = [], 0
-    for sat in r:
+    meta: dict = {"atlanan": 0, "atlanan_ornek": [], "cift_satir": 0, "toplanan_satir": 0, "toplanan_saat": 0, "negatif": 0, "tzsiz": 0, "uyarilar": []}
+
+    def atla(no: int, neden: str) -> None:
+        meta["atlanan"] += 1
+        if len(meta["atlanan_ornek"]) < 3:
+            meta["atlanan_ornek"].append({"satir": no, "neden": neden})
+    saatler: dict[datetime, float] = {}; sayim: dict[datetime, int] = {}; gorulen: set[datetime] = set()
+    for no, sat in enumerate(r, start=2):   # ilk satir baslik (ruff RUF003: yorumda Turkce harf yok)
         t = (sat.get(ts_k) or "").strip(); v = (sat.get(kwh_k) or "").strip().replace(",", ".")
+        if not t and not v:
+            continue   # tamamen bos satir sayilmaz
         if not t or not v:
-            continue
+            atla(no, "zaman ya da kWh boş"); continue
         try:
             ts = datetime.fromisoformat(t.replace("Z", "+00:00"))
+        except ValueError:
+            atla(no, f"zaman çözümlenemedi ({t[:32]})"); continue
+        try:
             kwh = float(v)
         except ValueError:
-            continue
+            atla(no, f"kWh sayı değil ({v[:16]})"); continue
+        if kwh != kwh or kwh in (float("inf"), float("-inf")):
+            atla(no, "kWh sonlu değil"); continue
+        if kwh < 0:
+            meta["negatif"] += 1; atla(no, f"negatif kWh ({v[:16]})"); continue
         if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc); tzsiz += 1
-        out.append({"ts_utc": ts.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0), "kwh": kwh})
+            ts = ts.replace(tzinfo=timezone.utc); meta["tzsiz"] += 1
+        ts = ts.astimezone(timezone.utc).replace(second=0, microsecond=0)
+        if saat_sonu:
+            ts -= timedelta(hours=1)
+        if ts in gorulen:
+            meta["cift_satir"] += 1; atla(no, f"yinelenen damga ({t[:32]})"); continue
+        gorulen.add(ts)
+        saat = ts.replace(minute=0)
+        saatler[saat] = saatler.get(saat, 0.0) + kwh; sayim[saat] = sayim.get(saat, 0) + 1
+    out = [{"ts_utc": s, "kwh": round(k, 6)} for s, k in sorted(saatler.items())]
     if not out:
-        raise ValueError("okunabilir satır yok")
-    if tzsiz:
-        out[0]["_uyari"] = f"{tzsiz} satırda saat dilimi yok; UTC varsayıldı"
+        raise ValueError("okunabilir satır yok" + (f" ({meta['atlanan']} satır atlandı: {meta['atlanan_ornek'][0]['neden']})" if meta["atlanan_ornek"] else ""))
+    meta["toplanan_saat"] = sum(1 for c in sayim.values() if c > 1)
+    meta["toplanan_satir"] = sum(c for c in sayim.values() if c > 1)
+    u = meta["uyarilar"]
+    if meta["atlanan"]:
+        u.append(f"{meta['atlanan']} satır atlandı: " + "; ".join(f"{e['satir']}. satır {e['neden']}" for e in meta["atlanan_ornek"]) + ("; …" if meta["atlanan"] > 3 else ""))
+    if meta["toplanan_saat"]:
+        u.append(f"{meta['toplanan_satir']} satır {meta['toplanan_saat']} saate düştü; kWh saat içinde toplandı (saat altı dışa aktarım varsayıldı)")
+    if meta["tzsiz"]:
+        u.append(f"{meta['tzsiz']} satırda saat dilimi yok; UTC varsayıldı")
+    if saat_sonu:
+        u.append("damgalar saat sonu etiketi sayıldı; 1 saat geri alındı")
+    return out, meta
+
+
+def referans_csv_oku(metin: str) -> list[dict]:
+    """Geriye uyumlu sarmal: satırlar; uyarılar varsa ilk satırda `_uyari` (bkz. referans_csv_coz)."""
+    out, meta = referans_csv_coz(metin)
+    if meta["uyarilar"]:
+        out[0]["_uyari"] = "; ".join(meta["uyarilar"])
     return out
 
 
@@ -162,15 +208,17 @@ def referans_kiyas(golge_saatler: list[dict], referans: list[dict], tol_pct: flo
             "not": "Kıyas yalnız kaynak kıyasındaki tam saatlerde; kısmi/tahmini saatler ve kaynak kıyasında olmayan saatler referans dışıdır. Uyum, aynı ölçüm sınırı ve aynı cihaz varsayımıyla okunur."}
 
 
-def referans_degerlendir(tenant_id, plant: dict, referans: list[dict], sinir: str = "inverter_ac", aktor_id=None, dosya: str | None = None) -> dict:
-    """DB: referans aralığı için gölge görünüm → kıyas; özet params_json.pilot.referans_sonuc'a yazılır (ham referans saklanmaz)."""
+def referans_degerlendir(tenant_id, plant: dict, referans: list[dict], sinir: str = "inverter_ac", aktor_id=None, dosya: str | None = None, meta: dict | None = None) -> dict:
+    """DB: referans aralığı için gölge görünüm → kıyas; özet params_json.pilot.referans_sonuc'a yazılır (ham referans saklanmaz).
+    v2.640: `meta` (referans_csv_coz) uyarıları ve atlanan satır sayısı özete de yazılır — UI yalnız özeti okur, uyarı görünmüyordu."""
     from pvquant.services import kaynak_secim_service as ks, plant_service
     bas = min(r["ts_utc"] for r in referans); bit = max(r["ts_utc"] for r in referans) + timedelta(hours=1)
     gg = ks.golge_gorunum(tenant_id, plant, bas, bit, sinir)
     k = referans_kiyas(gg.get("saatler") or [], referans)
     uy = referans[0].get("_uyari")
-    k["uyarilar"] = ([uy] if uy else []) + ([gg["uyari"]] if gg.get("uyari") else [])
-    ozet = {**{a: k[a] for a in ("sonuc", "metin", "n_referans", "n_ortak", "n_tolerans_ici", "tolerans_orani", "n_golge_yok", "n_golge_kismi_disi", "mape_pct", "maks_mutlak_fark_kwh", "toplam_fark_pct")},
+    k["uyarilar"] = list((meta or {}).get("uyarilar") or []) + ([uy] if uy and not meta else []) + ([gg["uyari"]] if gg.get("uyari") else [])
+    k["n_atlanan"] = int((meta or {}).get("atlanan") or 0)
+    ozet = {**{a: k[a] for a in ("sonuc", "metin", "n_referans", "n_ortak", "n_tolerans_ici", "tolerans_orani", "n_golge_yok", "n_golge_kismi_disi", "mape_pct", "maks_mutlak_fark_kwh", "toplam_fark_pct", "uyarilar", "n_atlanan")},
             "sinir": sinir, "bas": bas.isoformat(), "bit": bit.isoformat(), "dosya": dosya, "zaman": datetime.now(timezone.utc).isoformat(timespec="minutes"), "aktor_id": str(aktor_id) if aktor_id else None}
     pil = _pj(plant).get("pilot") if isinstance(_pj(plant).get("pilot"), dict) else {}
     plant_service.params_birlestir(tenant_id, plant["id"], pilot={**pil, "referans_sonuc": ozet})

@@ -1848,8 +1848,8 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
     except ValueError:
         raise HTTPException(422, f"segment: {[s.value for s in Segment]}")
     anahtarlar = {"segment": seg.value}
-    if p.uevcb:
-        anahtarlar["uevcb"] = p.uevcb.strip()[:32]
+    if p.uevcb is not None:   # v2.640 (Santralim denetimi): boş dize SİLER — eskiden `if p.uevcb:` boşu yok sayıyor, UI «Kaydedildi» diyordu
+        anahtarlar["uevcb"] = p.uevcb.strip()[:32] or None
     if p.dsg_kodu is not None:   # v2.539: boş dize temizler
         anahtarlar["dsg_kodu"] = p.dsg_kodu.strip()[:32] or None
     if p.toplayici_portfoyu is not None:
@@ -1974,13 +1974,43 @@ def epias_uretim_ayarla(plant_id: str, p: EpiasIstek, claims=Depends(yazma_yetki
     return epias_uretim_service.durum(claims["tenant_id"], row)
 
 
+def _eak_yaniti(row: dict, pj: dict) -> dict:
+    """v2.640: EAK/işletme ayarları yanıtı — GET ve PUT aynı gövde (form ön doldurması bu gövdeden)."""
+    from pvquant.services import dengesizlik_service, kgup_service
+    return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz=PIYASA_TZ).date()),
+            "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
+            "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
+            "luy_istisna": bool(pj.get("luy_istisna")),
+            "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
+            "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
+            "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
+            "butce_kwh_yil": pj.get("butce_kwh_yil"),   # v2.534 (P8b-1)
+            "pr_referans": pj.get("pr_referans"),   # v2.542 (P8b-2)
+            "temizlik_maliyeti_tl": pj.get("temizlik_maliyeti_tl"),   # v2.545 (IH-090)
+            "son_temizlik_tarihi": pj.get("son_temizlik_tarihi"), "dosya_yukleme_sikligi_gun": pj.get("dosya_yukleme_sikligi_gun")}   # v2.546
+
+
+@app.get("/v1/plants/{plant_id}/eak")
+def eak_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.640 (Santralim denetimi, Parti 1 — kritik): işletme ayarlarının kayıtlı değerleri. Form bunları ön doldurur ve yalnız dokunulan
+    alanı gönderir; eskiden form boş açılıyor, «Ayarları kaydet» göndermediği alanları null ile siliyordu (canlıda EAK kayboldu)."""
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    row["params_json"] = pj   # inceleme: eak_etkin satırdaki ham metni değil sözlüğü okusun
+    return _eak_yaniti(row, pj)
+
+
 @app.put("/v1/plants/{plant_id}/eak")
 def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
     """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur.
     v2.517 (P2a): piyasa pozisyonu ayarı (program | uretim | sabit MWh/saat) — uzlaştırma hesabının EDM tabanı."""
     from datetime import date as _d
 
-    from pvquant.services import dengesizlik_service, kgup_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -2066,17 +2096,7 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _ayar_izi("eak_ayar", claims, row["id"], eski_pj, pj, ek={"istek": dict(an)})   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
     row["params_json"] = pj
-    return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz=PIYASA_TZ).date()),
-            "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
-            "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
-            "luy_istisna": bool(pj.get("luy_istisna")),
-            "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
-            "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
-            "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
-            "butce_kwh_yil": pj.get("butce_kwh_yil"),   # v2.534 (P8b-1)
-            "pr_referans": pj.get("pr_referans"),   # v2.542 (P8b-2)
-            "temizlik_maliyeti_tl": pj.get("temizlik_maliyeti_tl"),   # v2.545 (IH-090)
-            "son_temizlik_tarihi": pj.get("son_temizlik_tarihi"), "dosya_yukleme_sikligi_gun": pj.get("dosya_yukleme_sikligi_gun")}   # v2.546
+    return _eak_yaniti(row, pj)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -2979,6 +2999,15 @@ def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetki
         raise HTTPException(422, str(e)) from e
     if eski.get("tur") == p.tur and eski.get("bulut_kimlik") and isinstance(an.get("veri_yolu"), dict):   # v2.556 (K1): kimlik aynası (gizli yok) tür aynıysa korunur
         an["veri_yolu"]["bulut_kimlik"] = eski["bulut_kimlik"]
+    yeni = an.get("veri_yolu")
+    if isinstance(yeni, dict):
+        # v2.640 (Santralim denetimi): tür ve bağlantı ayarı değişmediyse son sınama sonucu KORUNUR — eskiden her «Ayarları kaydet» aşamayı
+        # «bağlantı sınanmadı»ya düşürüyordu; bağlantı değişince sınama da düşer (yeni hedef sınanmamıştır)
+        if eski.get("tur") == p.tur and eski.get("son_sinama") and (eski.get("baglanti") or None) == (yeni.get("baglanti") or None):
+            yeni["son_sinama"] = eski["son_sinama"]
+        # v2.640: sunucu çekişi (Modbus / IEC 104) yalnız başarılı sınamadan sonra açılır — sınanmamış hedefe çekiş açılıp «veri alınıyor» görünüyordu
+        if yeni.get("ornekleme_acik") and yeni.get("tur") in ("modbus_sunspec", "iec104") and (yeni.get("son_sinama") or {}).get("durum") != "ok":
+            raise HTTPException(422, "düzenli veri çekişi için önce bağlantı sınaması başarılı olmalı: çekiş kutusunu kaldırıp kaydedin, «Bağlantıyı sına» ile sınayın, sonra kutuyu açın (bağlantı ayarı değişince sınama yenilenir)")
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "veri_yolu_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
     row["params_json"] = pj
@@ -3217,8 +3246,9 @@ def pilot_kapi(plant_id: str, kod: str, p: PilotKapiIstek, claims=Depends(yazma_
 
 
 @app.post("/v1/plants/{plant_id}/pilot/referans")
-def pilot_referans(plant_id: str, dosya: UploadFile = File(...), sinir: str = "inverter_ac", claims=Depends(yazma_yetkisi())):
-    """v2.560: referans saatlik dışa aktarımı (CSV: zaman, kWh) ile gölge görünümdeki TAM saatlerin kıyası; özet santral ayarına yazılır, ham referans saklanmaz."""
+def pilot_referans(plant_id: str, dosya: UploadFile = File(...), sinir: str = "inverter_ac", saat_sonu: bool = False, claims=Depends(yazma_yetkisi())):
+    """v2.560: referans saatlik dışa aktarımı (CSV: zaman, kWh) ile gölge görünümdeki TAM saatlerin kıyası; özet santral ayarına yazılır, ham referans saklanmaz.
+    v2.640: atlanan/çift/negatif satırlar ve UTC varsayımı bildirilir (uyarilar, n_atlanan); `saat_sonu=1` damgaları saat sonu etiketi sayar."""
     from pvquant.services import kaynak_secim_service as ks
     from pvquant.services import pilot_service
     if sinir not in ks.SINIR_ETIKET:
@@ -3230,12 +3260,13 @@ def pilot_referans(plant_id: str, dosya: UploadFile = File(...), sinir: str = "i
     if len(ham) > 5 * 1024 * 1024:
         raise HTTPException(413, "referans dosyası en çok 5 MB")
     try:
-        ref = pilot_service.referans_csv_oku(ham.decode("utf-8-sig", errors="replace"))
+        ref, meta = pilot_service.referans_csv_coz(ham.decode("utf-8-sig", errors="replace"), saat_sonu=saat_sonu)
     except ValueError as e:
         raise HTTPException(422, str(e))
-    k = pilot_service.referans_degerlendir(claims["tenant_id"], row, ref, sinir, claims["sub"], dosya.filename)
+    k = pilot_service.referans_degerlendir(claims["tenant_id"], row, ref, sinir, claims["sub"], dosya.filename, meta=meta)
     _denetim.kaydet("musteri", "pilot_referans", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
-                    ayrinti={"sonuc": k["sonuc"], "n_ortak": k["n_ortak"], "tolerans_orani": k["tolerans_orani"], "dosya": dosya.filename, "sinir": sinir})
+                    ayrinti={"sonuc": k["sonuc"], "n_ortak": k["n_ortak"], "tolerans_orani": k["tolerans_orani"], "dosya": dosya.filename, "sinir": sinir,
+                             "n_atlanan": meta["atlanan"], "saat_sonu": saat_sonu})
     return k
 
 
@@ -3291,7 +3322,8 @@ def edge_toplayici_iptal(plant_id: str, toplayici_id: str, claims=Depends(yazma_
 
 
 @app.post("/v1/edge/ornekler", tags=["Saha toplayıcısı"])
-def edge_ornekler(p: EdgeOrnekler, t=Depends(toplayici_anahtari)):
+@limiter.limit("120/minute")   # v2.640: anahtar deneme / istek seli sınırı (öteki açık uçlarla aynı mekanizma)
+def edge_ornekler(request: Request, p: EdgeOrnekler, t=Depends(toplayici_anahtari)):
     """v2.561 (E1): toplayıcı örnekleri (sıra numaralı, ≤500). İdempotent: aynı sıra + aynı içerik yinelenen, farklı içerik çatışma. ack_sira kalıcı yazım sonrası döner.
     Santral anahtardan gelir (gövdede santral yok). Sunucu yanıtı veri dışında hiçbir komut taşımaz."""
     from pvquant.services import edge_service

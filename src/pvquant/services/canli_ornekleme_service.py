@@ -357,15 +357,19 @@ def tur(plants: list[dict], simdi: datetime | None = None, istemci_fabrikasi=Non
     return "; ".join(ozet) if ozet else None
 
 
-def durum(tenant_id, plant: dict) -> dict | None:
-    """Veri kaynakları kartı için: son örnek, son 24 saatte örnek sayısı, bu kaynaktan yazılan son saat, cihaz sayısı, son 24 saatte kısmi saat. Tablo yoksa None."""
+def durum(tenant_id, plant: dict, kanal: str | None = None) -> dict | None:
+    """Veri kaynakları kartı için: son örnek, son 24 saatte örnek sayısı, bu kaynaktan yazılan son saat, cihaz sayısı, son 24 saatte kısmi saat. Tablo yoksa None.
+    v2.640: `kanal` (dogrudan | edge) verilirse yalnız o kanalın örnekleri (son_ornek, n24, n_cihaz) — saha toplayıcısı örnekleri sunucu
+    çekişinin kanıtı sayılmasın. son_saat ve n_kismi_24 kanal taşımayan tablolardan (scada_hourly, kaynak_saatlik) gelir; iki kanal
+    birlikte akarken aynı değeri gösterir (bilinen yaklaşıklık; kaynak tablolarına kanal eklenince süzülür)."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     try:
         with tenant_baglami(tenant_id) as s:
             r = s.execute(text("SELECT max(ts_utc) AS son, count(*) FILTER (WHERE ts_utc >= now() - INTERVAL '24 hour') AS n24, "
-                               "count(DISTINCT cihaz_id) FILTER (WHERE ts_utc >= now() - INTERVAL '24 hour') AS n_cihaz FROM canli_ornek WHERE plant_id=:p"),
-                          {"p": plant["id"]}).mappings().first()
+                               "count(DISTINCT cihaz_id) FILTER (WHERE ts_utc >= now() - INTERVAL '24 hour') AS n_cihaz FROM canli_ornek WHERE plant_id=:p"
+                               + (" AND kanal=:k" if kanal else "")),
+                          {"p": plant["id"], **({"k": kanal} if kanal else {})}).mappings().first()
             ss = s.execute(text("SELECT max(sh.ts_utc) FROM scada_hourly sh JOIN ingestion_batches b ON b.id = sh.batch_id "
                                 "WHERE sh.plant_id=:p AND b.format_json->>'kaynak' IN ('modbus_sunspec','iec104')"), {"p": plant["id"]}).scalar()
             try:

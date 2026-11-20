@@ -70,7 +70,8 @@ YETENEK_ETIKET = {"sinama": {None: "sınama yok", "kimlik": "kimlikle sınama (g
 BAGLANTI_DURUM_ETIKET = {"yapilandirilmadi": "bağlantı yapılandırılmadı", "dosya": "dosya kaynağı (bağlantı değil)", "mevcut": "uygulamada çalışıyor",
                          "sinanmadi": "yapılandırıldı, bağlantı sınanmadı", "sinama_ok": "bağlantı sınaması başarılı, veri çekişi yok",
                          "tcp_ok": "TCP bağlantısı açıldı; IEC 104 sınanmadı, veri çekişi yok", "cekis_acik": "düzenli veri çekişi açık, ilk veri bekleniyor",
-                         "sinama_basarisiz": "bağlantı sınaması başarısız", "kimlik_hatasi": "kimlik doğrulanamadı", "desteklenmiyor": "bu sağlayıcı/protokol için bağlantı yok", "veri_akisi": "veri alınıyor"}
+                         "sinama_basarisiz": "bağlantı sınaması başarısız", "kimlik_hatasi": "kimlik doğrulanamadı", "desteklenmiyor": "bu sağlayıcı/protokol için bağlantı yok", "veri_akisi": "veri alınıyor",
+                         "veri_akisi_toplayici": "veri saha toplayıcısından alınıyor (sunucu çekişi değil)"}   # v2.640
 TAZELIK_ETIKET = {"guncel": "güncel", "gecikmis": "gecikmiş", "yok": "veri gelmedi", "dosya": "dosya yüklemesi", "dosya_eski": "yükleme 30 günden eski"}
 ASAMA_ETIKET = {"secildi": "hedef seçildi", "ayar": "bağlantı ayarı girildi", "sinama": "bağlantı sınaması başarılı", "cekis": "düzenli veri çekişi açık", "akis": "veri alınıyor"}
 NOT = ("Dosya kaynakları (SCADA, sayaç) geçmişe dönük çalışır: veri, yüklediğiniz güne kadar gelir; sürekli bağlantı değildir. EPİAŞ Şeffaflık bağlantısı "
@@ -278,6 +279,9 @@ def baglanti_durumu(beyan: dict | None, etkin: list[dict]) -> dict:
         return {"kod": "desteklenmiyor", "etiket": BAGLANTI_DURUM_ETIKET["desteklenmiyor"]}
     if any(e.get("tur") == tur and e.get("son") for e in etkin):
         return {"kod": "veri_akisi", "etiket": BAGLANTI_DURUM_ETIKET["veri_akisi"]}
+    # v2.640 (20.11 canlı prova): saha toplayıcısı örnekleri hedef protokolün kanıtı DEĞİLDİR — sınanmamış Modbus hedefi «veri alınıyor» görünüyordu
+    if tur in ("modbus_sunspec", "iec104") and any(e.get("tur") == "saha_toplayici" and e.get("son") for e in etkin):
+        return {"kod": "veri_akisi_toplayici", "etiket": BAGLANTI_DURUM_ETIKET["veri_akisi_toplayici"]}
     if beyan.get("ornekleme_acik") or (tur == "inverter_bulut_api" and (beyan.get("bulut_kimlik") or {}).get("cekis_acik")):   # v2.557: bulut çekişi de
         return {"kod": "cekis_acik", "etiket": BAGLANTI_DURUM_ETIKET["cekis_acik"]}
     # v2.554: IEC 104 veri akışı canli_ornek'e profil=iec104 ile yazılır; etkin satırı 'iec104' türüyle gelir (veri_akisi yukarıda yakalanır)
@@ -346,27 +350,37 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
                     "veri_kodu": veri_kodu(tzd, so, "dosya"), "veri_etiketi": "geçmişe dönük dosya · " + veri_etiketi(tzd), **tzd})
     # v2.546 (P4b-2): Modbus TCP / SunSpec düzenli örnekleme etkinse canlı protokol satırı — eşik 3 × periyot (en az 1 saat)
     vyb = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    # v2.640 (20.11 canlı prova): saha toplayıcısı (kanal=edge) ile sunucu çekişi (kanal=dogrudan) AYRI satırlar — eskiden toplayıcı
+    # örnekleri hedef protokol satırına yazılıyor, hiç sınanmamış Modbus hedefi «veri alınıyor» görünüyordu
     edge_var = False   # v2.561 (E1): saha toplayıcısı örnek gönderiyorsa düzenli çekiş açık olmasa da canlı satır
-    if vyb and vyb.get("tur") == "modbus_sunspec" and not vyb.get("ornekleme_acik"):
+    if vyb and vyb.get("tur") in ("modbus_sunspec", "iec104"):
         try:
             from pvquant.services import edge_service
             edge_var = any(x["durum"] == "etkin" and x.get("son_gorulme") for x in edge_service.toplayici_listele(tenant_id, plant["id"]))
         except Exception:   # noqa: BLE001
             edge_var = False
-    if vyb and vyb.get("tur") in ("modbus_sunspec", "iec104") and (vyb.get("ornekleme_acik") or edge_var):   # v2.554: IEC 104 düzenli çekişi de canlı protokol satırı
+
+    def _canli_satir(kanal: str, d: dict, tur: str, etiket: str, tur_etiketi: str, on_ek: str) -> dict:
+        per = co.periyot_dk(vyb); esik = max(3 * per, 60) / 60.0
+        tz = tazelik(d["son_ornek"], simdi, "protokol", esik_saat=esik)
+        bag = ({"durum": "yok", "etiket": "henüz örnek alınmadı", "zaman": None} if not d["son_ornek"] else
+               {"durum": "ok", "etiket": "son örnek alındı", "zaman": d["son_ornek"].isoformat()} if tz["tazelik"] == "guncel" else
+               {"durum": "hata", "etiket": "örnek alınamıyor", "zaman": d["son_ornek"].isoformat()})
+        return {"tur": tur, "etiket": etiket, "tur_etiketi": tur_etiketi, "tanimli": True, "kanal": kanal,
+                "son": d["son_ornek"].isoformat() if d["son_ornek"] else None, "son_olcum": d["son_saat"].isoformat() if d["son_saat"] else None,
+                "baglanti": bag, "veri_kodu": veri_kodu(tz, d["son_saat"], "protokol"), "veri_etiketi": (f"son saat {d['son_saat'].isoformat()}" if d["son_saat"] else "henüz saatlik veri yazılmadı"),
+                "ayrinti": (on_ek + f"son 24 saatte {d['n24']} örnek") + (f" · {d['n_cihaz']} cihaz" if d.get("n_cihaz") else "")
+                           + (f" · {d['n_kismi_24']} kısmi saat (üretim serisine yazılmadı)" if d.get("n_kismi_24") else ""), **tz}   # v2.550 (D4/D5)
+    if vyb and vyb.get("tur") in ("modbus_sunspec", "iec104") and vyb.get("ornekleme_acik"):   # v2.554: IEC 104 düzenli çekişi de canlı protokol satırı
         from pvquant.services import canli_ornekleme_service as co
-        d = co.durum(tenant_id, plant)
+        d = co.durum(tenant_id, plant, kanal="dogrudan")
         if d is not None:
-            per = co.periyot_dk(vyb); esik = max(3 * per, 60) / 60.0
-            tz = tazelik(d["son_ornek"], simdi, "protokol", esik_saat=esik)
-            bag = ({"durum": "yok", "etiket": "henüz örnek alınmadı", "zaman": None} if not d["son_ornek"] else
-                   {"durum": "ok", "etiket": "son örnek alındı", "zaman": d["son_ornek"].isoformat()} if tz["tazelik"] == "guncel" else
-                   {"durum": "hata", "etiket": "örnek alınamıyor", "zaman": d["son_ornek"].isoformat()})
-            out.append({"tur": vyb["tur"], "etiket": VERI_YOLLARI[vyb["tur"]]["kisa"], "tur_etiketi": "saha protokolü", "tanimli": True,
-                        "son": d["son_ornek"].isoformat() if d["son_ornek"] else None, "son_olcum": d["son_saat"].isoformat() if d["son_saat"] else None,
-                        "baglanti": bag, "veri_kodu": veri_kodu(tz, d["son_saat"], "protokol"), "veri_etiketi": (f"son saat {d['son_saat'].isoformat()}" if d["son_saat"] else "henüz saatlik veri yazılmadı"),
-                        "ayrinti": (("saha toplayıcısı · " if edge_var else f"örnekleme {per} dk · ") + f"son 24 saatte {d['n24']} örnek") + (f" · {d['n_cihaz']} cihaz" if d.get("n_cihaz") else "")
-                                   + (f" · {d['n_kismi_24']} kısmi saat (üretim serisine yazılmadı)" if d.get("n_kismi_24") else ""), **tz})   # v2.550 (D4/D5)
+            out.append(_canli_satir("dogrudan", d, vyb["tur"], VERI_YOLLARI[vyb["tur"]]["kisa"], "saha protokolü (sunucu çekişi)", f"örnekleme {co.periyot_dk(vyb)} dk · "))
+    if vyb and vyb.get("tur") in ("modbus_sunspec", "iec104") and edge_var:
+        from pvquant.services import canli_ornekleme_service as co
+        d = co.durum(tenant_id, plant, kanal="edge")
+        if d is not None:
+            out.append(_canli_satir("edge", d, "saha_toplayici", "Saha toplayıcısı", "saha toplayıcısı (yerel okuma, PVQuant'a gönderim)", "saha toplayıcısı · "))
     if vyb and vyb.get("tur") == "inverter_bulut_api" and (vyb.get("bulut_kimlik") or {}).get("kayitli"):   # v2.557 (K2): bulut çekişi satırı
         from pvquant.services import bulut_cekis_service as bc
         from pvquant.services import bulut_kimlik_service as bk

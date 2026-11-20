@@ -123,7 +123,7 @@ def test_uc_envanteri_sayilari_ve_kimliksiz_liste_sabit():
                 kimliksiz.add((m, p))
     _yaz_csv("uc_kapilari.csv", satirlar)
     assert kimliksiz == KIMLIKSIZ_BEKLENEN
-    assert sum(sayac.values()) == 248   # 247 + /v1/readyz (P8)
+    assert sum(sayac.values()) == 249   # 247 + /v1/readyz (P8) + GET /eak (v2.640, Santralim denetimi Parti 1)
     assert sayac.get("api_anahtari") == 16 and sayac.get("toplayici") == 1 and sayac.get("platform") == 35
 
 

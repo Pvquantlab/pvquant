@@ -14,7 +14,7 @@ import hashlib
 import hmac
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 ONEK = "pvqe"
 AZAMI_PARTI = 500
@@ -92,8 +92,16 @@ def _bul(onek: str) -> dict | None:
     return dict(r) if r else None
 
 
-def ornek_dogrula(o: dict) -> dict:
-    """SAF. Toplayıcı örneği → canli_ornek alanları. Hatalı alan ValueError."""
+GELECEK_PAYI = timedelta(minutes=15)   # v2.640: toplayıcı saati ileri olabilir; daha ötesi makul değil
+GECMIS_PAYI = timedelta(days=30)       # v2.640: çevrimdışı tampon en çok 30 gün (daha eskisi dosya yüklemesiyle gelir)
+KAP_PAYI = 1.5                         # v2.640: güç/enerji kurulu DC gücün 1,5 katını aşamaz (W, Wh/saat)
+
+
+def ornek_dogrula(o: dict, simdi: datetime | None = None, kap_w: float | None = None) -> dict:
+    """SAF. Toplayıcı örneği → canli_ornek alanları. Hatalı alan ValueError.
+    v2.640 (20.11 canlı prova): 2031 damgalı, negatif ve 1e9 Wh örnekler kabul ediliyor ve «olay adayları»nda 2031'e dek sahte
+    iletişim kopukluğu üretiyordu. Şimdi: damga simdi+15 dk'yı aşamaz, 30 günden eski olamaz; güç/enerji negatif olamaz; kap_w
+    verildiyse 1,5 katını aşamaz; kısıt yüzdesi 0–100."""
     try:
         sira = int(o["sira"])
     except (KeyError, TypeError, ValueError) as e:
@@ -108,10 +116,15 @@ def ornek_dogrula(o: dict) -> dict:
     if ts.tzinfo is None:
         raise ValueError("ts_utc saat dilimi taşımalı")
     ts = ts.astimezone(timezone.utc).replace(microsecond=0)
+    if simdi is not None:
+        if ts > simdi + GELECEK_PAYI:
+            raise ValueError("ts_utc gelecekte (toplayıcı saati 15 dakikadan fazla ileri)")
+        if ts < simdi - GECMIS_PAYI:
+            raise ValueError("ts_utc 30 günden eski (geçmiş veri dosya yüklemesiyle gelir)")
     sinir = o.get("sinir") or "inverter_ac"
     if sinir not in SINIRLAR:
         raise ValueError("sinir geçersiz")
-    def _f(k):
+    def _f(k, alt: float | None = None, ust: float | None = None):
         v = o.get(k)
         if v is None:
             return None
@@ -121,14 +134,19 @@ def ornek_dogrula(o: dict) -> dict:
             raise ValueError(f"{k} sayı olmalı") from e
         if f != f or f in (float("inf"), float("-inf")):
             raise ValueError(f"{k} sonlu olmalı")
+        if alt is not None and f < alt:
+            raise ValueError(f"{k} negatif olamaz")
+        if ust is not None and f > ust:
+            raise ValueError(f"{k} kurulu gücün {format(KAP_PAYI, 'g').replace('.', ',')} katını aşıyor")
         return f
+    ust = (float(kap_w) * KAP_PAYI) if kap_w else None
     dk = o.get("durum_kodu")
     olaylar = o.get("olaylar") or []
     if not isinstance(olaylar, list):
         raise ValueError("olaylar liste olmalı")
     return {"sira": sira, "ts_utc": ts, "cihaz_id": (str(o.get("cihaz_id") or "santral")[:64]), "sinir": sinir, "profil": (str(o["profil"])[:16] if o.get("profil") else None),
-            "guc_w": _f("guc_w"), "enerji_wh": _f("enerji_wh"), "dc_guc_w": _f("dc_guc_w"), "durum_kodu": (int(dk) if dk is not None else None),
-            "olaylar": [str(x)[:40] for x in olaylar][:32], "kisit_yuzde": _f("kisit_yuzde"), "kanal": "edge"}
+            "guc_w": _f("guc_w", 0.0, ust), "enerji_wh": _f("enerji_wh", 0.0, ust), "dc_guc_w": _f("dc_guc_w", 0.0, ust), "durum_kodu": (int(dk) if dk is not None else None),
+            "olaylar": [str(x)[:40] for x in olaylar][:32], "kisit_yuzde": _f("kisit_yuzde", 0.0, 100.0), "kanal": "edge"}
 
 
 def icerik_ozeti(o: dict) -> str:
@@ -168,23 +186,41 @@ def al(toplayici: dict, plant: dict, ornekler: list[dict], simdi: datetime | Non
         raise ValueError(f"parti en çok {AZAMI_PARTI} örnek")
     defter = defter or DbDefter(toplayici["tenant_id"], toplayici["plant_id"], toplayici["id"])
     yaz = yaz or (lambda o: co.ornek_yaz(toplayici["tenant_id"], plant, o))
+    kap_w = None
+    try:
+        kap_w = float(plant.get("capacity_kwp") or 0) * 1000.0 or None
+    except (TypeError, ValueError):
+        kap_w = None
     temiz, hatali = [], []
     for i, o in enumerate(ornekler):
         try:
-            temiz.append(ornek_dogrula(o))
+            temiz.append(ornek_dogrula(o, simdi, kap_w))
         except ValueError as e:
             hatali.append({"indeks": i, "sira": o.get("sira") if isinstance(o, dict) else None, "hata": str(e)})
+    # v2.640: hatalı örnek ack'i DURDURUR — eskiden hatalı sıra ≤ ack olabiliyor, toplayıcı o örneği bir daha göndermiyordu (kalıcı kayıp)
+    ilk_hatali = None
+    for h in hatali:
+        try:
+            s = int(h["sira"])
+        except (TypeError, ValueError):
+            continue
+        ilk_hatali = s if ilk_hatali is None else min(ilk_hatali, s)
     mevcut = defter.oku([o["sira"] for o in temiz])
     kabul = yinelenen = 0; catisma = []; ack = None
+
+    def _ack(sira):
+        nonlocal ack
+        if ilk_hatali is None or sira < ilk_hatali:
+            ack = max(ack or -1, sira)
     for o in sorted(temiz, key=lambda x: x["sira"]):
         oz = icerik_ozeti(o)
         if o["sira"] in mevcut:
             if mevcut[o["sira"]] == oz:
-                yinelenen += 1; ack = max(ack or -1, o["sira"]); continue
+                yinelenen += 1; _ack(o["sira"]); continue
             catisma.append(o["sira"]); continue
         yaz(o)
         defter.yaz(o["sira"], oz, o["ts_utc"])
-        kabul += 1; ack = max(ack or -1, o["sira"])
+        kabul += 1; _ack(o["sira"])
     (guncelle or _toplayici_guncelle)(toplayici, simdi, ack)
     toplama = None
     if kabul and topla is not False:
@@ -193,7 +229,8 @@ def al(toplayici: dict, plant: dict, ornekler: list[dict], simdi: datetime | Non
         except Exception as e:   # noqa: BLE001 — toplama hatası alımı geri almaz; örnekler defterde
             toplama = {"durum": "hata", "hata": f"{type(e).__name__}: {e}"}
     return {"kabul": kabul, "yinelenen": yinelenen, "catisma": catisma, "hatali": hatali, "ack_sira": ack, "toplama": toplama,
-            "not": "ack_sira'ya kadar olan örnekler kalıcı; çatışanlar (aynı sıra, farklı içerik) reddedildi — toplayıcı bunları yeni sıra ile yeniden göndermeli."}
+            "not": "ack_sira'ya kadar olan örnekler kalıcı; çatışanlar (aynı sıra, farklı içerik) reddedildi — toplayıcı bunları yeni sıra ile yeniden göndermeli. "
+                   "Hatalı örnek ack'i durdurur: ilk hatalı sıradan itibaren örnekler düzeltilip yeniden gönderilmeli."}
 
 
 def _toplayici_guncelle(toplayici: dict, simdi, ack) -> None:
