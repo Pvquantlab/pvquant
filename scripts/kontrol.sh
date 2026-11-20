@@ -41,6 +41,14 @@ if [ "$KIP" = "tam" ] || [ "$KIP" = "muhur" ]; then
   fi
 fi
 if [ "$KIP" = "muhur" ]; then
+  # 20.11 (CI #798 dersi): kanonik HTML md5 kalkanı yalnız CI'da yaşıyordu; reporting/ değişince burada da koşar (pin ci.yml'den okunur)
+  if [ -n "$(git diff --name-only HEAD -- reporting | head -1)" ]; then
+    adim "rapor kalkanı (kanonik HTML md5 = ci.yml pini)" bash -c '
+      cd reporting/html && rm -rf cikti && ../../.venv/bin/python3 uret.py > /dev/null 2>&1 || { echo "uret.py düştü"; exit 1; }
+      bek=$(grep -o "[0-9a-f]\{32\}  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" ../../.github/workflows/ci.yml | cut -c1-32)
+      olan=$(../../.venv/bin/python3 -c "import hashlib; print(hashlib.md5(open(\"cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html\", \"rb\").read()).hexdigest())")
+      echo "beklenen $bek · olan $olan"; [ -n "$bek" ] && [ "$bek" = "$olan" ]'
+  fi
   if [ -n "$py_degisen" ] && [ -z "$URL" ]; then
     echo "✗ PVQ_TEST_DB_URL boş: mühür kipinde tam pytest test DB ister (RLS/yetki testleri DB'siz anlamsız)"; kotu=$((kotu+1))
   elif [ -n "$py_degisen" ]; then
