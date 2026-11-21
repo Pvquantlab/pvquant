@@ -157,6 +157,11 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
               features={GRAFIK_OZELLIKLERI}
               height={360}
             />
+            {/* G4-C1 (QA Ö-2): sentetik/arşiv santralde amber seri «ölçüm» diye okunmasın */}
+            {grafikGercek.length > 0 && seri.gercek_veri_turu && seri.gercek_veri_turu !== "canli" && (
+              <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "10px 0 0" }}>
+                Gerçekleşen seri {seri.gercek_veri_turu === "sentetik" ? "sentetik veridir" : seri.gercek_veri_turu === "tarihsel_arsiv" ? "tarihsel arşiv verisidir" : "canlı ölçüm değildir"}; canlı ölçüm olarak okunmamalı.
+              </p>)}
             {/* 23.10 altıncı tur: tahmin kimliği (mod · aralık kaynağı) görünür tek satır; uzun «Ne gösterir»
                 açıklaması açılır alanda (details) — metin aynen, bilgi kaybı yok */}
             <p className="soluk t-ikincil" style={{ margin: "12px 0 0" }}>

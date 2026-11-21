@@ -220,3 +220,26 @@ test("G4-B web (K-A/K-B): bildirim muhatabı satırı, Plan dışı sözlükte, 
   assert.match(g, /MUTABAKAT_OZET\[r\.mutabakat_durum \?\? ""\] \?\? \(r\.mutabakat_durum === "saglikli" \? ", uzlaştırma belgeleri yüklü" : ""\)/, "«belgeler yüklü» yalnız sağlıklı boyutta (QA İ/Ö-14)");
   assert.match(g, /uygulanmiyor: "; uzlaştırma bildirimi bu santralde takip edilmiyor"/);
 });
+
+test("G4-C1 web: gerçekleşen seri API'den eşlenir (null sabiti yok), sentetik/arşiv notu, amber yalnız gerçekleşen", () => {
+  const c = oku("../../src/api/client.ts");
+  assert.match(c, /gercek_kw: s\.gercek_kw \?\? null \};/, "uyarla gercek_kw eşler");
+  assert.doesNotMatch(c, /gercek_kw: null \};/, "eski null sabiti kalktı");
+  assert.match(c, /gercek_kw\?: number \| null \}\[\];/, "ForecastYanit alanı");
+  const s = oku("../../src/features/santralim/Santralim.tsx");
+  assert.match(s, /grafikGercek\.length > 0 && veriTuru && veriTuru !== "canli" &&/, "sentetik/arşiv notu yalnız seri varken ve canlı değilken");
+  assert.match(c, /gercek_veri_turu: g\.gercek_veri_turu \?\? null/, "QA Ö-1: veri türü seriyle gelir");
+  assert.match(s, /simdiGercekSon\(seri\.saatlik, t0\)/, "QA İ-1: kadran son tamamlanmış saat");
+  assert.match(s, /olcumMu \? `\$\{olcumAdi\} · \$\{olcumSaati\} saati` : "son tahminden"/, "QA İ-2: kadran etiketi veri türüne göre");
+  assert.match(oku("../../src/features/sayfalar/Tahminler.tsx"), /seri\.gercek_veri_turu !== "canli" &&/, "QA Ö-2: Tahminler notu");
+  assert.match(s, /actual=\{grafikGercek\}/, "grafik gerçekleşen girişi");
+});
+
+test("G4-C2 web: histogram ondalığı kutu genişliğinden, kutu genişliği eksende, etiket çakışması gizli", () => {
+  const d = oku("../../src/features/sayfalar/Dogruluk.tsx");
+  assert.match(d, /const kutuGen = hd\?\.kutu_mwh \?\? \(kutular\.length \? kutular\[0\]\.hi - kutular\[0\]\.lo : 1\);/);
+  assert.match(d, /const ond = kutuGen >= 1 \? 0 : kutuGen >= 0\.1 \? 1 : 2;/, "0,01 MWh kutu → 2 hane");
+  assert.match(d, /kutu \$\{sayiTr\(kutuGen, ond\)\} MWh`/, "kutu genişliği eksen adında (birim MWh)");
+  assert.match(d, /axisLabel: \{ color: soluk, fontFamily: veri, fontSize: 13, hideOverlap: true \} \},   \/\/ G4-C2/);
+  assert.match(oku("../../src/api/types.ts"), /kutu_mwh\?: number \| null; kutu_kaynak\?: string \| null;/);
+});

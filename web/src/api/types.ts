@@ -374,6 +374,7 @@ export interface TahminSerisi {
   /** v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları. */
   etiket?: string | null; nwp_bilesenler?: Record<string, string> | null;
   ac_tavani_kw: number | null; simdi_idx: number | null;
+  /** G4-C1: gerçekleşen serinin veri türü (canli | sentetik | tarihsel_arsiv | yok) — tek kaynak, dengesizlik ucuna bağımlı değil */ gercek_veri_turu?: string | null;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes: { gun: string; dogus: string; batis: string }[];
   saatlik: { ts: string; p50_kw: number; p10_kw: number | null;
@@ -438,6 +439,7 @@ export interface HataDagilimi {
   mu: number | null; sd: number | null; ndays: number;
   p10: number | null; p50: number | null; p90: number | null;
   birim: string; kova: string; tz: string;
+  /** G4-C2: kutu genişliği (MWh) ve kaynağı (fd | scott | taban | sabit); eski sunucuda yok */ kutu_mwh?: number | null; kutu_kaynak?: string | null;
 }
 
 /** /saat-profili yanıtı — apps/api/main.py v2.532 ile birebir (saat × gün matrisi 04.11.2026'da kaldırıldı; Kalibrasyon sayfası). */

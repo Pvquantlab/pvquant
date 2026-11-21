@@ -29,7 +29,9 @@ interface ForecastYanit {
   series: { ts_utc: string; p10_kw: number | null;
             p50_kw: number | null; p90_kw: number | null;
             /* v2.204: ic bant — eski kosu/Mod A-B'de null */
-            p25_kw?: number | null; p75_kw?: number | null }[];
+            p25_kw?: number | null; p75_kw?: number | null;
+            /* G4-C1 (UAT G4-3): gerçekleşen üretim — yalnız tamamlanmış geçmiş saat; yoksa null */ gercek_kw?: number | null }[];
+  /** G4-C1: canli | sentetik | tarihsel_arsiv | yok */ gercek_veri_turu?: string | null;
 }
 
 /** v2.73-C: 401'de oturum dusurulur — token 12 saatte olur, SPA sessiz kirilmasin. */
@@ -297,7 +299,7 @@ export function rolum(): string {
 }
 
 /** Gercek yaniti UI sekline tasi. API'nin vermedigi alanlar null kalir
- *  (gercek_kw, gunluk bant, AC tavani) — istemci veri UYDURMAZ. */
+ *  (gunluk bant, AC tavani; gercek_kw G4-C1 ile API'den) — istemci veri UYDURMAZ. */
 function uyarla(g: ForecastYanit): TahminSerisi {
   const simdi = Date.now();
   let simdiIdx: number | null = null;
@@ -307,7 +309,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
     return { ts: s.ts_utc, p50_kw: s.p50_kw ?? 0,
              p10_kw: s.p10_kw, p90_kw: s.p90_kw,
              p25_kw: s.p25_kw ?? null, p75_kw: s.p75_kw ?? null,  // v2.204
-             gercek_kw: null };
+             gercek_kw: s.gercek_kw ?? null };   // G4-C1: API'den gerçekleşen (geçmiş saat), yoksa null — istemci yine uydurmaz
   });
   const gunler = new Map<string, number>();
   for (const s of saatlik) {
@@ -318,6 +320,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
     mod: g.mode, model: "", kosu_zamani: g.run_at ?? "",
     etiket: g.etiket ?? null, nwp_bilesenler: g.nwp_bilesenler ?? null,   // v2.605 (F4-K): tahmin etiketi ve hava tahmini kaynak zamanları
     ufuk_saat: g.hours, ac_tavani_kw: null, simdi_idx: simdiIdx,
+    gercek_veri_turu: g.gercek_veri_turu ?? null,   // G4-C1 (QA Ö-1): aynı yanıttan; sentetik/arşiv etiketi yarışsız
     gunes: (g.gunes ?? []).map((x) =>
       ({ gun: x.gun, dogus: x.dogus_utc, batis: x.batis_utc })),
     saatlik,

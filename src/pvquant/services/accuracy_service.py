@@ -88,13 +88,67 @@ def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
     return saat_profili_hesapla(df, float(p["capacity_kwp"]), tz, gun)
 
 
+_KUTU_125 = (1.0, 2.0, 5.0)
+
+
+def _yuvarla_125(w: float) -> float:
+    """1-2-5 dizisine (… 0,01 0,02 0,05 0,1 0,2 0,5 1 2 5 …) log uzayında en yakın değer."""
+    import math
+    if w <= 0:
+        return 0.01
+    e = math.floor(math.log10(w))
+    adaylar = [m * 10 ** k for k in (e - 1, e, e + 1) for m in _KUTU_125]
+    return float(min(adaylar, key=lambda a: abs(math.log10(a / w))))
+
+
+def kutu_genisligi(sapma, kapasite_kwp: float | None, *, en_az: int = 6, en_cok: int = 20) -> dict:
+    """G4-C2 (UAT 21.11 G4-7) — SAF: günlük sapma dizisinden (MWh/gün) kutu genişliği. Freedman–Diaconis (2·IQR·n^-1/3); IQR 0 ise Scott
+    (3,49·sd·n^-1/3); sd 0 / az örnek (n<4) ise santral tabanı. Taban = kapasiteye ölçekli (kWp/1000 · 0,01 MWh, en az 0,01): küçük santralde
+    0,01, 4,8 MWp'de 0,05 — iki santral aynı sabitle (0,5) tek çubuğa sıkışmaz. Kutu sayısı [en_az, en_cok] bandına kıskaçlanır, sonuç 1-2-5
+    dizisine yuvarlanır (eksen okunur). Uç değer kutu sayısını değil genişliği büyütür (veri atılmaz). Döner: {kutu_mwh, kaynak, n}."""
+    import numpy as np
+    v = np.asarray([float(x) for x in sapma], dtype=float)
+    v = v[np.isfinite(v)]
+    n = int(len(v))
+    taban = _yuvarla_125(max(0.01, (float(kapasite_kwp or 0.0) / 1000.0) * 0.01))
+    if n == 0:
+        return {"kutu_mwh": taban, "kaynak": "taban", "n": 0}
+    aralik = float(v.max() - v.min())
+    if n < 4 or aralik == 0.0:
+        return {"kutu_mwh": taban, "kaynak": "taban", "n": n}
+    q75, q25 = (float(np.percentile(v, q)) for q in (75, 25))
+    iqr = q75 - q25
+    sd = float(v.std(ddof=1))
+    if iqr > 0:
+        w, kaynak = 2.0 * iqr * n ** (-1.0 / 3.0), "fd"
+    elif sd > 0:
+        w, kaynak = 3.49 * sd * n ** (-1.0 / 3.0), "scott"
+    else:
+        return {"kutu_mwh": taban, "kaynak": "taban", "n": n}
+    import math
+    w = max(w, aralik / en_cok, taban)       # çok kutu → genişlet (uç değer), taban altına inme
+    if aralik / w < en_az:
+        w = max(aralik / en_az, taban)       # az kutu → daralt (taban altına inmeden)
+    w = _yuvarla_125(w)
+
+    def _n_kutu(wk: float) -> int:           # QA Ö-1: gerçek kutu sayısı (kenar hizalaması dahil) ile ölç
+        alt = math.floor(float(v.min()) / wk + 1e-9) * wk
+        return max(1, int(math.ceil((float(v.max()) - alt) / wk - 1e-9)))
+    if _n_kutu(w) > en_cok + 4:              # 1-2-5 yuvarlaması bandı aşırı aşarsa bir basamak büyüt
+        w = _yuvarla_125(w * 2.0)
+    if w <= taban + 1e-12:                   # QA Ö-2: taban bağlayıcıysa kaynak «taban» (şeffaflık)
+        kaynak = "taban"
+    return {"kutu_mwh": float(w), "kaynak": kaynak, "n": n}
+
+
 def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
-                  kutu_mwh: float = 0.5):
+                  kutu_mwh: float | None = None):
     """Gunluk sapma dagilimi (F - A, MWh/gun) — rapor s08 tanimiyla ozdes.
     Saatlik ciftler (gece_skill kurallari) yerel gune toplanir; gunde >= 3
-    eslesmis gunduz saati yoksa gun dagilima girmez. Kutu genisligi 1 MWh,
-    sinirlar veriden. Yuzdelikler ham gunluk sapmalardan (interpolasyonsuz
-    numpy percentile, linear)."""
+    eslesmis gunduz saati yoksa gun dagilima girmez. Kutu genisligi: None →
+    veriden (`kutu_genisligi`, G4-C2); sayi verilirse eski sabit davranis
+    (geri uyumluluk). Sinirlar veriden. Yuzdelikler ham gunluk sapmalardan
+    (interpolasyonsuz numpy percentile, linear)."""
     if kova not in _KOVALAR:
         raise ValueError("bilinmeyen kova: %s" % kova)
     lo, hi = _KOVALAR[kova]
@@ -119,7 +173,8 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
     tz = p["tz"] or "UTC"
     bos = {"kutular": [], "mu": None, "sd": None, "ndays": 0,
            "p10": None, "p50": None, "p90": None,
-           "birim": "MWh/gun", "kova": kova, "tz": tz}
+           "birim": "MWh/gun", "kova": kova, "tz": tz,
+           "kutu_mwh": None, "kutu_kaynak": None}   # G4-C2
     if df.empty:
         return bos
     ufuk = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
@@ -147,22 +202,38 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
     if g.empty:
         return bos
     sapma = ((g.f - g.a) / 1000.0).astype(float)                 # kWh -> MWh
+    return kutu_dagilimi(sapma, kutu_mwh, float(p["capacity_kwp"] or 0.0), kova=kova, tz=tz)
+
+
+def kutu_dagilimi(sapma, kutu_mwh: float | None, kapasite_kwp: float | None, *, kova: str = "0-24", tz: str = "UTC") -> dict:
+    """G4-C2 — SAF kuyruk (DB'siz test): kutular + istatistikler. kutu_mwh None → `kutu_genisligi`; verilirse sabit (eski davranış)."""
+    import numpy as np
+    import pandas as pd
+    sapma = pd.Series([float(x) for x in sapma], dtype=float)
+    sapma = sapma[np.isfinite(sapma)].reset_index(drop=True)   # QA Ö-3: NaN/inf sayılmaz, hata da vermez (kutu_genisligi ile aynı süzgeç)
+    if sapma.empty:
+        return {"kutular": [], "mu": None, "sd": None, "ndays": 0, "p10": None, "p50": None, "p90": None, "birim": "MWh/gun", "kova": kova, "tz": tz,
+                "kutu_mwh": None, "kutu_kaynak": None}
+    if kutu_mwh is None:
+        kg = kutu_genisligi(sapma, kapasite_kwp)
+        kutu_mwh, kutu_kaynak = kg["kutu_mwh"], kg["kaynak"]
+    else:
+        kutu_kaynak = "sabit"
     import numpy as np
     mu, sd = float(sapma.mean()), float(sapma.std(ddof=1)) if len(sapma) > 1 else 0.0
     p10, p50, p90 = (float(np.percentile(sapma, q)) for q in (10, 50, 90))
     import math
-    alt = math.floor(float(sapma.min()) / kutu_mwh) * kutu_mwh
-    ust = math.ceil(float(sapma.max()) / kutu_mwh) * kutu_mwh
-    if ust <= alt:
-        ust = alt + kutu_mwh
-    kutular = []
-    k_lo = alt
-    while k_lo < ust - 1e-9:
-        k_hi = k_lo + kutu_mwh
-        adet = int(((sapma >= k_lo) & (sapma < k_hi)).sum())
-        kutular.append({"lo": round(k_lo, 2), "hi": round(k_hi, 2), "adet": adet})
-        k_lo = k_hi
-    return {"kutular": kutular, "mu": round(mu, 2), "sd": round(sd, 2),
-            "ndays": int(len(sapma)), "p10": round(p10, 2),
-            "p50": round(p50, 2), "p90": round(p90, 2),
-            "birim": "MWh/gun", "kova": kova, "tz": tz}
+    # G4-C2: tam sayı kutu dizini ile sayım — eski kayan noktalı sınır döngüsü kutu kenarındaki en büyük değeri ve 0,7/0,01 gibi
+    # tam bölünen değerleri düşürüyordu (ör. [0,1 0,2 0,3] → 2 sayım; 20×0,7 → 0 sayım). Son kutu sağdan kapalı; toplam sayım = n.
+    v = sapma.to_numpy(dtype=float)
+    alt = math.floor(float(v.min()) / kutu_mwh + 1e-9) * kutu_mwh
+    n_kutu = max(1, int(math.ceil((float(v.max()) - alt) / kutu_mwh - 1e-9)))
+    idx = np.clip(np.floor((v - alt) / kutu_mwh + 1e-9).astype(int), 0, n_kutu - 1)
+    sayim = np.bincount(idx, minlength=n_kutu)
+    kutular = [{"lo": round(alt + k * kutu_mwh, 3), "hi": round(alt + (k + 1) * kutu_mwh, 3), "adet": int(sayim[k])} for k in range(n_kutu)]   # 0,01 MWh kutu için 3 hane
+    hane = 2 if kutu_mwh >= 0.1 else 3
+    return {"kutular": kutular, "mu": round(mu, hane), "sd": round(sd, hane),
+            "ndays": int(len(sapma)), "p10": round(p10, hane),
+            "p50": round(p50, hane), "p90": round(p90, hane),
+            "birim": "MWh/gun", "kova": kova, "tz": tz,
+            "kutu_mwh": float(kutu_mwh), "kutu_kaynak": kutu_kaynak}   # G4-C2: şeffaflık (veri | sabit)

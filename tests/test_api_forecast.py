@@ -66,7 +66,7 @@ def test_forecast_200_sekil_ve_saat_kirpma(istemci):
     assert g["hours"] == 3 and len(g["series"]) == 3  # 5 satirdan ilk 3'u
     ilk = g["series"][0]
     assert set(ilk) == {"ts_utc", "p10_kw", "p50_kw", "p90_kw",
-                        "p25_kw", "p75_kw"}   # v2.204: ic bant alanlari
+                        "p25_kw", "p75_kw", "gercek_kw"}   # v2.204: ic bant alanlari; G4-C1: gerceklesen (yalnizca ekleme)
     assert ilk["ts_utc"].startswith("2026-07-30T00:00")
 
 

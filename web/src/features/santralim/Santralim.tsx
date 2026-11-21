@@ -108,7 +108,10 @@ const ESIK_ALANLARI: { k: string; etiket: string; yuzde?: boolean; aralik: strin
 ];
 import { sayiOku as sayiOkuTr, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // v2.641: dosyadaki yerel tarife sayiOku ile çakışmasın
 import { rolum } from "../../api/client";   // v2.641: izleyici rolünde yazma kontrolleri pasif
-import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
+import { t0Hesapla, simdiDegeri, simdiGercekSon, dilimle } from "../sayfalar/tahminPencere";   // G4-C1: kadran son tamamlanmış saatin ölçümü
+/** G4-C1 (QA İ-2): kadran ve not — veri türüne göre ad; sentetik/arşiv «SCADA ölçümü» denmez. */
+const OLCUM_ADI: Record<string, string> = { canli: "SCADA ölçümü", sentetik: "sentetik veri", tarihsel_arsiv: "arşiv verisi", yok: "ölçüm" };
+const OLCUM_NOTU: Record<string, string> = { sentetik: "Gerçekleşen seri sentetik veridir; canlı ölçüm olarak okunmamalı.", tarihsel_arsiv: "Gerçekleşen seri tarihsel arşiv verisidir; canlı ölçüm olarak okunmamalı." };
 import { Cubuklar } from "./Cubuklar";
 
 /** v2.200 (D imzasi): 7 gunluk gorunum — cubuk yerine profilli tablo.
@@ -515,7 +518,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   // ilk denemede `if (!o) return` guard'ının ALTINA kondu → kanca sırası bozuldu
   // (Rendered more hooks) — kancalar erken dönüşten önce yaşar.
   const nowGercek = useMemo(
-    () => (seri ? simdiGercegi(seri.saatlik, t0) : null), [seri, t0]);
+    () => (seri ? simdiGercekSon(seri.saatlik, t0) : null), [seri, t0]);   // G4-C1 (QA İ-1): t0 süren saat → son tamamlanmış saat
+  const veriTuru = seri?.gercek_veri_turu ?? sinif?.veri_turu ?? null;   // G4-C1 (QA Ö-1): önce seriyle gelen tür
   const dilim = useMemo(
     () => (seri ? dilimle(seri.saatlik, t0, "24h") : null), [seri, t0]);
   // 24.10 açık tema geçiş turu: grafik girdileri dilim/seri/özet değişmeden aynı referans — bu sayfanın 12 bağımsız
@@ -653,8 +657,10 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".
   const tavan = seri?.ac_tavani_kw ?? o.ac_tavani_kw ?? null;
   // v2.318: gercek_kw=0 da ölçümdür (gece) — ?? sıfırı korur, yalnız null'da düşer.
-  const gosterilen = nowGercek ?? nowVal;
+  const gosterilen = nowGercek?.kw ?? nowVal;
   const olcumMu = nowGercek !== null;
+  const olcumSaati = nowGercek ? new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: o.tz }).format(new Date(nowGercek.ts)) : null;
+  const olcumAdi = OLCUM_ADI[veriTuru ?? ""] ?? "ölçüm";
   const anlikPay = gosterilen !== null && tavan ? Math.max(0, Math.min(1, gosterilen / tavan)) : null;
   return (
     <Sayfa baslik={o.ad}
@@ -685,7 +691,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
             aria-label={gosterilen === null ? "Şimdi beklenen güç verisi yok"
-              : olcumMu ? `Anlık güç ${sayiTr(gosterilen)} kilovat, ölçüm`
+              : olcumMu ? `Anlık güç ${sayiTr(gosterilen)} kilovat, ${olcumAdi}, ${olcumSaati} saati`
               : `Şimdi beklenen güç ${sayiTr(gosterilen)} kilovat, tahmin`}>
             <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
               stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
@@ -707,7 +713,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             <div className="alt">{tavan ? `AC sınırı ${sayiTr(tavan)} kW` : "AC sınırı —"}</div>
             <div className="alt">{gosterilen === null
               ? "şu anı kapsayan tahmin yok"
-              : olcumMu ? "SCADA ölçümü" : "son tahminden"}</div>
+              : olcumMu ? `${olcumAdi} · ${olcumSaati} saati` : "son tahminden"}</div>
           </div>
         </div>
         <div>
@@ -761,9 +767,14 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             height={340}
           />
         )}
+        {/* G4-C1 (UAT G4-3): gerçekleşen seri artık API'den (geçmiş tamamlanmış saatler) — amber yalnız gerçekleşen. Sentetik/arşiv santralde
+            seri çizilir ama «ölçüm» diye sunulmaz (Faz 0 P0-01 veri türü). */}
+        {grafikGercek.length > 0 && veriTuru && veriTuru !== "canli" && (
+          <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "10px 0 0" }}>
+            {OLCUM_NOTU[veriTuru] ?? "Gerçekleşen seri canlı ölçüm değildir."}
+          </p>)}
         {/* G2 Y-2 (UAT video, 21.11): metin koşulsuzdu — bugün ölçüm varken de «yükleyin» diyordu. Bugünün (santral saat diliminde) ölçümü
-            varsa yazılmaz. Gerçekleşen seri grafiğe henüz bağlı değil (client.ts:290 gercek_kw null; API alanı G4) — o yüzden ölçüm varken
-            «grafikte amber çizgi» vaat edilmez, yalnız yanlış çağrı susar. */}
+            varsa yazılmaz. */}
         {!(o.saglik?.son_scada_iso && gunAnahtari(Date.parse(o.saglik.son_scada_iso), o.tz) === gunAnahtari(Date.now(), o.tz)) && (   /* QA İ-1: son_scada Türkçe metin (trTarih) → ham ISO + gunAnahtari (aynı tz, gün sınırında doğru) */
           <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "10px 0 0" }}>
             Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.

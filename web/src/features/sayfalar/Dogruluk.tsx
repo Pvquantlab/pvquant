@@ -467,10 +467,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     const marka = oku("--marka"), markaKoyu = oku("--marka-koyu");
     const mavi = oku("--chart-p50-future");
     const kutular = hd?.kutular ?? [];
-    // v2.232: TR sayi bicimi + bosluklu ayrac — "-1.5-–1" yigilmasi biter
-    const ond = kutular.some((x) => !Number.isInteger(x.lo) || !Number.isInteger(x.hi)) ? 1 : 0;
+    const kutuGen = hd?.kutu_mwh ?? (kutular.length ? kutular[0].hi - kutular[0].lo : 1);
+    // v2.232: TR sayi bicimi + bosluklu ayrac — "-1.5-–1" yigilmasi biter; G4-C2: ondalık kutu genişliğinden (0,01 MWh kutu → 2 hane)
+    const ond = kutuGen >= 1 ? 0 : kutuGen >= 0.1 ? 1 : 2;
     const etiket = kutular.map((x) => `${sayiTr(x.lo, ond)} \u2013 ${sayiTr(x.hi, ond)}`);
-    const kutuGen = kutular.length ? kutular[0].hi - kutular[0].lo : 1;
     const xi = (v: number) => (v - (kutular[0]?.lo ?? 0)) / kutuGen - 0.5;
     const toplam = kutular.reduce((a, b) => a + b.adet, 0);
     let birikim = 0;
@@ -484,12 +484,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
         valueFormatter: (v: unknown) => `${v}` },
       xAxis: [
-        { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
+        { type: "category", data: etiket, name: `MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen) \u00b7 kutu ${sayiTr(kutuGen, ond)} MWh`,   // G4-C2: kutu genişliği görünür
           nameLocation: "middle", nameGap: 26,
           nameTextStyle: { color: soluk, fontSize: 13 },
           axisTick: { show: false },
           axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
-          axisLabel: { color: soluk, fontFamily: veri, fontSize: 13 } },
+          axisLabel: { color: soluk, fontFamily: veri, fontSize: 13, hideOverlap: true } },   // G4-C2: 20 kutuya kadar etiket çakışması gizlenir
         // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
         // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
         { type: "value", min: -0.5, max: Math.max(0.5, kutular.length - 0.5),

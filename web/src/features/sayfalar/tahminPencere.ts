@@ -73,6 +73,20 @@ export function simdiGercegi(
   return i === null ? null : saatlik[i].gercek_kw;
 }
 
+/** G4-C1 (UAT G4-3, QA İ-1): kadran için SON TAMAMLANMIŞ saatin ölçümü. t0 = floor(şimdi) süren saattir ve API ona ölçüm vermez (ts+1 sa ≤ şimdi
+ *  kuralı); bu yüzden t0−1 sa (yoksa t0−2 sa) örneğinin gercek_kw'si döner, ts ile birlikte (etiket «HH:00 saati»). Daha eskisi «anlık» sayılmaz → null. */
+export function simdiGercekSon(
+  saatlik: Saatlik[],
+  t0Ms: number,
+): { kw: number; ts: string } | null {
+  for (const geri of [1, 2]) {
+    const hedef = t0Ms - geri * 3_600_000;
+    const s = saatlik.find((x) => Math.abs(toMs(x.ts) - hedef) < 60_000);
+    if (s && s.gercek_kw !== null) return { kw: s.gercek_kw, ts: s.ts };
+  }
+  return null;
+}
+
 function enYakinIdx(saatlik: Saatlik[], t0Ms: number): number | null {
   if (saatlik.length === 0) return null;
   let best = 0;

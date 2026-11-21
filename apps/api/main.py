@@ -489,6 +489,42 @@ def forecast(plant_id: str, hours: int = 168, claims=Depends(gecerli_kullanici))
     return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"forecast?hours={hours}", lambda: _forecast_uret(plant_id=plant_id, hours=hours, claims=claims), ttl_sn=300)
 
 
+def _gercek_saatlik(tenant_id, plant_id, bas, bit, simdi=None) -> dict[int, float]:
+    """G4-C1 (UAT 21.11 G4-3): seri aralığındaki gerçekleşen üretim — {epoch_sn: kW}. Kaynak scada_hourly (ozet_service ile aynı), yalnız geçerli bayrak
+    (`kalite_sozlugu` tazelik) ve yalnız TAMAMLANMIŞ geçmiş saatler (ts + 1 sa ≤ şimdi): gelecek ya da süren saat, ölçüm satırı olsa bile (sentetik tohum)
+    verilmez. Ölçüm yoksa anahtar yok → null (0 yazılmaz). ts_utc ve seri dizini UTC; kW birimi değişmez."""
+    import datetime as _dt
+
+    from sqlalchemy import text as _text
+
+    from pvquant.db import tenant_baglami as _tb
+    from pvquant.services import kalite_sozlugu as _ks
+    simdi = simdi or _dt.datetime.now(_dt.timezone.utc)
+    son = min(_utc_ts(bit), simdi - _dt.timedelta(hours=1))
+    if son < _utc_ts(bas):
+        return {}
+    with _tb(tenant_id) as s:
+        rows = s.execute(_text("SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND ts_utc >= :a AND ts_utc <= :b AND power_kw IS NOT NULL AND "
+                               + _ks.sql_kosulu("tazelik") + " ORDER BY ts_utc"), {"p": plant_id, "a": _utc_ts(bas), "b": son}).all()
+    return {int(_utc_ts(r.ts_utc).timestamp()): float(r.power_kw) for r in rows}
+
+
+def _utc_ts(ts):
+    """pandas/datetime damgasını tz'li UTC datetime'a çevirir (çıplak damga UTC sayılır — scada_hourly ve forecast_values ts_utc)."""
+    import datetime as _dt
+    t = pd.Timestamp(ts)
+    t = t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+    return t.to_pydatetime().astimezone(_dt.timezone.utc)
+
+
+def _santral_veri_turu(tenant_id, plant_id) -> str | None:
+    """G4-C1: santralın veri türü (canli | sentetik | tarihsel_arsiv | yok) — gerçekleşen seri «ölçüm» diye sunulmasın (Faz 0 P0-01 sınıfı)."""
+    from pvquant.services import durum_sozlugu as _ds
+    from pvquant.services import plant_service as _ps
+    row = _ps.getir(tenant_id, plant_id)
+    return _ds.santral_sinifi(row.get("params_json") if row else None)["veri_turu"] if row else None
+
+
 def _forecast_uret(plant_id: str, hours: int = 168,
              claims=Depends(gecerli_kullanici)):
     """v2.72 — son kosunun saatlik P10/P50/P90 serisi (ilk `hours` saat).
@@ -513,8 +549,17 @@ def _forecast_uret(plant_id: str, hours: int = 168,
             claims["tenant_id"], plant_id, df.index.min(), df.index.max())
     except Exception:
         gunes = []
+    # G4-C1 (UAT G4-3): gerçekleşen üretim seriye eklenir (geçmiş tamamlanmış saatler; yoksa null). Okuma düşerse seri ÖLMEZ — gerçekleşen null kalır.
+    try:
+        gercek = _gercek_saatlik(claims["tenant_id"], plant_id, df.index.min(), df.index.max()) if len(df) else {}
+        veri_turu = _santral_veri_turu(claims["tenant_id"], plant_id)
+    except Exception:  # noqa: BLE001 — QA Ö-3: sessiz sönmesin; iz bırakır
+        import logging as _logging
+        _logging.getLogger("pvquant.api").warning("forecast gerçekleşen okunamadı: plant=%s", plant_id, exc_info=True)
+        gercek, veri_turu = {}, None
     return {
         "plant_id": plant_id,
+        "gercek_veri_turu": veri_turu,   # G4-C1: canli | sentetik | tarihsel_arsiv | yok — sentetik/arşiv «ölçüm» değildir
         "run_at": kosu[0].run_at.isoformat() if kosu else None,
         "mode": kosu[0].mode if kosu else None,
         # v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları {kaynak: ISO}
@@ -528,7 +573,8 @@ def _forecast_uret(plant_id: str, hours: int = 168,
              "p50_kw": _kw(r.p50_kw), "p90_kw": _kw(r.p90_kw),
              # v2.204: ic bant — eski kosuda/A-B'de null (durust bantsizlik)
              "p25_kw": _kw(getattr(r, "p25_kw", None)),
-             "p75_kw": _kw(getattr(r, "p75_kw", None))}
+             "p75_kw": _kw(getattr(r, "p75_kw", None)),
+             "gercek_kw": _kw(gercek.get(int(_utc_ts(ts).timestamp())))}   # G4-C1: ölçüm yoksa/gelecekse null
             for ts, r in df.iterrows()
         ],
     }
