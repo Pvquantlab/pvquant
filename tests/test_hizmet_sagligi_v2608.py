@@ -84,7 +84,7 @@ def test_senaryo4_epias_bagli_belge_yok():
     assert ds.mutabakat_durumu("2026-10", True, False, dt.date(2026, 11, 20), on, nihai)["durum"] == "dikkat"      # nihai tarihi geçti, nihai yok
     assert ds.mutabakat_durumu("2026-10", True, False, dt.date(2026, 11, 12), on, nihai)["durum"] == "saglikli"    # nihai henüz beklenmiyor
     assert ds.mutabakat_durumu("2026-10", True, True, dt.date(2026, 11, 20), on, nihai, fem_kayitli=False)["durum"] == "dikkat"
-    assert ds.mutabakat_durumu("2026-10", True, True, dt.date(2026, 11, 20), on, nihai, segment_var=False)["durum"] == "dikkat"
+    assert ds.mutabakat_durumu("2026-10", True, True, dt.date(2026, 11, 20), on, nihai, segment_var=False)["durum"] == "dogrulanamadi"   # G4-B (K-A): segment yok → kesin hüküm değil, eylem «ayar»
 
 
 def test_alarm_ve_hukum():
@@ -254,7 +254,7 @@ def test_uclar_kapsam(monkeypatch):
         c = TestClient(api_main.app)
         assert c.get("/v1/hizmet-sagligi").json()["ozet"]["durum"] == "uygulanmiyor" and gorulen == {"t": "t-1"}
         soz = c.get("/v1/sozluk/durum").json()
-        assert soz["surum"] == ds.SOZLUK_SURUMU and len(soz["durumlar"]) == 6
+        assert soz["surum"] == ds.SOZLUK_SURUMU and len(soz["durumlar"]) == 7   # G4-B: plan_disi
     finally:
         api_main.app.dependency_overrides.clear()
     monkeypatch.setenv("PVQ_JWT_SECRET", "test-sirri-0123456789abcdef-uzun")

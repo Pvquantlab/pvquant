@@ -32,6 +32,9 @@ function Ayrinti({ sayfa, ad, git }: { sayfa: string; ad: string; git: (s: Sayfa
   return <button type="button" className="dugme kucuk" onClick={() => git(sayfa as SayfaId)}>{ad}</button>;
 }
 
+/** G4-B (K-A): «açık risk yok» cümlesinin uzlaştırma eki — takip kapalı/plan dışı/doğrulanamadı iken «belgeler yüklü» iddiası yok. */
+const MUTABAKAT_OZET: Record<string, string> = { uygulanmiyor: "; uzlaştırma bildirimi bu santralde takip edilmiyor", plan_disi: "; uzlaştırma bildirimi planınıza dâhil değil",
+  dogrulanamadi: "; uzlaştırma bildirimi muhatabı doğrulanamadı", veri_bekleniyor: "; uzlaştırma bildirimi henüz beklenmiyor" };
 export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId) => void }) {
   const ds = useDamgaSurumu();
   const [o, setO] = useState<GenelBakisT | null | undefined>(() => bellekten.genelBakis(plantId));   // bayat-önce
@@ -95,7 +98,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
         </Kart>
         {/* 3 — riskler */}
         <Kart baslik={KART_BASLIKLARI[2]} alt={r.adet ? `bu santralde ${sayiTr(r.adet)} madde, eylem gerektirenler önce` : "bu santralde eylem gerektiren madde yok"} sag={<Rozet durum={r.durum} etiket={r.etiket} />}>
-          {r.liste.length === 0 ? <div className="bos-durum"><div className="bos-bas">Açık risk yok.</div><p>Ölçüm güncel, okunmamış alarm ve süren olay yok, uzlaştırma belgeleri yüklü.</p></div>
+          {r.liste.length === 0 ? <div className="bos-durum"><div className="bos-bas">Açık risk yok.</div><p>Ölçüm güncel, okunmamış alarm ve süren olay yok{MUTABAKAT_OZET[r.mutabakat_durum ?? ""] ?? (r.mutabakat_durum === "saglikli" ? ", uzlaştırma belgeleri yüklü" : "")}.</p></div>
             : <ul className="tanim-listesi risk-listesi">
               {r.liste.map((x: GbRisk, i) => (
                 <li key={`${x.kod}-${i}`}><Rozet durum={x.durum} kucuk /><div><button type="button" className="plat-baglanti risk-baslik" onClick={() => git_(x.baglanti)}>{x.baslik}</button>

@@ -96,7 +96,7 @@ def test_mutabakat_takvim_sirasi():
     assert f(nihai, True, False) == "dikkat"                      # nihai günü tam → beklenir
     assert f(nihai, True, True) == "saglikli"
     assert f(nihai, True, True, fem_kayitli=False) == "dikkat"
-    assert f(dt.date(2026, 11, 9), False, False, segment_var=False) == "dikkat"
+    assert f(dt.date(2026, 11, 9), False, False, segment_var=False) == "dogrulanamadi"   # G4-B (K-A): segment yok → doğrulanamadı (eskiden dikkat)
     assert ds.mutabakat_durumu("2026-10", True, True, nihai, on, nihai)["resmi_durum"] == "dogrulanmadi"   # EPİAŞ durumu dosyadan doğrulanmaz
 
 

@@ -20,6 +20,7 @@ export const HIZMET_DURUMU: Record<string, { etiket: string; sinif: string }> = 
   veri_bekleniyor: { etiket: "Veri bekleniyor", sinif: "rozet-notr" },
   dogrulanamadi: { etiket: "Doğrulanamadı", sinif: "rozet-notr" },
   uygulanmiyor: { etiket: "Uygulanmıyor", sinif: "rozet-notr" },
+  plan_disi: { etiket: "Plan dışı", sinif: "rozet-notr" },   // G4-B (K-A Eksen 3): yükümlülük bilgisi var, modül planda değil; eylem/alarm yok
 };
 export const hizmetDurumu = (kod: string | null | undefined) => HIZMET_DURUMU[kod ?? ""] ?? { etiket: kod ?? "—", sinif: "rozet-notr" };
 

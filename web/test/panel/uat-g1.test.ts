@@ -202,3 +202,21 @@ test("G4-A web: kapsama satırı KPI ile aynı payda; boş kümede yanıltıcı 
   assert.match(oku("../../src/features/sayfalar/Sayac.tsx"), /r\.saat_tahmini \? yuzde\(r\.olc_fark_pct\) : r\.saat_ortak \? <span className="soluk">aynı<\/span> : "—"/, "G4-10/Q-17");
   assert.match(oku("../../src/features/sayfalar/Portfoy.tsx"), /\$\{sayiTr\(\(p\?\.santraller \?\? \[\]\)\.filter\(\(r\) => r\.bugun_kwh == null \|\| r\.yarin_kwh == null\)\.length\)\} santralde tam gün tahmini yok; toplam gösterilmez/, "G4-10/Q-13");
 });
+
+test("G4-B web (K-A/K-B): bildirim muhatabı satırı, Plan dışı sözlükte, DSG kartı adlandırma + açıklama", () => {
+  const s = oku("../../src/features/santralim/Santralim.tsx");
+  assert.match(s, /Bildirim muhatabı: \{seg\.bildirim\.muhatap_etiketi\} \(\{KESINLIK_AD\[seg\.bildirim\.kesinlik\] \?\? seg\.bildirim\.kesinlik\}\)/, "K-A Eksen 1 satırı");
+  assert.match(s, /bildirim: d\.segment\.bildirim/, "ilk okuma bildirimi taşır");
+  assert.match(s, /bildirim: r\.bildirim/, "Kaydet yanıtı bildirimi taşır");
+  assert.equal((s.match(/setSeg\(\(s\) => \(s && r\.bildirim \? \{ \.\.\.s, bildirim: r\.bildirim \} : s\)\)/g) ?? []).length, 2, "QA Ö-3: DSG/katılımcı ve GTŞ Kaydet de satırı günceller");
+  assert.match(s, /KESINLIK_AD: Record<string, string> = \{ dogrulandi: "doğrulandı", kismen: "kısmen doğrulandı", dogrulanamadi: "doğrulanamadı" \}/);
+  assert.match(oku("../../src/lib/durum.ts"), /plan_disi: \{ etiket: "Plan dışı", sinif: "rozet-notr" \}/, "plan dışı nötr rozet — uyarı/alarm değil");
+  assert.match(oku("../../src/api/types.ts"), /export interface BildirimBilgisi \{ muhatap: string; muhatap_etiketi: string; kesinlik: string; dayanak: string; not: string \}/);
+  const p = oku("../../src/features/sayfalar/Portfoy.tsx");
+  assert.match(p, /MWh \$\{dsg\.gosterge === false \? "grup payı \(eşik sonrası\)" : "net sapma"\}/, "K-B adlandırma");
+  assert.match(p, /EDT ve KÜPST ayrı uzlaştırma kalemleridir, tek başına maliyetin toplamı değildir/, "K-B açıklama");
+  assert.doesNotMatch(p, /MWh net sapma`\}/, "eski etiket hesap modunda kalmaz");
+  const g = oku("../../src/features/genel/GenelBakis.tsx");
+  assert.match(g, /MUTABAKAT_OZET\[r\.mutabakat_durum \?\? ""\] \?\? \(r\.mutabakat_durum === "saglikli" \? ", uzlaştırma belgeleri yüklü" : ""\)/, "«belgeler yüklü» yalnız sağlıklı boyutta (QA İ/Ö-14)");
+  assert.match(g, /uygulanmiyor: "; uzlaştırma bildirimi bu santralde takip edilmiyor"/);
+});

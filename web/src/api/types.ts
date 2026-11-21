@@ -303,8 +303,11 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
     /** v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri (hazırlık) */ depolama?: Depolama;
     /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean;
     /** v2.541: aynı kodlu santraller DSG'de tek üye (DK-252); lisanstaki yıllık üretim (LDYEÜM, Karar 14626; DK-804) */ piyasa_katilimcisi?: string | null; lisans_yillik_uretim_mwh?: number | null;
-    /** v2.541 (EK-2 DK-267): UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre */ gts_toplayici_adi?: string | null };
+    /** v2.541 (EK-2 DK-267): UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre */ gts_toplayici_adi?: string | null;
+    /** G4-B (UAT 21.11 K-A): uzlaştırma bildiriminin muhatabı — mevzuat ekseni; abonelik kapsamından ve santral türünden ayrı */ bildirim?: BildirimBilgisi };
 }
+/** G4-B (K-A): bildirim muhatabı ve kesinlik. muhatap: santral | dst | toplayici_gts | yok | belirsiz; kesinlik: dogrulandi | kismen | dogrulanamadi */
+export interface BildirimBilgisi { muhatap: string; muhatap_etiketi: string; kesinlik: string; dayanak: string; not: string }
 /** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
 export interface DengesizlikGeriTest {
   gun_sayisi: number; pencere_gun?: number; baslik: string; kural_surumu?: string;
@@ -941,6 +944,7 @@ export interface GenelBakis {
     program: GbDurum & { adimlar: { tahmin: GbAdim; hazirlik: GbAdim; bildirim: GbAdim; kabul: GbAdim } | null; eksik: string[];
       pencere: { durum?: string; hedef_gun?: string; dakika_kaldi?: number; teyit_saati?: string } | null; dogrulanmayan?: string[] } };
   riskler: GbDurum & { liste: GbRisk[]; adet: number; kapsam: string; eylem: string | null; baglanti: string; not_: string;
+    /** G4-B: uzlaştırma boyutunun durumu (uygulanmiyor / plan_disi / dogrulanamadi iken «belgeler yüklü» yazılmaz) */ mutabakat_durum?: string | null;
     kiraci: { santral: number; olcum_gecikmis: number; dikkat: number; kritik: number; baglanti: string } | null };
   finans: GbDurum & { kapsam: string; eylem: string | null; baglanti: string; not_: string; hesaplanamiyor: string | null;
     son_sonuc: { donem_kodu: string; donem_bas: string; donem_bit: string; hesap_zamani: string; yas_saat: number | null; tutar_tl: number | null; alacak_tl: number | null;

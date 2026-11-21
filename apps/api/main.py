@@ -588,7 +588,7 @@ def santral_kunye_yeni(plant_id: str, p: KunyeIstek, claims=Depends(yazma_yetkis
 
 @app.get("/v1/sozluk/durum")
 def sozluk_durum(claims=Depends(gecerli_kullanici)):
-    """v2.608 (Faz 5 F5-C): hizmet durumu sözlüğü — altı durum, sıra, eşikler. Genel bakış kartları ve hizmet sağlığı bu kodlarla konuşur."""
+    """v2.608 (Faz 5 F5-C): hizmet durumu sözlüğü — yedi durum (G4-B: plan_disi), sıra, eşikler. Genel bakış kartları ve hizmet sağlığı bu kodlarla konuşur."""
     from pvquant.services import durum_sozlugu
     return durum_sozlugu.sozluk()
 
@@ -1923,8 +1923,10 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, request: Request, claims=Depe
     eski_pj = dict((plant_service.getir(claims["tenant_id"], plant_id) or {}).get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     _ayar_izi("santral_segment", claims, plant_id, eski_pj, pj, ek={"istek": dict(anahtarlar)}, ip=(request.client.host if request.client else None))   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
+    _sb = dengesizlik_service.segment_bilgisi(pj)   # QA Ö-9: tek çağrı
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi", "depolama_gucu_mw", "depolama_kapasite_mwh", "depolama_konfigurasyon", "depolama_uevcb", "depolama_kabul_tarihi", "depolama_butunlesik")}, **dengesizlik_service.segment_bilgisi(pj),
-            "depolama": dengesizlik_service.segment_bilgisi(pj)["depolama"]}   # v2.543 (P9)
+            "depolama": _sb["depolama"],   # v2.543 (P9)
+            "bildirim": _sb["bildirim"]}   # G4-B (K-A)
 
 
 class SantralSinifiIstek(BaseModel):

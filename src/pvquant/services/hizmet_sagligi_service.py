@@ -146,7 +146,10 @@ def _santral_sinifla(r, sg: dict, simdi: dt.datetime, pencere: dict, takvim: dic
                                eksik=([] if seg.get("uevcb") or not seg["kgup_yukumlu"] else ["uevcb"])),
         "mutabakat": ds.mutabakat_durumu(sg["donem"].strftime("%Y-%m"), bil is not None, bool(bil["nihai"]) if bil else False, sg["bugun"],
                                          takvim["on"], takvim["nihai"], segment_var=seg["segment"] is not None, sayac_son=sg["sayac"].get(pid),
-                                         fem_kayitli=(sg["fem"].get(pid) is not None) if (v.get("son_olcum") is not None) else None),
+                                         fem_kayitli=(sg["fem"].get(pid) is not None) if (v.get("son_olcum") is not None) else None,
+                                         muhatap=(seg.get("bildirim") or {}).get("muhatap"), kesinlik=(seg.get("bildirim") or {}).get("kesinlik"),   # G4-B (K-A)
+                                         muhatap_etiketi=(seg.get("bildirim") or {}).get("muhatap_etiketi"), bildirim_not=(seg.get("bildirim") or {}).get("not"),
+                                         santral_turu=vsinif.get("santral_turu"), veri_turu=vsinif.get("veri_turu"), plan_ici=sg.get("plan_mutabakat", {}).get(str(r["tenant_id"]))),
         "alarm": ds.alarm_durumu(int(al.get("kritik") or 0), int(al.get("uyari") or 0), sg["olay"].get(pid, 0), ht["started"] if ht else None, simdi),
     }
     if ht:
@@ -184,6 +187,16 @@ def _hesapla(s, simdi: dt.datetime, tenant_id: str | None, *, yalniz_sorunlu: bo
     from pvquant.ext.turkiye import kgup as kg
     from pvquant.ext.turkiye import takvim as tk
     sg = _sinyaller(s, simdi, tenant_id)
+    # G4-B (K-A Eksen 3): kiracı başına Mutabakat modülü planda mı (haklar önbellekli). Zorlama kipi «uyarı» iken kapılar yalnız iz bırakır ve
+    # modül fiilen kullanılabilir → plan içi sayılır (eylem bastırılmaz); «zorla» kipinde plan dışı → PLAN_DISI. Okunamazsa None → bilgi gizlenmez.
+    plan: dict[str, bool | None] = {}
+    for tid in {str(r["tenant_id"]) for r in sg["santraller"]}:
+        try:
+            from pvquant.services import yetki_service as _ys
+            plan[tid] = _ys.modul_var(tid, "mutabakat") or _ys.zorlama_kipi() != "zorla"
+        except Exception:  # noqa: BLE001
+            plan[tid] = None
+    sg["plan_mutabakat"] = plan
     if not sg["santraller"]:
         return {"zaman": simdi.isoformat(), "santraller": [], "kuruluslar": [], "portfoyler": [], "ozet": {"santral": 0, "durum": ds.Durum.UYGULANMIYOR.value,
                 "etiket": ds.etiket(ds.Durum.UYGULANMIYOR), "sayim": ds.sayim([]), "boyut": {}}, "esik": dict(ds.ESIK), "sozluk_surumu": ds.SOZLUK_SURUMU,

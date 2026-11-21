@@ -27,6 +27,7 @@ class Durum(str, Enum):
     VERI_BEKLENIYOR = "veri_bekleniyor"
     DOGRULANAMADI = "dogrulanamadi"
     UYGULANMIYOR = "uygulanmiyor"
+    PLAN_DISI = "plan_disi"   # G4-B (K-A, Eksen 3): yükümlülük bilgisi var, modül planda değil — eylem/alarm üretmez
 
 
 ETIKET: dict[Durum, tuple[str, str]] = {
@@ -36,10 +37,11 @@ ETIKET: dict[Durum, tuple[str, str]] = {
     Durum.VERI_BEKLENIYOR: ("Veri bekleniyor", "takvim ya da ritim gereği henüz gelmedi"),
     Durum.DOGRULANAMADI: ("Doğrulanamadı", "sınanabilir bir sinyal yok"),
     Durum.UYGULANMIYOR: ("Uygulanmıyor", "bu santral için geçerli değil"),
+    Durum.PLAN_DISI: ("Plan dışı", "yükümlülük bilgisi var; özellik planınıza dâhil değil, eylem üretilmez"),
 }
 # en kötüden en iyiye: birleştirmede (santral → kuruluş → platform) en kötü kazanır; «uygulanmıyor» hükme girmez
-SIRA: tuple[Durum, ...] = (Durum.KRITIK, Durum.DIKKAT, Durum.DOGRULANAMADI, Durum.VERI_BEKLENIYOR, Durum.SAGLIKLI, Durum.UYGULANMIYOR)
-SOZLUK_SURUMU = "2026-11-12"
+SIRA: tuple[Durum, ...] = (Durum.KRITIK, Durum.DIKKAT, Durum.DOGRULANAMADI, Durum.VERI_BEKLENIYOR, Durum.SAGLIKLI, Durum.PLAN_DISI, Durum.UYGULANMIYOR)
+SOZLUK_SURUMU = "2026-11-21"   # G4-B: plan_disi durumu; mutabakat üç eksen
 
 # eşikler (saat) — kaynakları docstring'de; yanıtta `esik` nesnesi olarak döner
 ESIK = {
@@ -238,22 +240,51 @@ def kgup_durumu(yukumlu: bool | None, kesim_oncesi_kosu, oneri_surum: int | None
 
 
 def mutabakat_durumu(donem: str, bildirim_var: bool, nihai_var: bool, bugun: dt.date, on_tarih: dt.date, nihai_tarih: dt.date, *,
-                     segment_var: bool = True, sayac_son=None, fem_kayitli: bool | None = None, simdi: dt.datetime | None = None) -> dict:
+                     segment_var: bool = True, sayac_son=None, fem_kayitli: bool | None = None, simdi: dt.datetime | None = None,
+                     muhatap: str | None = None, kesinlik: str | None = None, muhatap_etiketi: str | None = None, bildirim_not: str | None = None,
+                     santral_turu: str | None = None, veri_turu: str | None = None, plan_ici: bool | None = None) -> dict:
     """Son kapanmış dönemin uzlaştırma hazırlığı: EPİAŞ bildirimi (ön/nihai) takvime göre bekleniyor mu, yüklendi mi; sayaç kapsamı; FEM kaydı.
     EPİAŞ bağlantısı sağlıklı olsa da belge yüklenmediyse DİKKAT (senaryo 4)."""
     z = {"donem": donem, "on_bildirim": on_tarih.isoformat(), "nihai_bildirim": nihai_tarih.isoformat(), "bildirim_var": bildirim_var, "nihai_var": nihai_var,
-         "sayac_son": _iso(sayac_son), "fem_kayitli": fem_kayitli, "resmi_durum": "dogrulanmadi"}
-    if not segment_var:
-        return _sonuc(Durum.DIKKAT, "piyasa segmenti seçilmedi; uzlaştırma kalemleri hesaplanamaz", **z)
-    if bugun < on_tarih:
-        return _sonuc(Durum.VERI_BEKLENIYOR, f"{donem} ön bildirimi {on_tarih.strftime('%d.%m.%Y')} tarihinde yayımlanır", **z)
-    if not bildirim_var:
-        return _sonuc(Durum.DIKKAT, f"{donem} dönemi için EPİAŞ bildirimi yüklenmedi", **z)
-    if bugun >= nihai_tarih and not nihai_var:
-        return _sonuc(Durum.DIKKAT, f"{donem} nihai bildirimi henüz yüklenmedi (ön bildirim var)", **z)
-    if fem_kayitli is False:
-        return _sonuc(Durum.DIKKAT, f"{donem} için finansal sonuç kaydı yok (ölçüm ya da fiyat eksik olabilir)", **z)
-    return _sonuc(Durum.SAGLIKLI, f"{donem} bildirimi yüklü; EPİAŞ'ın uzlaştırma durumu dosyadan doğrulanmaz", **z)
+         "sayac_son": _iso(sayac_son), "fem_kayitli": fem_kayitli, "resmi_durum": "dogrulanmadi",
+         "muhatap": muhatap, "muhatap_etiketi": muhatap_etiketi, "kesinlik": kesinlik, "plan_ici": plan_ici, "eylem": None}
+    # G4-B (UAT 21.11 K-A kararı, §11.9/§11.10) — eksenler AYRI: (1) mevzuat muhatabı, (2) santral türü, (3) abonelik kapsamı.
+    # Doğrulanamayan durum kesin hüküm/alarm üretmez; sanal testte yükümlülük yok; plan dışında bilgi var, eylem yok. Eski çağrı (yeni girdiler None) aynen.
+    if santral_turu == "sanal_test":
+        return _sonuc(Durum.UYGULANMIYOR, "sanal test santralı — uzlaştırma bildirimi takibi ve yükümlülük yok", **z)
+    # Eksen 2 (veri türü) ve Eksen 1 (muhatap başka) ve Eksen 3 (plan dışı) BASTIRMA durumları: belge yoksa doğrudan; belge yüklüyse normal akış
+    # değerlendirilir ama DİKKAT/KRİTİK üretmez (QA İ-1: bastırma yalnız «yükle» dalını değil, nihai/FEM dallarını da kapsar).
+    bastirma: tuple[Durum, str] | None = None
+    if veri_turu == "tarihsel_arsiv":
+        bastirma = (Durum.UYGULANMIYOR, "tarihsel arşiv verisi — bildirim takibi kapalı (yükümlülük kuralı: " + (muhatap_etiketi or "—") + ")")
+    elif muhatap in ("toplayici_gts", "yok"):
+        bastirma = (Durum.UYGULANMIYOR, f"uzlaştırma bildiriminin muhatabı bu santral değil ({muhatap_etiketi or muhatap}); isteğe bağlı: GTŞ/toplayıcı döküm ya da ödeme belgesi"
+                    + (f" — {bildirim_not}" if bildirim_not else ""))
+    elif muhatap == "belirsiz" or not segment_var:
+        return _sonuc(Durum.DOGRULANAMADI, "bildirim muhatabı doğrulanamadı: " + (bildirim_not or "piyasa segmenti seçilmedi") + " (Santralim › Santral ayarları)", **{**z, "eylem": "ayar"})
+    elif plan_ici is False:   # eylem («yükle») plan dışında üretilmez; bilgi kalır
+        bastirma = (Durum.PLAN_DISI, f"yükümlülük: bildirim muhatabı {muhatap_etiketi or muhatap or '—'}; Mutabakat modülü planınıza dâhil değil (Ayarlar › Abonelik)")
+    if bastirma and not bildirim_var:
+        return _sonuc(bastirma[0], bastirma[1], **z)
+
+    def _normal() -> dict:
+        if bugun < on_tarih:
+            return _sonuc(Durum.VERI_BEKLENIYOR, f"{donem} ön bildirimi {on_tarih.strftime('%d.%m.%Y')} tarihinde yayımlanır", **z)
+        kismen = f" — muhatap kısmen doğrulandı: {bildirim_not}" if (kesinlik == "kismen" and bildirim_not) else ""   # doğrulanamayan hüküm kesin yazılmaz
+        if not bildirim_var:
+            if muhatap == "dst":
+                return _sonuc(Durum.DIKKAT, f"{donem} dönemi uzlaştırma bildirimi/payı DSG sorumlusundan temin edilmedi (pay belgesi doğrulanamadı)" + kismen, **{**z, "eylem": "temin"})
+            return _sonuc(Durum.DIKKAT, f"{donem} dönemi için EPİAŞ bildirimi yüklenmedi" + kismen, **{**z, "eylem": "yukle"})
+        if bugun >= nihai_tarih and not nihai_var:
+            return _sonuc(Durum.DIKKAT, f"{donem} nihai bildirimi henüz yüklenmedi (ön bildirim var)", **{**z, "eylem": "temin" if muhatap == "dst" else "yukle"})   # QA Ö-2
+        if fem_kayitli is False:
+            return _sonuc(Durum.DIKKAT, f"{donem} için finansal sonuç kaydı yok (ölçüm ya da fiyat eksik olabilir)", **z)
+        return _sonuc(Durum.SAGLIKLI, f"{donem} bildirimi yüklü; EPİAŞ'ın uzlaştırma durumu dosyadan doğrulanmaz", **z)
+
+    r = _normal()
+    if bastirma and r["durum"] in (Durum.DIKKAT.value, Durum.KRITIK.value):
+        return _sonuc(bastirma[0], f"{bastirma[1]} (yüklü belge: {r['neden']})", **z)
+    return r
 
 
 def alarm_durumu(acik_kritik: int, acik_uyari: int, suren_olay: int, son_is_hatasi, simdi: dt.datetime, *, esik: dict = ESIK) -> dict:

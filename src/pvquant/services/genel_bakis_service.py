@@ -135,8 +135,9 @@ def _risk_karti(tenant_id, plant: dict, hs_santral: dict | None, hs: dict | None
             liste.append({"kod": "is_hatasi", "durum": "dikkat", "baslik": f"Otomatik işlem başarısız: {a.get('son_is', 'iş')}", "ayrinti": "son 48 saat; ayrıntı Veri yükleme › gece işlemleri",
                           "zaman": a["son_is_hatasi"], "baglanti": "veri"})
     m = b.get("mutabakat")
-    if m and m["durum"] == "dikkat":
-        liste.append({"kod": "mutabakat", "durum": "dikkat", "baslik": "Uzlaştırma belgesi eksik", "ayrinti": m["neden"], "baglanti": "mutabakat"})
+    if m and m["durum"] == "dikkat":   # G4-B (K-A): plan dışı / uygulanmıyor / doğrulanamadı risk DEĞİL; yalnız eylemli «dikkat»
+        liste.append({"kod": "mutabakat", "durum": "dikkat", "baslik": "DSG uzlaştırma bildirimi temin edilmedi" if m.get("eylem") == "temin" else "Uzlaştırma belgesi eksik",
+                      "ayrinti": m["neden"], "baglanti": "mutabakat"})
     # sayaç dosyası ve bağlantı: veri yolu servisinin tazelik hükmü (dosya kaynağında beyan edilen sıklığın iki katı; bağlantıda 48 sa)
     try:
         from pvquant.services import veri_yolu_service as vys
@@ -161,6 +162,7 @@ def _risk_karti(tenant_id, plant: dict, hs_santral: dict | None, hs: dict | None
         kiraci = {"santral": hs["ozet"]["santral"], "olcum_gecikmis": int(vs.get("kritik", 0) + vs.get("dikkat", 0)),
                   "dikkat": hs["ozet"]["sayim"].get("dikkat", 0), "kritik": hs["ozet"]["sayim"].get("kritik", 0), "baglanti": "portfoy"}
     return _kart(durum, neden, liste=liste, adet=len(liste), kapsam="seçili santral; kuruluş geneli ayrı satırda", kiraci=kiraci,
+                 mutabakat_durum=(m["durum"] if m else None),   # G4-B: «açık risk yok» cümlesi uzlaştırma takibi kapalıyken «belgeler yüklü» demesin
                  eylem=(liste[0].get("ayrinti") if liste else None), baglanti=BAGLANTI["riskler"],
                  not_="Tahmin belirsizliği (P10–P90) risk değildir; burada yalnız eylem gerektiren veri ve operasyon maddeleri listelenir.")
 

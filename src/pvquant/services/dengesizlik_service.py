@@ -591,6 +591,40 @@ def _depolama_ozet(pj: dict) -> dict:
     return depolama.ozet(pj)
 
 
+BILDIRIM_MUHATAP_AD = {"santral": "santral (piyasa katılımcısı)", "dst": "dengeden sorumlu taraf (DSG sorumlusu)", "toplayici_gts": "toplayıcı / görevli tedarik şirketi",
+                       "yok": "yok (mahsuplaşma)", "belirsiz": "belirsiz"}
+
+
+def bildirim_bilgisi(pj: dict, seg) -> dict:
+    """G4-B (UAT 21.11 K-A kararı, UAT §11.9): EPİAŞ uzlaştırma bildiriminin MUHATABI bu santral mı? Mevzuat ekseni; abonelik kapsamı ve santral türü
+    burada DEĞİL (durum_sozlugu.mutabakat_durumu birleştirir). Dayanaklar UAT 21.11 kanıt klasöründeki mevzuat doğrulama notuyla (repo dışı) doğrulandı; «kismen» ve
+    «dogrulanamadi» kesinlikleri ekranda kesin hüküm gibi gösterilmez. Hesap mantığına dokunmaz (yalnız sınıflandırma)."""
+    toplayici = bool(pj.get("toplayici_portfoyu"))
+    dsg = (str(pj.get("dsg_kodu")).strip() or None) if pj.get("dsg_kodu") else None
+    katilimci = (str(pj.get("piyasa_katilimcisi")).strip() or None) if pj.get("piyasa_katilimcisi") else None
+    gts = (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None
+    def sonuc(muhatap, kesinlik, dayanak, not_):
+        return {"muhatap": muhatap, "muhatap_etiketi": BILDIRIM_MUHATAP_AD[muhatap], "kesinlik": kesinlik, "dayanak": dayanak, "not": not_}
+    if seg is None:
+        return sonuc("belirsiz", "dogrulanamadi", "—", "piyasa segmenti seçilmedi; bildirim muhatabı belirlenemez")
+    if toplayici:   # öncelikli kural: toplayıcı tüzel kişi DSG'ye giremez, UEVÇB toplayıcı adına
+        return sonuc("toplayici_gts", "kismen", "DUY m.20(4), m.4(1)", f"portföy UEVÇB'si {gts or 'toplayıcı'} adına; EDT'nin santrale yansıması sözleşmeye bağlı")
+    if seg in (sg.Segment.LISANSLI_SERBEST, sg.Segment.LISANSLI_YEKDEM):
+        if dsg:
+            return sonuc("dst", "dogrulandi", "DUY m.18–20, m.111(5), m.132/A", f"bildirim DSG sorumlusuna ({dsg}); santral payı DST/DSG iç mutabakatından — pay belgesi doğrulanamadı")
+        return sonuc("santral", "dogrulandi" if katilimci else "kismen", "DUY m.132/A; m.110–111",
+                     "ön/nihai uzlaştırma bildirimi PYS üzerinden piyasa katılımcısına" + ("" if katilimci else "; piyasa katılımcısı kimliği girilmemiş"))
+    if seg == sg.Segment.YEKA:
+        return sonuc("santral", "kismen", "5346 m.4(2); DUY genel hükümleri", "şartname süresince YEKDEM; şartname incelenmedi; AYM iptali 10.12.2026")
+    if seg == sg.Segment.LISANSSIZ_ILETIM:
+        return sonuc("toplayici_gts", "dogrulandi", "DUY m.69(10), m.110(6), m.75(3)", f"KGÜP'ü santral bildirir, uzlaştırma {gts or 'toplayıcı/GTŞ'} portföyünde; EDT'nin santrale yansıtılmasına dair açık hüküm yok")
+    if seg == sg.Segment.LISANSSIZ_DAGITIM:
+        return sonuc("toplayici_gts", "dogrulandi", "DUY m.69(11), m.110(6); Karar 14907", f"KGÜP ve uzlaştırma {gts or 'GTŞ/toplayıcı'} UEVÇB'sinde")
+    if seg == sg.Segment.OZ_TUKETIM_SAATLIK:
+        return sonuc("yok", "kismen", "LÜY m.4(1)(ö), m.26 (RG 02.04.2026-33212)", f"saatlik mahsuplaşma; ödeme {gts or 'GTŞ'} üzerinden; birleşik LÜY metni erişilemedi")
+    return sonuc("belirsiz", "dogrulanamadi", "—", "segment kuralı tanımsız")
+
+
 def segment_bilgisi(params_json) -> dict:
     pj = _pj(params_json); ad = pj.get("segment")
     try:
@@ -605,6 +639,7 @@ def segment_bilgisi(params_json) -> dict:
                 "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),
                 "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
                 "depolama": _depolama_ozet(pj),   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
+                "bildirim": bildirim_bilgisi(pj, seg),   # G4-B (K-A): bildirim muhatabı / kesinlik / dayanak
                 **_ds_santral_sinifi(pj)}   # Faz 0 P0-01 (C1): santral_turu / veri_turu + etiketler
     k = sg.KURALLAR.loc[seg]
     st = sg.Santral("x", seg, 1.0)
@@ -616,6 +651,7 @@ def segment_bilgisi(params_json) -> dict:
             "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),   # v2.541 (DK-804): lisansa dercedilen yıllık üretim (LDYEÜM), Karar 14626
             "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
                 "depolama": _depolama_ozet(pj),   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
+                "bildirim": bildirim_bilgisi(pj, seg),   # G4-B (K-A): bildirim muhatabı / kesinlik / dayanak
                 **_ds_santral_sinifi(pj)}   # Faz 0 P0-01 (C1): santral_turu / veri_turu + etiketler   # v2.541 (EK-2 DK-267): UEVÇB kodu yoksa ada göre gruplama
 
 

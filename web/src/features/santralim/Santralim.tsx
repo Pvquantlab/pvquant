@@ -5,6 +5,9 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { useGorunur } from "../../lib/gorunur";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor, Depolama, Kirlenme, VeriYolu, VeriYoluOzet, VeriYoluSinama, GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikSonuc, PilotDurum, EdgeToplayici, EdgeToplayiciYeni } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
+import type { BildirimBilgisi } from "../../api/types";   // G4-B (K-A)
+/** G4-B (K-A): bildirim kesinliği sözcükleri — «doğrulanamadı» kesin hüküm değildir. */
+const KESINLIK_AD: Record<string, string> = { dogrulandi: "doğrulandı", kismen: "kısmen doğrulandı", dogrulanamadi: "doğrulanamadı" };
 import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
@@ -183,7 +186,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   useEffect(() => { if (!altGorunur) return; api.saatAyMatrisi(plantId).then((v) => { if (plantRef.current === plantId) setSam(v); }).catch(() => {}); }, [plantId, ds, altGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.pr(plantId).then((v) => { if (plantRef.current === plantId) setPr(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
   const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
-  const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
+  const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null; bildirim?: BildirimBilgisi } | null>(null);   // v2.260; G4-B bildirim muhatabı
   // v2.513 (04 #14 kalan): UEVÇB kodu panelde görünür/düzenlenir; EPİAŞ Şeffaflık'tan kuruluş adıyla aranır (organization-list + uevcb-list)
   const [uevcb, setUevcb] = useState<string>("");
   // v2.539 (EK-3 DK-258/261): DSG kodu (aynı kod = aynı grup) ve toplayıcı portföyü işareti (DSG dışı, DUY m.20(4))
@@ -219,14 +222,14 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
     const ld = ldyeum.trim() === "" ? 0 : Number(ldyeum.replace(/\./g, "").replace(",", "."));   // v2.641 (02B-B3): boş → 0 → sunucu siler (null «dokunma» demekti)
     if (ld !== null && (!Number.isFinite(ld) || ld < 0)) { setDsgMesaj("Lisanstaki yıllık üretim miktarı sayı olmalı (MWh)."); return; }
     api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici, piyasa_katilimcisi: katilimci.trim(), lisans_yillik_uretim_mwh: ld })
-      .then(() => { setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
+      .then((r) => { setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
       .catch((e) => setDsgMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const [uevcbMesaj, setUevcbMesaj] = useState<string | null>(null);
   const [gtsAdi, setGtsAdi] = useState<string>("");   // v2.541 (EK-2 DK-267): GTŞ/toplayıcı adı — UEVÇB kodu yoksa portföy KÜPST gruplaması
   const gtsAdiKaydet = () => {
     if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { gts_toplayici_adi: gtsAdi.trim() }).then(() => { setGtsAdi(gtsAdi.trim()); setUevcbMesaj(gtsAdi.trim() ? `Kaydedildi: GTŞ/toplayıcı ${gtsAdi.trim()}.` : "Kaydedildi: GTŞ/toplayıcı adı yok."); })
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { gts_toplayici_adi: gtsAdi.trim() }).then((r) => { setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setGtsAdi(gtsAdi.trim()); setUevcbMesaj(gtsAdi.trim() ? `Kaydedildi: GTŞ/toplayıcı ${gtsAdi.trim()}.` : "Kaydedildi: GTŞ/toplayıcı adı yok."); })
       .catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const [uevcbArama, setUevcbArama] = useState<string>("");
@@ -240,7 +243,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setSinif({ santral_turu: d.segment.santral_turu ?? "operasyonel", veri_turu: d.segment.veri_turu ?? "canli" }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi, bildirim: d.segment.bildirim }); setSinif({ santral_turu: d.segment.santral_turu ?? "operasyonel", veri_turu: d.segment.veri_turu ?? "canli" }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then((v) => { if (plantRef.current === plantId) setSg(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -312,7 +315,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
     // sıralı zincir (tek kapı yok): önce segment, sonra sınıf; biri düşerse başarılı olan durumda kalır, seçim yalnız o alan için düşer.
     // QA İ-3: segment Kaydet UEVÇB göndermez — UEVÇB'nin kendi Kaydet'i var; kutudaki kaydedilmemiş metin buradan sızmasın.
     let zincir: Promise<unknown> = Promise.resolve();
-    if (segYeni) zincir = zincir.then(() => api.segmentAyarla(hedef, segYeni).then((r) => { if (!ayni()) return; setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi }); setSegSecim(null); }));
+    if (segYeni) zincir = zincir.then(() => api.segmentAyarla(hedef, segYeni).then((r) => { if (!ayni()) return; setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi, bildirim: r.bildirim }); setSegSecim(null); }));
     if (Object.keys(sinifYeni).length) zincir = zincir.then(() => api.santralSinifiAyarla(hedef, sinifYeni).then((r) => { if (!ayni()) return; setSinif({ santral_turu: r.santral_turu, veri_turu: r.veri_turu }); setSinifSecim({}); }));
     zincir.then(() => { if (ayni()) setSegMesaj("Kaydedildi"); }).catch((err) => { if (ayni()) setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`); }).finally(() => { if (ayni()) setSegYolda(false); });
   };
@@ -1104,6 +1107,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 </select>
               </label>
               {seg?.dengesizlik_sahibi && <span className="ayar-durum">Dengesizlik sorumlusu: {seg.dengesizlik_sahibi}</span>}
+              {seg?.bildirim && <span className={`ayar-durum${seg.bildirim.kesinlik === "dogrulanamadi" ? " uyari" : ""}`} title={[seg.bildirim.dayanak, seg.bildirim.not].filter((x) => x && x !== "—").join(" — ")}>
+                Bildirim muhatabı: {seg.bildirim.muhatap_etiketi} ({KESINLIK_AD[seg.bildirim.kesinlik] ?? seg.bildirim.kesinlik})</span>}   {/* G4-B (K-A): mevzuat ekseni; abonelik kapsamı ve santral türünden ayrı */}
               <label className="girdi-etiket">Santral türü <span className="soluk">(sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; tahmin, karne ve kota değişmez)</span>
                 <select className="girdi" value={sinifSecim.santral_turu ?? sinif?.santral_turu ?? ""} disabled={sinif === null} aria-label="Santral türü" onChange={(e) => { setSegMesaj(null); setSinifSecim((x) => ({ ...x, santral_turu: e.target.value })); }}>
                   {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="operasyonel">operasyonel santral</option><option value="sanal_test">sanal test santralı (geliştirme)</option>
