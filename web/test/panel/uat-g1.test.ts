@@ -235,6 +235,21 @@ test("G4-C1 web: gerçekleşen seri API'den eşlenir (null sabiti yok), sentetik
   assert.match(s, /actual=\{grafikGercek\}/, "grafik gerçekleşen girişi");
 });
 
+test("D-9 web: santral değişince ayar durumu sıfırlanır; yanıt gelmeden Kaydet yazmaz; eski yanıt yeni santrala yazılmaz", () => {
+  const s = oku("../../src/features/santralim/Santralim.tsx");
+  assert.match(s, /useEffect\(\(\) => \{ setSeg\(null\); setSinif\(null\); setUevcb\(""\); setDsgKodu\(""\); setToplayici\(false\); setYekG\(false\); setDep\(null\);[\s\S]*?setLuyIstisna\(null\); setPozKaynak\(null\); setPozSabit\(""\);[^\n]*\}, \[plantId\]\);/, "sıfırlama efekti yalnız plantId'ye bağlı");
+  for (const m of ["setDepMesaj", "setYekGMesaj", "setDsgMesaj"]) assert.match(s, new RegExp(`if \\(seg === null\\) \\{ ${m}\\(AYAR_OKUNMADI\\); return; \\}`), m);
+  assert.equal((s.match(/if \(seg === null\) \{ setUevcbMesaj\(AYAR_OKUNMADI\); return; \}/g) ?? []).length, 2, "GTŞ adı ve UEVÇB Kaydet");
+  assert.ok((s.match(/if \(plantRef\.current !== hedef\) return;/g) ?? []).length >= 5, "beş Kaydet yanıtı hedef santrala bağlı");
+  assert.doesNotMatch(s, /if \(!seg\?\.segment\) \{ set\w+Mesaj\("Önce piyasa segmentini seçin\."\); return; \}/, "eski gevşek kapı kalmadı");
+  // QA İ-1: GTŞ adı ve LÜY yükleyicileri satır yorumunun içinde kalmasın (v2.641 regresyonu): aynı fiziksel satırda setGtsAdi'den önce «//» yok
+  const satir = s.split("\n").find((l) => l.includes("setGtsAdi(d.segment.gts_toplayici_adi"));
+  assert.ok(satir, "yükleyici satırı var");
+  const ciftEgik = satir!.indexOf("//"), gts = satir!.indexOf("setGtsAdi(d.segment.gts_toplayici_adi");
+  assert.ok(ciftEgik === -1 || ciftEgik > gts, "setGtsAdi satır yorumu içinde değil");
+  assert.match(s, /setUevcbArama\(""\); setUevcbAday\(null\); \}, \[plantId\]\);/, "QA Ö-5: UEVÇB aday listesi santralla düşer");
+});
+
 test("G4-C2 web: histogram ondalığı kutu genişliğinden, kutu genişliği eksende, etiket çakışması gizli", () => {
   const d = oku("../../src/features/sayfalar/Dogruluk.tsx");
   assert.match(d, /const kutuGen = hd\?\.kutu_mwh \?\? \(kutular\.length \? kutular\[0\]\.hi - kutular\[0\]\.lo : 1\);/);

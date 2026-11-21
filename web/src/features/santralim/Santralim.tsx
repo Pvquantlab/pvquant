@@ -111,6 +111,8 @@ import { rolum } from "../../api/client";   // v2.641: izleyici rolünde yazma k
 import { t0Hesapla, simdiDegeri, simdiGercekSon, dilimle } from "../sayfalar/tahminPencere";   // G4-C1: kadran son tamamlanmış saatin ölçümü
 /** G4-C1 (QA İ-2): kadran ve not — veri türüne göre ad; sentetik/arşiv «SCADA ölçümü» denmez. */
 const OLCUM_ADI: Record<string, string> = { canli: "SCADA ölçümü", sentetik: "sentetik veri", tarihsel_arsiv: "arşiv verisi", yok: "ölçüm" };
+/** D-9 (UAT 22.11): santral değişince ayar yanıtı gelene dek yazma yok — önceki santralın segmenti/UEVÇB'si yeni santrala gitmesin. */
+const AYAR_OKUNMADI = "Santral ayarları henüz okunmadı; birkaç saniye sonra yeniden deneyin.";
 const OLCUM_NOTU: Record<string, string> = { sentetik: "Gerçekleşen seri sentetik veridir; canlı ölçüm olarak okunmamalı.", tarihsel_arsiv: "Gerçekleşen seri tarihsel arşiv verisidir; canlı ölçüm olarak okunmamalı." };
 import { Cubuklar } from "./Cubuklar";
 
@@ -206,47 +208,57 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const [depMesaj, setDepMesaj] = useState<string | null>(null);
   const depDoldur = (d: Depolama | null | undefined) => { if (!d) return; setDep(d); setDf({ guc: d.guc_mw != null ? String(d.guc_mw) : "", kap: d.kapasite_mwh != null ? String(d.kapasite_mwh) : "", konf: d.konfigurasyon ?? "", uevcb: d.uevcb ?? "", kabul: d.kabul_tarihi ?? "", but: !!d.butunlesik }); };
   const depKaydet = (sil = false) => {
-    if (!seg?.segment) { setDepMesaj("Önce piyasa segmentini seçin."); return; }
+    if (seg === null) { setDepMesaj(AYAR_OKUNMADI); return; }   // D-9
+    if (!seg.segment) { setDepMesaj("Önce piyasa segmentini seçin."); return; }
+    const hedef = plantId;   // D-9: yanıt gelene dek santral değişirse eski yanıt yeni ekrana yazılmaz
     setDepMesaj(null);
     if (!sil && ((df.guc.trim() !== "" && sayiOkuTr(df.guc) === null) || (df.kap.trim() !== "" && sayiOkuTr(df.kap) === null))) { setDepMesaj("Güç ve kapasite sayı olmalı (örn. 12,5 ya da 12.000)."); return; }   // v2.641 (02B-B6)
     const g = sil ? { depolama_gucu_mw: null } : { depolama_gucu_mw: sayiOkuTr(df.guc), depolama_kapasite_mwh: sayiOkuTr(df.kap),
       depolama_konfigurasyon: df.konf || null, depolama_uevcb: df.uevcb || null, depolama_kabul_tarihi: df.kabul || null, depolama_butunlesik: df.but };
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { depolama: g }).then((r) => { const d = (r as unknown as { depolama?: Depolama }).depolama; depDoldur(d); setDepMesaj(d?.var ? `Kaydedildi: ${sayiTr(d.guc_mw ?? 0, 1)} MW depolama ünitesi.` : "Kaydedildi: depolama beyanı kaldırıldı."); })
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { depolama: g }).then((r) => { if (plantRef.current !== hedef) return; const d = (r as unknown as { depolama?: Depolama }).depolama; depDoldur(d); setDepMesaj(d?.var ? `Kaydedildi: ${sayiTr(d.guc_mw ?? 0, 1)} MW depolama ünitesi.` : "Kaydedildi: depolama beyanı kaldırıldı."); })
       .catch((e) => setDepMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`));
   };
   const [yekGMesaj, setYekGMesaj] = useState<string | null>(null);
   const yekGKaydet = (v: boolean) => {
-    if (!seg?.segment) { setYekGMesaj("Önce piyasa segmentini seçin."); return; }
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { yek_g_kayitli: v }).then(() => { setYekG(v); setYekGMesaj(v ? "Kaydedildi: YEK-G sisteminde kayıtlı." : "Kaydedildi: YEK-G kaydı yok."); })   // v2.641 (02B-B7): kutu yalnız başarıda değişir
+    if (seg === null) { setYekGMesaj(AYAR_OKUNMADI); return; }   // D-9
+    if (!seg.segment) { setYekGMesaj("Önce piyasa segmentini seçin."); return; }
+    const hedef = plantId;
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { yek_g_kayitli: v }).then(() => { if (plantRef.current !== hedef) return; setYekG(v); setYekGMesaj(v ? "Kaydedildi: YEK-G sisteminde kayıtlı." : "Kaydedildi: YEK-G kaydı yok."); })   // v2.641 (02B-B7): kutu yalnız başarıda değişir
       .catch((e) => setYekGMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const dsgKaydet = () => {
-    if (!seg?.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
+    if (seg === null) { setDsgMesaj(AYAR_OKUNMADI); return; }   // D-9
+    if (!seg.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
+    const hedef = plantId;
     const ld = ldyeum.trim() === "" ? 0 : Number(ldyeum.replace(/\./g, "").replace(",", "."));   // v2.641 (02B-B3): boş → 0 → sunucu siler (null «dokunma» demekti)
     if (ld !== null && (!Number.isFinite(ld) || ld < 0)) { setDsgMesaj("Lisanstaki yıllık üretim miktarı sayı olmalı (MWh)."); return; }
     api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici, piyasa_katilimcisi: katilimci.trim(), lisans_yillik_uretim_mwh: ld })
-      .then((r) => { setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
+      .then((r) => { if (plantRef.current !== hedef) return; setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
       .catch((e) => setDsgMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const [uevcbMesaj, setUevcbMesaj] = useState<string | null>(null);
   const [gtsAdi, setGtsAdi] = useState<string>("");   // v2.541 (EK-2 DK-267): GTŞ/toplayıcı adı — UEVÇB kodu yoksa portföy KÜPST gruplaması
   const gtsAdiKaydet = () => {
-    if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { gts_toplayici_adi: gtsAdi.trim() }).then((r) => { setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setGtsAdi(gtsAdi.trim()); setUevcbMesaj(gtsAdi.trim() ? `Kaydedildi: GTŞ/toplayıcı ${gtsAdi.trim()}.` : "Kaydedildi: GTŞ/toplayıcı adı yok."); })
+    if (seg === null) { setUevcbMesaj(AYAR_OKUNMADI); return; }   // D-9
+    if (!seg.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
+    const hedef = plantId;
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { gts_toplayici_adi: gtsAdi.trim() }).then((r) => { if (plantRef.current !== hedef) return; setSeg((s) => (s && r.bildirim ? { ...s, bildirim: r.bildirim } : s)); setGtsAdi(gtsAdi.trim()); setUevcbMesaj(gtsAdi.trim() ? `Kaydedildi: GTŞ/toplayıcı ${gtsAdi.trim()}.` : "Kaydedildi: GTŞ/toplayıcı adı yok."); })
       .catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const [uevcbArama, setUevcbArama] = useState<string>("");
   const [uevcbAday, setUevcbAday] = useState<UevcbArama | null | "yok">(null);
   const uevcbKaydet = (kod: string) => {
-    if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
+    if (seg === null) { setUevcbMesaj(AYAR_OKUNMADI); return; }   // D-9
+    if (!seg.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
+    const hedef = plantId;
     // v2.640: boş dize SİLER (eskiden undefined → sunucu dokunmuyor, UI «Kaydedildi» diyordu)
-    api.segmentAyarla(plantId, seg.segment, kod.trim()).then(() => { setUevcb(kod.trim()); setUevcbMesaj(kod.trim() ? `Kaydedildi: ${kod.trim()}` : "Kaydedildi."); }).catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+    api.segmentAyarla(plantId, seg.segment, kod.trim()).then(() => { if (plantRef.current !== hedef) return; setUevcb(kod.trim()); setUevcbMesaj(kod.trim() ? `Kaydedildi: ${kod.trim()}` : "Kaydedildi."); }).catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const uevcbAra = () => {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi, bildirim: d.segment.bildirim }); setSinif({ santral_turu: d.segment.santral_turu ?? "operasyonel", veri_turu: d.segment.veri_turu ?? "canli" }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi, bildirim: d.segment.bildirim }); setSinif({ santral_turu: d.segment.santral_turu ?? "operasyonel", veri_turu: d.segment.veri_turu ?? "canli" }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   /* v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) */ setGtsAdi(d.segment.gts_toplayici_adi ?? ""); /* D-9 QA İ-1: satır yorumu bu iki çağrıyı yutuyordu (v2.641'den beri GTŞ adı okunmuyordu; boş Kaydet kayıtlı adı silerdi) */ if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then((v) => { if (plantRef.current === plantId) setSg(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -375,6 +387,11 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   // v2.517 (P2a): piyasa pozisyonu — EDM = gerçekleşen − pozisyon; program (satış programa eşit) | uretim (üretildiği kadar satış) | sabit MWh/saat
   const [pozKaynak, setPozKaynak] = useState<"program" | "uretim" | "sabit" | null>(null);
   const [pozSabit, setPozSabit] = useState<string>("");
+  // D-9 (UAT 22.11, QA G1-A ertelenen): santral değişince önceki santralın ayar durumu DÜŞER — yeni yanıt gelene dek seçiciler kapalı, Kaydet'ler
+  // AYAR_OKUNMADI der; eskiden önceki segment/UEVÇB/DSG değerleri görünür kalıyor ve DSG/YEK-G/depolama/GTŞ/UEVÇB Kaydet yeni santrala
+  // önceki segmentle PUT atıyordu (kanıt: kanit/video/d9_qa/d9_once.json). Damga yenilemesinde (ds) sıfırlama yok — form boş yanıp sönmez.
+  useEffect(() => { setSeg(null); setSinif(null); setUevcb(""); setDsgKodu(""); setToplayici(false); setYekG(false); setDep(null); setDf({ guc: "", kap: "", konf: "", uevcb: "", kabul: "", but: false });
+    setKatilimci(""); setLdyeum(""); setGtsAdi(""); setLuyIstisna(null); setPozKaynak(null); setPozSabit(""); setDsgMesaj(null); setYekGMesaj(null); setDepMesaj(null); setUevcbMesaj(null); setUevcbArama(""); setUevcbAday(null); }, [plantId]);   // QA Ö-5: aday listesi de düşer
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   // v2.640 (Santralim denetimi, Parti 1 — kritik): form SUNUCUDAKİ değerlerle açılır ve yalnız DOKUNULAN alanlar gönderilir.
   // Eskiden form boş açılıyor, «Ayarları kaydet» göndermediği alanları null ile siliyordu (20.11 canlı prova: yalnız temizlik

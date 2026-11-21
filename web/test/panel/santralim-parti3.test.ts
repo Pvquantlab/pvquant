@@ -27,7 +27,7 @@ test("depolama ve alarm eşikleri sayiOku ile; YEK-G yalnız başarıda", () => 
   assert.match(s, /const v = sayiOkuTr\(ham\); if \(v === null\) \{ setAkMesaj\(`Geçersiz eşik: «\$\{a\.etiket\}» sayı olmalı/);
   // setYekG(v) yalnız then içinde
   assert.doesNotMatch(s, /\n    setYekG\(v\);\n    api\.segmentAyarla/);
-  assert.match(s, /\.then\(\(\) => \{ setYekG\(v\); setYekGMesaj\(/);
+  assert.match(s, /\.then\(\(\) => \{ if \(plantRef\.current !== hedef\) return; setYekG\(v\); setYekGMesaj\(/);
 });
 
 test("fizik terimleri çoklu seçim, pilot hata kartı, metinler", () => {
