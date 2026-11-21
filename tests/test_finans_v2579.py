@@ -80,7 +80,7 @@ def test_toplam_ve_cift_sayim_bekcisi():
          f.Bilesen("teminat", "Teminat göstergesi", -5000.0, nitelik=N.SENARYO, toplanir=False),
          f.Bilesen("kayip", "Üretim düşüklüğü", -900.0, nitelik=N.SOZLESME_TAHMINI, toplanir=False)]
     t = f.toplam(b)
-    assert t["tutar_tl"] == 8300.0 and t["alacak_tl"] == 8300.0 and t["borc_tl"] == 0.0
+    assert t["tutar_tl"] == 8300.0 and t["alacak_tl"] == 10000.0 and t["borc_tl"] == 1700.0   # G4-A (3eb528e): alacak/borç bileşen satırlarından (gelir +10.000; EDT −1.500 + KÜPST −200 borç); net aynı (eskiden alacak=net, borç 0)
     assert t["nitelik"] == "sozlesme_tahmini" and t["giren"] == ["gelir", "edt", "kupst"] and t["eksik"] == []
     b.append(f.Bilesen.eksik("dsg", "DSG", "grup yok"))
     t2 = f.toplam(b)
