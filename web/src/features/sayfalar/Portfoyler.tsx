@@ -21,7 +21,7 @@ const NITELIK = FINANS_NITELIK;   // 15.11: ortak sözlük (lib/durum)
 const BELIRSIZLIK: Record<BelirsizlikDurum, { etiket: string; sinif: string }> = {
   dogrulandi: { etiket: "aralık doğrulandı", sinif: "rozet-ok" }, dogrulanmadi: { etiket: "aralık doğrulanmadı", sinif: "rozet-uyari" }, yetersiz_veri: { etiket: "aralık için veri yetersiz", sinif: "rozet-notr" } };
 const RISK: Record<RiskEtiket, string> = { dogrulanmis: "rozet-ok", tahmini: "rozet-uyari", eksik: "rozet-notr", gecti: "rozet-notr", bilgi: "rozet-notr" };
-const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
+const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-notr", bilgi: "rozet-notr" };   // G3-B QA İ-1: eylem (uyarı) > öneri (nötr) hiyerarşisi
 const DOGRULAMA_SINIF: Record<string, string> = { dogrulandi: "rozet-ok", belgeli: "rozet-notr", beyan: "rozet-uyari" };
 const TUR_ETIKET: Record<string, string> = { toplayici: "toplayıcı portföyü", dsg: "dengeden sorumlu grup", isletme: "işletme portföyü", ozel: "özel portföy" };
 /* 12.11 inceleme 1: sözleşme kayıtları tablosunda iç kod («sabit_pay», «dsg») görünmez — arka uç sözlüğüyle (dagitim.YONTEM_AD, DENGESIZLIK_SORUMLULARI) aynı adlar. */

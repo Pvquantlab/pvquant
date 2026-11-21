@@ -9,7 +9,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
-import { GrafikIskeleti, Kart, Sayfa, Kpi, KpiIskeleti, MetinIskeleti, SatirlarIskeleti, sayiTr, YerTutucu, Katla } from "./parcalar";
+import { Cipler, GrafikIskeleti, Kart, Sayfa, Kpi, KpiIskeleti, MetinIskeleti, SatirlarIskeleti, sayiTr, YerTutucu, Katla } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
@@ -689,13 +689,17 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     const kenar = oku("--kenar"), soluk = oku("--soluk"), veri = oku("--font");
     const saatler = sp.profil.map((x) => x.saat);
     const degerler = sp.profil.map((x) => x.ort_hata_kw);
-    const tepe = Math.max(100, Math.ceil(Math.max(...degerler.map((v) => Math.abs(v ?? 0))) / 100) * 100);   // eksen ucu yuvarlak (±700, ±1.200)
+    // G3-B (UAT video U-6, 21.11): ±100 tabanı küçük santralde (sapma ±1 kW) çubukları görünmez ediyordu → eksen ucu veriden: |en büyük|×1,2'nin
+    // 1-2-5 basamağına yuvarlanmış üstü (±1,2 → ±2; ±640 → ±1.000), taban ±1; 10 altında bir ondalık
+    const enb = Math.max(1, Math.max(...degerler.map((v) => Math.abs(v ?? 0))) * 1.2);
+    const us = Math.pow(10, Math.floor(Math.log10(enb))); const kat = enb / us;
+    const tepe = (kat <= 1 ? 1 : kat <= 2 ? 2 : kat <= 5 ? 5 : 10) * us;
     return {
       animation: false, grid: { left: 64, right: 24, top: 8, bottom: 30 },
       tooltip: { backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
         formatter: (p0: unknown) => { const q = p0 as { dataIndex: number }; const x = sp.profil[q.dataIndex];
-          return x.ort_hata_kw == null ? `${x.saat}: veri yok` : `${x.saat}: ${x.ort_hata_kw >= 0 ? "+" : ""}${sayiTr(x.ort_hata_kw, 0)} kW (${x.ort_hata_kw >= 0 ? "fazla" : "eksik"} tahmin), ${sayiTr(x.n)} gün`; } },
-      xAxis: { type: "value", min: -tepe, max: tepe, interval: tepe / 2, axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, formatter: (v: number) => `${v > 0 ? "+" : ""}${sayiTr(v, 0)}` },
+          return x.ort_hata_kw == null ? `${x.saat}: veri yok` : `${x.saat}: ${x.ort_hata_kw >= 0 ? "+" : ""}${sayiTr(x.ort_hata_kw, tepe < 10 ? 1 : 0)} kW (${x.ort_hata_kw >= 0 ? "fazla" : "eksik"} tahmin), ${sayiTr(x.n)} gün`; } },
+      xAxis: { type: "value", min: -tepe, max: tepe, interval: tepe / 2, axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, formatter: (v: number) => `${v > 0 ? "+" : ""}${sayiTr(v, tepe < 10 ? 1 : 0)}` },
         splitLine: { lineStyle: { color: kenar } }, name: "ort. sapma (kW) · sağ fazla, sol eksik tahmin", nameLocation: "middle", nameGap: 22,
         nameTextStyle: { color: soluk, fontSize: 12 } },
       yAxis: { type: "category", data: saatler, inverse: true, axisTick: { show: false }, axisLine: { show: false }, axisLabel: { color: soluk, fontFamily: veri, fontSize: 12 } },
@@ -888,8 +892,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       {/* 04.11 v2.533 (P8a, IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL; beklenen hava tahmini girdili fizik modeli,
           TL satış fiyatıyla gelir kaybı tahmini; her satır KPI'dan dışlanıp dışlanmadığını söyler */}
       <Kart baslik="Gerçekleşen kayıp ayrışımı" alt="Beklenen ile gerçekleşen arasındaki açık, nedene göre; son 30 ölçüm günü"
-        sag={<span className="cip">{kyp?.durum === "ok" ? <Meta items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI ${yuzdeTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />
-          : kyp === undefined ? "hesaplanıyor" : kyp?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : kyp ? "veri yok" : "alınamadı"}</span>}>
+        sag={kyp?.durum === "ok" ? <Cipler items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI ${yuzdeTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />   /* G3-C (U-12): 3+ bilgi ayrı haplar */
+          : <span className="cip">{kyp === undefined ? "hesaplanıyor" : kyp?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : kyp ? "veri yok" : "alınamadı"}</span>}>
         {/* v2.608 (Faz 5 F5-E) aşamalı açılım: başlık çipi EPI ve kapsamı söyler; tablo katlı */}
         {kyp === undefined ? <MetinIskeleti satir={2} /> : kyp?.durum === "ok" && kyp.satirlar ? (
           <Katla ozet="Nedene göre kayıp tablosu" not="EPI, nedeni bilinen kayıp ve TL karşılığı">
@@ -1355,7 +1359,7 @@ function GeceIsleriKarti() {
   if (!j) return null;
   const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
-    <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip"><Meta items={[`son ${sayiTr(j.pencere_saat)} saat`, "ayrıntı sunucu günlüğünde"]} /></span>}>
+    <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip"><Meta items={[`son ${sayiTr(j.pencere_saat)} saat`]} /></span>}>
       {/* v2.359: "santral yok / ilk gece" bilgi tonudur — turuncu yalnız gerçek bayatlıkta */}
       {j.not && (j.seviye === "bilgi"
         ? <p className="soluk t-ikincil" style={{ margin: "0 0 10px" }}>{j.not}</p>
@@ -1375,7 +1379,7 @@ function GeceIsleriKarti() {
         </table></div>
       )}
       <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>
-        Hava verisi indirme, tahmin, doğruluk değerlendirmesi ve kalibrasyon her gece otomatik çalışır; başarısız işlemin ayrıntısı sunucu günlüğündedir.
+        Hava verisi indirme, tahmin, doğruluk değerlendirmesi ve kalibrasyon her gece otomatik çalışır; başarısız işlem burada işaretlenir; ayrıntısını PVQuant ekibi izler.
       </p>
     </Kart>
   );

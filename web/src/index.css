@@ -579,7 +579,9 @@ tr.satir-tikla { cursor: pointer; }
 table.veri.dar { width: auto; min-width: 0; }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .rozet-notr { background: var(--yuzey); color: var(--ikincil); border: 1px solid var(--kenar); }
-.rozet-dikkat { background: var(--amber-zemin); color: var(--amber-metin); }   /* v2.524 (P3b): «işlem gerekli» / «doğrulama gerekli»; 15.11 denetim: tanımsız --amber-koyu (#8a5a00 koyu yüzde 2,7:1) yerine iki temada tanımlı jeton */
+/* G3-B (UAT video O-9/U-16, 21.11): «işlem gerekli / doğrulama gerekli» amber basılıyordu — jeton sözleşmesi: amber YALNIZ gerçekleşen üretim,
+   dikkat = uyarı ailesi (jetonlar.md §durum). Sınıf adı korunur (Takvim, Finansal etki, Portföyler, Hakkında, Digerleri). */
+.rozet-dikkat { background: var(--uyari-zemin); color: var(--uyari-metin); }
 /* grafik üst şeridi: şimdi hapı · lejant · dışa aktarma tek satırda; dar ekranda sarar */
 .grafik-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
 
@@ -663,7 +665,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--marka); }
 .plat-saglik { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
 .plat-saglik--tikla { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .plat-saglik--tikla:hover { border-color: var(--marka); }
-.plat-rozet-sari { background: var(--amber-zemin); color: var(--amber-metin); }   /* 26.10 görsel uyum: saydamlık yerine amber jetonu (koyu yüzde 8,3:1) */
+.plat-rozet-sari { background: var(--uyari-zemin); color: var(--uyari-metin); }   /* G3-B (U-16): kota «dikkat/dolu» amber zeminliydi — dikkat = uyarı ailesi; sınıf adı korunur */
 /* 26.10 görsel uyum (375 px ölçümü): kart başlığının sağ yuvasındaki sayaç çipi («5 kayıt | 1 hata») dar ekranda sözcük sözcük
    dikey kırılıyordu (.meta ≤560 kuralı) — platform yüzünde başlık satırı sarar, çip tek parça kalır; müşteri paneli kuralı dokunulmadı. */
 @media (max-width: 560px) {
@@ -1105,6 +1107,7 @@ body { background: var(--zemin); }
 .ayar-durum { font-size: 12.5px; color: var(--soluk); align-self: center; }
 .ayar-durum.ok { color: var(--basari-metin); }
 .ayar-durum.hata { color: var(--uyari-metin); }
+.ayar-durum.uyari { color: var(--uyari-metin); }   /* G3-B QA İ-3: uyarı tonu «hata» diye etiketlenmesin; aynı jeton */
 /* 22.10 girdi: gövde ailesi 13,5 px, 8 px köşe, odakta marka halkası (giriş ekranı kuralıyla aynı);
    mono yalnız .girdi.mono (adres/anahtar) için kalır */
 .girdi { font-family: var(--font); font-size: 14px; padding: 7px 12px; border: 1px solid var(--kenar-kontrol);   /* 15.11 K-004 */
@@ -1154,6 +1157,7 @@ select.girdi { font-family: var(--font); }
 .katla-govde { margin-top: 10px; min-width: 0; }
 /* kart düzeyi «Gelişmiş ayarlar»: ayar satırlarının altında, başlık ayar adı dizgisinde; içindeki satır ilk/son satır kuralını alır */
 .ayar-gelismis { padding-top: 12px; }
+.ayar-izgara > .katla { grid-column: 1 / -1; }   /* G3-C: katlanan ayar bölümü ızgarada tam satır */
 .ayar-gelismis > summary { font-family: var(--display); font-size: 14px; font-weight: 600; color: var(--metin); letter-spacing: -0.01em; }
 .ayar-gelismis > summary .soluk { font-family: var(--font); font-weight: 400; letter-spacing: 0; }
 .ayar-gelismis > .katla-govde { margin-top: 0; }

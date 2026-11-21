@@ -414,7 +414,22 @@ export function buildChartOption(input: BuildInput): EChartsOption {
 
   if (!daily) {
     // -------- hourly (24s / 72s / 7g)
-    cats = forecast.map((p) => p.ts);
+    // G3-A (UAT video Y-5, 21.11): seyrek seri (saat atlanmış — ör. gece satırı yazılmamış tohum ya da kesinti) kategori ekseninde
+    // 14 saatlik geceyi 1 saatlik yere sıkıştırıyor, doğuş/batış etiketleri aynı kategoriye yapışıyor, 00:00 kategorisi olmadığı için gün
+    // çizgisi/etiketi çıkmıyordu. Eksen artık ADIM aralıklı sürekli ızgara (adım = serideki en küçük aralık, en çok 1 saat); eksik saatler
+    // null — istemci veri UYDURMAZ (çizgi/bant kesik, tooltip boş). Seri sürekliyse (üretim koşusu tüm saatleri yazar) çıktı birebir aynı.
+    const hamMs = forecast.map((p) => toMs(p.ts));
+    let adim = 3_600_000;
+    for (let i = 1; i < hamMs.length; i++) { const d = hamMs[i] - hamMs[i - 1]; if (d > 0 && d < adim) adim = d; }
+    const byMs = new Map(forecast.map((p) => [toMs(p.ts), p]));
+    let pts: (ForecastPoint | null)[] = [];
+    // QA G3-A Ö-6: adım 1 dk'dan küçükse ya da ızgara 2000 hücreyi aşarsa (ms düzeyi kayık ts) döngüye hiç girilmez — sekme donmaz
+    const izgaraMakul = hamMs.length > 0 && adim >= 60_000 && (hamMs[hamMs.length - 1] - hamMs[0]) / adim <= 2000;
+    if (izgaraMakul) for (let t = hamMs[0]; t <= hamMs[hamMs.length - 1]; t += adim) pts.push(byMs.get(t) ?? null);
+    // QA G3-A İ-1/İ-2: seri sırasız ya da noktalar ızgaraya oturmuyorsa (kayık/kopya ts) ızgara nokta SİLERDİ → eski kategori davranışına dönülür
+    const izgaraUyumlu = izgaraMakul && pts.filter(Boolean).length === forecast.length && hamMs.every((v, i) => i === 0 || v > hamMs[i - 1]);
+    if (!izgaraUyumlu) pts = forecast.slice();
+    cats = izgaraUyumlu ? pts.map((p, i) => p ? p.ts : new Date(hamMs[0] + i * adim).toISOString()) : forecast.map((p) => p.ts);
     let boundaryIdx = -1;
     for (let i = 0; i < cats.length; i++) {
       if (toMs(cats[i]) <= nowMs) boundaryIdx = i;
@@ -423,7 +438,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     dayRuleCats = cats.filter((t) => tzHour(toMs(t), tz) === 0);
     axisIntervalFn = (_i, v) => {
       const h = tzHour(toMs(v), tz);
-      return forecast.length > 96 ? h === 0 : h % 6 === 0;
+      return cats.length > 96 ? h === 0 : h % 6 === 0;
     };
     axisFmtFn = (v) => fmtAxisLabel(toMs(v), tz);
 
@@ -437,12 +452,14 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     );
 
     if (hasOuter) {
-      const loAdj = forecast.map((p) => {
+      const loAdj = pts.map((p) => {
+        if (!p) return null;
         const lo = p.p10 as number;
         const hi = p.p90 as number;
         return hi - lo < minKw ? Math.max(0, p.p50 - minKw / 2) : lo;
       });
-      const hiAdj = forecast.map((p) => {
+      const hiAdj = pts.map((p) => {
+        if (!p) return null;
         const lo = p.p10 as number;
         const hi = p.p90 as number;
         return hi - lo < minKw ? Math.min(yMax, p.p50 + minKw / 2) : hi;
@@ -474,9 +491,9 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     );
     if (hasInner) {
       const loIc = splitPastFuture(
-        forecast.map((p) => p.p25 as number), boundaryIdx);
+        pts.map((p) => (p ? (p.p25 as number) : null)), boundaryIdx);
       const hiIc = splitPastFuture(
-        forecast.map((p) => p.p75 as number), boundaryIdx);
+        pts.map((p) => (p ? (p.p75 as number) : null)), boundaryIdx);
       series.push(
         ...buildBandSeries("bandIcPast", loIc.past, hiIc.past, "b_ic_past", {
           fill: T.bandIcPastFill, edge: T.bandPastEdge,
@@ -534,7 +551,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             symbol: "rect",
             symbolSize: [2.4, 10],
             symbolOffset: [0, 5],
-            itemStyle: { color: T.actualLine },
+            itemStyle: { color: T.mutedText },   // G3-A / U-2: amber yalnız gerçekleşen üretim — tik soluk gri
             silent: true,
             label: {
               // v2.307: "doğuş 06:26" etiketi "[saat · yerel]" eksen adına biniyordu;
@@ -550,7 +567,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       }
     }
 
-    const p50sp = splitPastFuture(forecast.map((p) => p.p50), boundaryIdx);
+    const p50sp = splitPastFuture(pts.map((p) => (p ? p.p50 : null)), boundaryIdx);
     series.push(
       {
         name: "p50past",
@@ -585,15 +602,15 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     );
 
     if (acVal !== null) {
-      exceedIdx = forecast.map(
-        (p) => p.p50 > acVal || (typeof p.p90 === "number" && p.p90 > acVal),
+      exceedIdx = pts.map(
+        (p) => !!p && (p.p50 > acVal || (typeof p.p90 === "number" && p.p90 > acVal)),
       );
       // U3: doyma = üst bant tavanda AMA aşım değil (aşım kendi dilini
       // konuşuyor); kırpık veride p90 > tavan imkânsız, bu yüzden ayrı test.
-      satureIdx = forecast.map(
-        (p, i) => bandSature(p.p90, acVal) && !exceedIdx[i],
+      satureIdx = pts.map(
+        (p, i) => !!p && bandSature(p.p90, acVal) && !exceedIdx[i],
       );
-      const over = forecast.map((p) => (p.p50 > acVal ? p.p50 : null));
+      const over = pts.map((p) => (p && p.p50 > acVal ? p.p50 : null));
       if (over.some((v) => v !== null)) {
         series.push({
           name: "exceed",

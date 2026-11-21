@@ -139,8 +139,8 @@ function GunProfili({ noktalar, tepe, vurgu }:
     <svg viewBox="0 0 100 26" aria-hidden="true"
       style={{ width: 100, height: 26, display: "block" }}>
       <polyline points={d} fill="none"
-        stroke={vurgu ? "var(--cubuk-vurgu)" : "var(--ch-cubuk)"}
-        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        stroke="var(--chart-p50-future)"   /* G3-B (U-3): P50 profili TAHMİN → mavi; yeşil çubuk jetonu aylık üretim çubuklarına aittir; bugün kalınlıkla vurgulanır */
+        strokeWidth={vurgu ? 2.4 : 1.4} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -603,7 +603,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
           itemStyle: { color: renk[e.ad] }, data: e.nokta },
         { name: ad[e.ad] ?? e.ad, type: "scatter" as const,
           symbolSize: e.ad === "yaz" ? 5 : 4, z: 4,
-          itemStyle: { color: e.ad === "yaz" ? oku("--amber") : renk[e.ad] },
+          itemStyle: { color: e.ad === "yaz" ? oku("--chart-p50-future") : renk[e.ad] },   /* G3-B: amber yalnız gerçekleşen — güneş yolu «yaz» noktası tahmin mavisi */
           tooltip: { show: true },
           label: { show: e.ad === "yaz", position: "top" as const,
             color: soluk, fontSize: 11.5, fontFamily: veri,
@@ -1051,6 +1051,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             {golge.uyari ? <span className="rozet rozet-kucuk rozet-uyari">{golge.uyari}</span> : null}
           </div>
           {golge.saatler.length === 0 ? <p className="soluk t-ikincil" style={{ margin: 0 }}>Son 7 günde «{golge.sinir_etiketi}» sınırında canlı okumadan türetilmiş saat yok{golge.sinir !== beyanSinir(vy) ? "; beyan edilen sınır farklı, seçimi kontrol edin" : ""}. Modbus / SunSpec ya da IEC 104 çekişi açıldığında saatler burada üretim serisiyle karşılaştırılır.</p> : (
+            <Katla ozet="Saatlik kıyas tablosu" not={`son ${sayiTr(Math.min(24, golge.saatler.length))} saat; özet rozetleri yukarıda`}>   {/* G3-C (O-11/U-10): 24 satırlık tablo varsayılan katlı — sağ sütun 700–900 px uzuyordu */}
             <div style={{ overflowX: "auto" }}>
               <table className="veri dar">
                 <thead><tr><th>Saat (UTC)</th><th>Seçilen kaynak</th><th>Nitelik</th><th>kWh</th><th>Üretim serisi kWh</th><th>Fark</th><th>Neden</th></tr></thead>
@@ -1065,7 +1066,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                     <td className="soluk">{h.neden ?? ""}</td>
                   </tr>))}</tbody>
               </table>
-            </div>)}
+            </div>
+            </Katla>)}
           <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{golge.not}</p>
           {adaylar ? (
             <div style={{ marginTop: 12 }}>
@@ -1159,6 +1161,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 <p><b>Piyasadan alım sınırı:</b> Karar 14626 (RG 06.06.2026-33272): takvim yılında alış ikili anlaşma, GÖP/GİP alımı, yerine getirilen yük atma talimatı, vadeli uzun pozisyon ve negatif enerji dengesizlik miktarı toplamı YEÜM'ü (lisanstaki yıllık üretim × kabul oranı × toplayıcı dışı gün/365) geçemez. Lisanstaki yıllık üretimi girerseniz Doğruluk sayfasında yıl içi negatif dengesizlik miktarı YEÜM'e oranlanır; öbür kalemler PVQuant'ta olmadığından gösterge alt sınırdır.</p>
               </>)}
           </div>
+          <Katla className="ayar-gelismis form-tam" ozet="YEK-G kaydı ve depolama ünitesi" not="nadiren değişen beyanlar">   {/* G3-C (O-11/U-11): ayar formu ~3,5 ekrandı */}
           {/* v2.540 (EK-3 DK-612): YEK-G kaydı — Dâhilî Bilgi Platformu Asgarî Veriler Listesi sıra 17 (eşiksiz arıza/plansız bakım) */}
           <div className="ayar">
             <div><div className="ayar-ad">YEK-G sistemi kaydı</div>
@@ -1216,6 +1219,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 <p><b>Sınır:</b> {dep?.not ?? "Hazırlık katmanı; hesap yok."}</p>
               </>)}
           </div>
+          </Katla>
           {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}
           <div className="ayar">
             <div><div className="ayar-ad">UEVÇB kodu</div>
@@ -1332,6 +1336,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               </>)}
           </div>
           </div>
+          <Katla className="ayar-gelismis form-tam" ozet="İşletme ayarları" not="üretim programı sınırları, bakım pencereleri, tarife ve bütçe">
           <div className="ayar">
             <div><div className="ayar-ad">İşletme ayarları</div>
               <div className="ayar-aciklama">Üretim programı sınırları ve piyasa varsayımları, performans hedefleri, bakım ve temizlik, veri güncelliği, risk kayıtları. Boş alanlarda AC sınırı ve varsayılan kurallar geçerlidir.</div>
@@ -1417,6 +1422,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında, uzlaştırma hesaplarında ve ilgili kartlarda (kirlenme, veri kaynakları, aylık beklenti).</p>
               </>)}
           </div>
+          </Katla>
           <div className="ayar">
             <div><div className="ayar-ad">Alarm kuralları ve bildirimler</div>
               <div className="ayar-aciklama">Hangi durumda uyarı üretileceği ve kime gideceği. İki temel kural her santralde açık; diğerleri seçime bağlıdır ve işaretlendiği anda geçerli olur.</div>
@@ -1581,16 +1587,16 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
 
       {/* v2.544 (dalga 3 kalanı, IH-090/092): kirlenme ve ölçüm tutarlılığı — ön tanı göstergesi; v2.545 kayıp satırı ayrı etiketli tahmin; sensör/modül ayrımı açık gün PR çapraz okumasıyla */}
       {pilot ? (   /* v2.560 (Aşama 4) + v2.561 (Aşama 6): pilot kapıları, referans kıyası, saha toplayıcısı — örnek kipte ve API yokken gizli */
-        <Kart baslik="Pilot kapıları ve saha toplayıcısı" alt="Sahaya bağlanmadan önce kapanması gereken kapılar, referans dışa aktarımıyla kıyas ve saha toplayıcısı kimlikleri. Beyanlar sorumluluğu adlandırır; sahadaki gerçeği kanıtlamaz.">
+        <Kart baslik="Sahaya bağlantı ön şartları ve saha toplayıcısı" alt="Sahaya bağlanmadan önce tamamlanması gereken ön şartlar, referans dışa aktarımıyla kıyas ve saha toplayıcısı kimlikleri. Beyanlar sorumluluğu adlandırır; sahadaki gerçeği kanıtlamaz.">
           <fieldset className="rol-alan" disabled={!yazabilir}>
           <div className="t-ikincil" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-            <span className={`rozet rozet-kucuk ${pilot.sahaya_hazir ? "rozet-ok" : "rozet-uyari"}`}>{pilot.sahaya_hazir ? "P0 kapıları kapalı: sahaya bağlantı başlatılabilir" : `açık P0 kapısı: ${pilot.p0_acik.join(", ")}`}</span>
+            <span className={`rozet rozet-kucuk ${pilot.sahaya_hazir ? "rozet-ok" : "rozet-uyari"}`}>{pilot.sahaya_hazir ? "Ön şartlar tamam: sahaya bağlantı başlatılabilir" : `açık ön şart: ${pilot.p0_acik.join(", ")}`}</span>
           </div>
           <ul className="t-ikincil" style={{ margin: 0, paddingLeft: 0, listStyle: "none", lineHeight: 1.6 }}>
             {pilot.kapilar.map((k) => (
-              <li key={k.kod} style={{ display: "flex", gap: 8, alignItems: "flex-start" }} title={k.aciklama}>
+              <li key={k.kod} style={{ display: "flex", gap: 8, alignItems: "flex-start" }} title={[k.aciklama, k.kaynak === "saha" ? null : k.not].filter(Boolean).join(" — ")}>   {/* G3-C (U-19) + QA İ-2: kod şartının teknik notu (test yolu, CI) ipucunda; saha şartının beyan notu görünür */}
                 <span style={{ display: "inline-flex", width: 38, justifyContent: "center", flex: "0 0 38px" }}>{k.kaynak === "saha" ? <input type="checkbox" checked={k.tamam} onChange={(e) => pilotKapi(k.kod, e.target.checked)} style={{ marginTop: 5 }} title="İşaretleyince beyan notu sorulur (izin belgesi, tarih, kişi)" /> : <span className="rozet rozet-kucuk rozet-ok" style={{ marginTop: 3 }}>kod</span>}</span>
-                <span><b>{k.kod}</b> {k.ad}{k.p0 ? "" : <span className="soluk"> (markaya özgü; P0 değil)</span>} <span className="soluk">· {k.durum_etiketi}{k.zaman ? ` · ${gunKisa(k.zaman)}` : ""}{k.not ? ` · ${k.not}` : ""}</span></span>
+                <span><b>{k.kod}</b> {k.ad}{k.p0 ? "" : <span className="soluk"> (markaya özgü; ön şart değil)</span>} <span className="soluk">· {k.durum_etiketi}{k.zaman ? ` · ${gunKisa(k.zaman)}` : ""}{k.kaynak === "saha" && k.not ? ` · ${k.not}` : ""}</span></span>
               </li>))}
           </ul>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginTop: 10 }}>
@@ -1607,7 +1613,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             <p className="t-ikincil" style={{ margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma ${yuzdeTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.n_atlanan ? `, ${sayiTr(r.n_atlanan)} satır atlandı` : ""}{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span>
               {r.uyarilar && r.uyarilar.length > 0 && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 6 }} title={r.uyarilar.join(" · ")}>uyarı {sayiTr(r.uyarilar.length)}</span>}</p>
             {r.uyarilar && r.uyarilar.length > 0 && <ul className="soluk t-ikincil" style={{ margin: "4px 0 0", paddingLeft: 18 }}>{r.uyarilar.map((u, i) => <li key={i}>{u}</li>)}</ul>}</>); })()}   {/* v2.640: atlanan satır, çift damga, UTC varsayımı artık görünür; liste paragraf DIŞINDA (DOM iç içelik) */}
-          <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{pilot.not}</p>
+          <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }} title={pilot.not}>Sahaya bağlantı, listedeki ön şartlar tamamlanmadan başlatılmaz. Kod şartlarını PVQuant kendi sınamalarıyla, saha şartlarını siz beyanınızla kapatırsınız.</p>   {/* G3-C QA İ-1: sunucunun teknik notu (test adları) yalnız ipucunda */}
           {edge && (
             <div style={{ marginTop: 12 }}>
               <b className="t-ikincil">Saha toplayıcısı</b> <span className="soluk t-ikincil">· sahadaki inverteri yalnızca okuyup PVQuant'a gönderen saha bilgisayarı; anahtar tek santrala bağlı, bir kez gösterilir</span>
@@ -1621,8 +1627,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             </div>)}
           </fieldset>
         </Kart>) : pilotHata ? (
-        <Kart baslik="Pilot kapıları ve saha toplayıcısı" alt="Pilot bilgisi bu kez okunamadı; kart gizlenmedi.">
-          <p className="ayar-durum hata" style={{ margin: 0 }}>Pilot kapıları ya da saha toplayıcısı okunamadı: {pilotHata}. Sayfayı yenileyin; sürerse destek.</p>
+        <Kart baslik="Sahaya bağlantı ön şartları ve saha toplayıcısı" alt="Ön şart bilgisi bu kez okunamadı; kart gizlenmedi.">
+          <p className="ayar-durum hata" style={{ margin: 0 }}>Ön şartlar ya da saha toplayıcısı okunamadı: {pilotHata}. Sayfayı yenileyin; sürerse destek.</p>
         </Kart>) : null}
         </div>
       <Kart baslik="Kirlenme ve ölçüm tutarlılığı" alt="Açık günlerde ölçülen ışınımın açık-gök modeline oranı ile açık gün performans oranı birlikte okunur: sapma sensörde mi, modüllerde mi? Ön tanı göstergesidir; kayıp satırı ayrı etiketli bir tahmindir."

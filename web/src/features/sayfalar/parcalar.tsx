@@ -91,6 +91,14 @@ const buyukHarf = (s: string) => s.length ? s[0].toLocaleUpperCase("tr-TR") + s.
 /** v2.608 (Faz 5 F5-E) — aşamalı açılım: yerleşik details. Alanlar DOM'da kalır (form durumu ve Kaydet etkilenmez), yalnız görünürlük
  *  katlanır; klavyeyle Tab + Enter/Boşluk. `acik` yalnız dışarıdan gelen bir sinyalle (vadesi geçen sensör, hava verisinde kayma) AÇAR, hiç
  *  kapatmaz; kullanıcı kapatabilir. Boş/yükleniyor durumu katlanmaz (çağıran, yalnız içerik varken sarar). Kart düzeyinde `className="ayar-gelismis"`, satır içinde `form-tam`. */
+/** G3-C (UAT video U-12, 21.11): kart başlığı sağında 3+ bilgi — tek hap içinde Meta 2–3 satıra kırılıp «yastık» oluyordu. Her bilgi ayrı
+ *  .cip; şerit .kart-arac (G1-B: daralır, sarar, en çok %60). Boş/yanlış öğeler atlanır (Meta ile aynı sözleşme). */
+export function Cipler({ items, title }: { items: (string | false | null | undefined)[]; title?: string }) {
+  const liste = items.filter((x): x is string => typeof x === "string" && x.length > 0);
+  if (liste.length === 0) return null;
+  return <span className="dugme-sira kart-arac" title={title}>{liste.map((x, i) => <span key={i} className="cip">{x}</span>)}</span>;
+}
+
 export function Katla({ ozet, not, acik, className, children }: { ozet: string; not?: string; acik?: boolean; className?: string; children: ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => { if (acik && ref.current) ref.current.open = true; }, [acik]);   // öz inceleme: sinyal yalnız AÇAR; sinyal sönünce (tazeleme) kullanıcının açık bıraktığını kapatmaz
@@ -277,7 +285,7 @@ export function HizmetDurumu({ durum, etiket, title, kucuk = false }: { durum: s
 }
 
 /** v2.609 (Faz 6 F6-B/D) — kota rozeti (müşteri + platform tek parça): hüküm ve sözcük UÇTAN (yetki_service.kota_durumu); arayüz oran hesaplamaz.
- *  sınırsız/ölçülmüyor soluk, dikkat ve dolu (tam sınır) amber, aşıldı uyarı; kaynak «ezme» ise sözleşme işareti. Uyarı kipi: kısıt yok, yalnız rozet. */
+ *  sınırsız/ölçülmüyor soluk, dikkat ve dolu (tam sınır) uyarı ailesi (G3-B: amber yalnız gerçekleşen), aşıldı uyarı; kaynak «ezme» ise sözleşme işareti. Uyarı kipi: kısıt yok, yalnız rozet. */
 export function KotaRozet({ k }: { k: KotaDurum }) {
   const ondalik = k.birim === "MW" ? 1 : 0;
   const deger = k.kullanim == null ? "—" : sayiTr(k.kullanim, ondalik);

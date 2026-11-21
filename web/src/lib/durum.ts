@@ -28,6 +28,6 @@ export const FINANS_NITELIK: Record<FinansNitelik, { etiket: string; sinif: stri
   resmi: { etiket: "resmî", sinif: "rozet-ok", aciklama: "EPİAŞ uzlaştırma bildiriminden ya da resmî fiyat ve kur kaydından alınan değer." },
   hesaplanan: { etiket: "hesaplanan", sinif: "rozet-notr", aciklama: "PVQuant'ın EPİAŞ saatlik fiyatı ve sistem yönüyle yeniden hesabı; resmî uzlaştırma sonucu değildir." },
   sozlesme_tahmini: { etiket: "sözleşme tahmini", sinif: "rozet-notr", aciklama: "Santral ayarlarındaki tarife ya da sözleşme varsayımıyla hesaplanan tahmin; fatura değildir." },
-  senaryo: { etiket: "senaryo", sinif: "rozet-uyari", aciklama: "Varsayımsal hesap: senaryo fiyatı, varsayılan sistem yönü ya da sözleşme verisi olmayan üyelik." },
+  senaryo: { etiket: "senaryo", sinif: "rozet-notr",   /* G3-B (U-17): nitelik bir sınıflandırmadır, uyarı değil — tablonun yarısı kırmızı olunca gerçek uyarı seçilemiyordu */ aciklama: "Varsayımsal hesap: senaryo fiyatı, varsayılan sistem yönü ya da sözleşme verisi olmayan üyelik." },
   eksik: { etiket: "eksik", sinif: "rozet-notr", aciklama: "Gerekli veri (fiyat, sistem yönü, katsayı, ölçüm ya da bildirim) olmadığından hesaplanamadı." },
 };

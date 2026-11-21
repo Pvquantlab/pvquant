@@ -34,12 +34,12 @@ function OlayAdi({ o }: { o: TakvimOlay }) {
 
 function KaynakRozeti({ o }: { o: TakvimOlay }) {
   // v2.535: ipucuna Resmî Gazete yayımı (tarih-sayı) — kaynak metni maddeyi, yayım satırı metnin hangi RG ile geldiğini söyler
-  return <span className={`rozet rozet-kucuk ${o.kaynak_turu === "mevzuat" ? "rozet-ok" : "rozet-notr"}`} title={`${KAYNAK_ACIKLAMA[o.kaynak_turu]}: ${o.kaynak}${o.dayanak?.length ? `\n\nYayım: ${o.dayanak.join(" · ")}` : ""}`}>{KAYNAK_TURU[o.kaynak_turu]}</span>;
+  return <span className="rozet rozet-kucuk rozet-notr" title={`${KAYNAK_ACIKLAMA[o.kaynak_turu]}: ${o.kaynak}${o.dayanak?.length ? `\n\nYayım: ${o.dayanak.join(" · ")}` : ""}`}>{KAYNAK_TURU[o.kaynak_turu]}</span>;
 }
 
 function GunUyarisi({ o }: { o: TakvimOlay }) {
   if (o.kaydirma === "belirsiz" && (o.hafta_sonu || o.tatil))
-    return <span className="rozet rozet-uyari rozet-kucuk" title={o.not ?? "Hafta sonuna denk geliyor; metinde kaydırma kuralı yok"}>{o.tatil ? "tatil" : "hafta sonu"}</span>;
+    return <span className="rozet rozet-notr rozet-kucuk" title={o.not ?? "Hafta sonuna denk geliyor; metinde kaydırma kuralı yok"}>{o.tatil ? "tatil" : "hafta sonu"}</span>;
   if (o.kaydirma === "is_gunu" && o.not) return <span className="rozet rozet-notr rozet-kucuk" title={o.not}>iş gününe kaydırıldı</span>;
   return null;
 }

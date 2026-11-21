@@ -2,8 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { SayacOzet, SayacKaynak, SayacGun, SayacAyar } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
-import { Meta } from "../../lib/Meta";
+import { Cipler, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
 import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 
 /** v2.523 (P4a) — Sayaç: uzlaştırmaya esas sayaç verisi (OSOS / MASS / EPYS dışa aktarımı) SCADA'dan ayrı yüklenir; sayaç türüne göre EPİAŞ geliş
@@ -24,7 +23,7 @@ const sayiOku = (t: string): number | null | undefined => { const x = t.trim(); 
 const NITELIK_AD: Record<string, string> = { sayac_olculmus: "sayaç ölçülmüş", sayac_tahmini: "sayaç tahmini", sayac_doldurulmus: "sayaç doldurulmuş", sayac_elle: "sayaç elle", sayac_yok: "sayaç «veri yok»",
   scada_dosya: "SCADA dosyası", epias_seffaflik: "Şeffaflık akışı", gercek_yok: "gerçekleşen yok", sayac_yok_saat: "sayaç verisi yok" };
 const sol = { textAlign: "left" as const };
-const amber = { color: "var(--amber-koyu, #8a5a00)" };
+const uyari = { color: "var(--uyari-metin)" };   // G3-B (U-16): tanimsiz --amber-koyu yerine uyari jetonu (amber yalniz gerceklesen)
 
 export function Sayac({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();
@@ -73,7 +72,7 @@ export function Sayac({ plantId }: { plantId: string }) {
       <td className="mono" style={{ whiteSpace: "nowrap" }}>{imzali(r.fark_kwh)}</td>
       <td className="mono">{yuzde(r.fark_pct)}</td>
       <td className="mono">{r.saat_tahmini ? yuzde(r.olc_fark_pct) : <span className="soluk">aynı</span>}</td>
-      <td className="mono">{r.saat_tahmini ? <span style={amber}>{sayiTr(r.saat_tahmini)}</span> : "0"}</td>
+      <td className="mono">{r.saat_tahmini ? <span style={uyari}>{sayiTr(r.saat_tahmini)}</span> : "0"}</td>
     </tr>);
   return (
     <Sayfa baslik="Sayaç" alt="Sayaç ölçümlerinizi dosyayla yükleyin; son ölçümü, eksik saatleri, düzeltme son tarihini ve sayaç ile SCADA arasındaki farkı tek yerden izleyin. Sayaç verisi şebeke işletmecisinindir; PVQuant yalnız karşılaştırır."
@@ -84,15 +83,15 @@ export function Sayac({ plantId }: { plantId: string }) {
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket="Son yüklenen sayaç ölçümü" bilgi="PVQuant'a yüklenmiş en son sayaç saati. EPİAŞ'a fiilen ulaşıp ulaşmadığı buradan görülmez; beklenen iletim anı sayaç türüne göre mevzuattan yazılır."
           deger={g.son_sayac_saat_once != null ? sureTr(g.son_sayac_saat_once) : "—"} birim={g.son_sayac_saat_once != null ? "önce" : undefined}
-          alt={g.son_sayac ? <>{saatTr(g.son_sayac)}; son SCADA {saatTr(g.son_scada)}{(g.son_sayac_saat_once ?? 0) > 48 ? <span style={amber}> · PVQuant'a yeni sayaç ölçümü yüklenmemiş; güncel dosyanızı yükleyin</span> : null}</> : "henüz sayaç dosyası yüklenmedi; ilk dosyanızı aşağıdan yükleyin"} />
+          alt={g.son_sayac ? <>{saatTr(g.son_sayac)}; son SCADA {saatTr(g.son_scada)}{(g.son_sayac_saat_once ?? 0) > 48 ? <span style={uyari}> · PVQuant'a yeni sayaç ölçümü yüklenmemiş; güncel dosyanızı yükleyin</span> : null}</> : "henüz sayaç dosyası yüklenmedi; ilk dosyanızı aşağıdan yükleyin"} />
         <Kpi etiket={`Eksik ölçüm saatleri (${ayAd(g.ay)})`} bilgi="Vadesi gelen saat: ay başından şu anki saatten 2 saat öncesine kadar başlamış saat dilimleri (Ölçüm Sist. Yön. m.8(2), dilim sonundan sayıldı). Eksik: vadesi gelen ama PVQuant'a yüklenmemiş saat; EPİAŞ'a ulaşıp ulaşmadığı buradan görülmez. Diğer sayaçta aylık beklenti uygulanır, saat sayılmaz."
-          deger={sn.eksik != null ? sayiTr(sn.eksik) : "—"} birim={sn.eksik != null ? "saat" : undefined} ton={sn.eksik ? "amber" : undefined}
+          deger={sn.eksik != null ? sayiTr(sn.eksik) : "—"} birim={sn.eksik != null ? "saat" : undefined} ton={sn.eksik ? "uyari" : undefined}
           alt={sn.vadesi_gelen != null ? `${sayiTr(sn.vadesi_gelen)} saatin ölçümü bekleniyor, ${sayiTr(sn.yuklu)} saati yüklü${sn.yuklu_tahmini ? ` (${sayiTr(sn.yuklu_tahmini)} tahmini)` : ""}; ${sayiTr(sn.vadesi_gelmemis ?? 0)} saatin vadesi gelmedi. Eksik = PVQuant'a yüklenmemiş; EPİAŞ'ta eksik olduğu anlamına gelmez.` : g.sayac_turu === "diger" ? "aylık bildirim yapan sayaç; saat bazında beklenti yok" : "önce sayaç türünü seçin (sağdaki kart)"} />
         <Kpi etiket={`Sayaç ve SCADA üretim farkı (${sayiTr(f.pencere_gun)} gün)`} bilgi="Sayaç − SCADA, yalnız iki serinin de bulunduğu ve sayaç değeri ölçülmüş olan saatlerde; yüzde SCADA toplamına oranla. İkinci satır tahmini değerler dâhil. SCADA brüt AC üretim, sayaç şebekeye verilen net enerjidir; oran santrale özgüdür, PVQuant eşik koymaz."
           deger={yuzde(f.olculmus.fark_pct)} ikinci={f.tahmini_dahil.saat && f.tahmini_dahil.saat !== f.olculmus.saat ? { etiket: "tahmini değerler dâhil", deger: `${yuzde(f.tahmini_dahil.fark_pct)} (${sayiTr(f.tahmini_dahil.saat)} saat)` } : undefined}
           alt={f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} ölçülmüş ortak saat; ${imzali(f.olculmus.fark_kwh)} kWh; kapsam ${yuzdeTr(f.kapsam.ortak_pct ?? 0, 0)} (${sayiTr(f.kapsam.ortak_saat)} / ${sayiTr(f.kapsam.pencere_saat)} saat). Sürekli benzer bir fark çoğunlukla ölçüm noktası ve öz tüketimdendir; tek başına arıza göstergesi değildir.` : "karşılaştırma için hem SCADA hem sayaç verisi olan saat gerekir"} />
         <Kpi etiket="Sayaç verisi düzeltme son tarihi" bilgi="DUY m.82(4): ayın 12'si 17:30'dan sonra gelen sayaç düzeltmesi o ayın uzlaştırmasına girmez; sayaç değerleri dönem sonunu izleyen ilk 10 gün içinde PYS'ye aktarılır (m.81(1)). Hafta sonuna denk gelen 12'si için EPİAŞ uygulaması metinde yazılı değil. Alt satır: dönemin sayaç kapsamı PVQuant'ta."
-          deger={dSon ? (dSon.gecti ? "geçti" : sureTr(dSon.kalan_saat)) : "—"} birim={dSon && !dSon.gecti ? "kaldı" : undefined} ton={dSon && !dSon.gecti && dSon.kalan_saat <= 72 ? "amber" : undefined}
+          deger={dSon ? (dSon.gecti ? "geçti" : sureTr(dSon.kalan_saat)) : "—"} birim={dSon && !dSon.gecti ? "kaldı" : undefined} ton={dSon && !dSon.gecti && dSon.kalan_saat <= 72 ? "uyari" : undefined}
           alt={dSon ? <>{ayAd(dSon.donem)} dönemi: {gunTr(dSon.itiraz_son)} 17:30{d0 && d0 !== dSon ? ` (${ayAd(d0.donem)} geçti)` : ""}{dSon.hafta_sonu ? "; hafta sonu" : ""}; PVQuant'ta {sayiTr(dSon.kapsam.yuklu)} / {sayiTr(dSon.kapsam.vadesi_gelen)} saat{dSon.kapsam.eksik ? `, ${sayiTr(dSon.kapsam.eksik)} eksik` : ""}{!dSon.gecti ? <span className="soluk"> · bu tarihten sonra yapılan sayaç düzeltmesi {ayAd(dSon.donem)} uzlaştırmasına girmez</span> : null}</> : undefined} />
       </div>
       <div className="ızgara-cift">
@@ -102,7 +101,7 @@ export function Sayac({ plantId }: { plantId: string }) {
             <label className="girdi-etiket">Kaynak<select className="girdi" value={kaynak} onChange={(e) => setKaynak(e.target.value as SayacKaynak)} title={o.kaynaklar.find((k) => k.kod === kaynak)?.etiket}>
               {o.kaynaklar.map((k) => <option key={k.kod} value={k.kod} title={k.etiket}>{k.etiket.split(" (")[0]}</option>)}</select></label>
             <div className="dugme-sira" style={{ alignSelf: "end" }}><button className="dugme" onClick={gonder} disabled={yukleniyor}>{yukleniyor ? "Yükleniyor…" : "Yükle"}</button></div>
-            {mesaj && <div className="form-tam"><span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? amber : undefined}>{mesaj.metin}</span></div>}
+            {mesaj && <div className="form-tam"><span className={`ayar-durum ${mesaj.ton}`}>{mesaj.metin}</span></div>}
           </div>
           <p className="form-not t-ikincil" style={{ marginTop: 10 }}>Aynı saat için aynı kaynaktan yeniden yüklerseniz değer güncellenir (düzeltme); eski yüklemeler silinmez. Aynı saatte birden çok kaynak varsa EPYS, OSOS, MASS, elle sırasıyla biri gösterilir. Endeks (sayaç sayacı) sütunu tek başına yetmez; saatlik enerji (kWh) sütunu gerekir.</p>
           {o.yuklemeler.length > 0 && (
@@ -133,14 +132,14 @@ export function Sayac({ plantId }: { plantId: string }) {
             <li><b>PVQuant'taki son ölçüm:</b> sayaç {saatTr(g.son_sayac)}; SCADA {saatTr(g.son_scada)}</li>
             {g.donemler.map((d) => (
               <li key={d.donem}><b>{ayAd(d.donem)} dönemi:</b> şebeke işletmecisi sayaç değerlerini {gunTr(d.sayac_veri)} tarihine kadar EPİAŞ'a iletir; düzeltme son tarihi {gunTr(d.itiraz_son)} 17:30
-                {d.gecti ? " (geçti)" : ` (${sureTr(d.kalan_saat)} kaldı)`}{d.not ? <span style={amber}> · {d.not}</span> : null}
-                {d.kapsam.vadesi_gelen > 0 && <span className="soluk"> · PVQuant'ta {sayiTr(d.kapsam.yuklu)} / {sayiTr(d.kapsam.vadesi_gelen)} saat{d.kapsam.tahmini ? ` (${sayiTr(d.kapsam.tahmini)} tahmini)` : ""}{d.kapsam.eksik ? <span style={amber}>, {sayiTr(d.kapsam.eksik)} saat yüklenmemiş</span> : null}</span>}</li>))}
+                {d.gecti ? " (geçti)" : ` (${sureTr(d.kalan_saat)} kaldı)`}{d.not ? <span style={uyari}> · {d.not}</span> : null}
+                {d.kapsam.vadesi_gelen > 0 && <span className="soluk"> · PVQuant'ta {sayiTr(d.kapsam.yuklu)} / {sayiTr(d.kapsam.vadesi_gelen)} saat{d.kapsam.tahmini ? ` (${sayiTr(d.kapsam.tahmini)} tahmini)` : ""}{d.kapsam.eksik ? <span style={uyari}>, {sayiTr(d.kapsam.eksik)} saat yüklenmemiş</span> : null}</span>}</li>))}
           </ul>
           <details className="aciklama" style={{ marginTop: 10 }}><summary>Dayanak</summary><p style={{ margin: "6px 0 0" }}>{g.kaynak}</p></details>
         </Kart>
       </div>
       <Kart baslik="Sayaç ve SCADA üretim karşılaştırması" alt={`${gunTr(f.bas)} – ${gunTr(f.bit)}; günlük toplam (Türkiye günü); fark = sayaç − SCADA, yalnız iki verinin de bulunduğu saatlerde`}
-        sag={<span className="cip"><Meta items={[`${sayiTr(t.saat_ortak)} ortak saat`, t.saat_sayac ? `${sayiTr(t.saat_sayac)} sayaç saati` : "sayaç verisi yok", `${sayiTr(t.saat_scada)} SCADA saati`]} /></span>}>
+        sag={<Cipler items={[`${sayiTr(t.saat_ortak)} ortak saat`, t.saat_sayac ? `${sayiTr(t.saat_sayac)} sayaç saati` : "sayaç verisi yok", `${sayiTr(t.saat_scada)} SCADA saati`]} />}>
         <p className="form-not t-ikincil" style={{ margin: "0 0 6px" }}><b>Yalnız ölçülmüş ortak saatler:</b> {f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} saat, sayaç ${kwh(f.olculmus.sayac_kwh)} / SCADA ${kwh(f.olculmus.scada_kwh)} kWh, fark ${yuzde(f.olculmus.fark_pct)}` : "yok"}
           {f.tahmini_dahil.saat !== f.olculmus.saat ? <> · <b>Tahmini değerler dâhil:</b> {sayiTr(f.tahmini_dahil.saat)} saat, fark {yuzde(f.tahmini_dahil.fark_pct)}</> : null}
           {" · "}<b>Kapsam:</b> {sayiTr(f.kapsam.ortak_saat)} / {sayiTr(f.kapsam.pencere_saat)} saat ortak{f.kapsam.yalniz_scada_saat ? `, ${sayiTr(f.kapsam.yalniz_scada_saat)} yalnız SCADA` : ""}{f.kapsam.yalniz_sayac_saat ? `, ${sayiTr(f.kapsam.yalniz_sayac_saat)} yalnız sayaç` : ""}{f.kapsam.ikisi_de_yok_saat ? `, ${sayiTr(f.kapsam.ikisi_de_yok_saat)} ikisi de yok` : ""}</p>
@@ -175,7 +174,7 @@ export function Sayac({ plantId }: { plantId: string }) {
               <ul className="not-listesi t-ikincil" style={{ marginTop: 10 }}>
                 <li><b>Yükümlülük:</b> {sc.kurulu_kaynak} {sayiTr(sc.kurulu_kw, 0)} kW {sc.yukumlu ? "≥" : "<"} {sayiTr(sc.esik_kw)} kW → {sc.yukumlu ? "SCADA bağlantısı zorunlu" : "bağlantı yükümlülüğü yok"} (LÜY m.21(7)); anlaşma tarafı {sc.anlasma === "dagitim" ? "dağıtım şirketi" : "TEİAŞ (iletim)"}; DUY m.75(4) kapsamı (900 kW ve üzeri): {sc.m75_kapsam ? "içinde" : "dışında"}</li>
                 <li><b>Durum kaynağı:</b> beyan (bu form); PVQuant şebeke işletmecisinin SCADA'sına bağlı değildir. PVQuant'taki SCADA dosyası tazeliği ayrı bir göstergedir.</li>
-                {sc.kopukluk_gun != null && <li><b>Kopukluk sayacı:</b> <span style={sc.kopukluk_gun > 30 ? amber : undefined}>{sayiTr(sc.kopukluk_gun)} gün</span> ({gunTr(sc.kopukluk_baslangic)} tarihinden beri; bilgi sayacı)</li>}
+                {sc.kopukluk_gun != null && <li><b>Kopukluk sayacı:</b> <span style={sc.kopukluk_gun > 30 ? uyari : undefined}>{sayiTr(sc.kopukluk_gun)} gün</span> ({gunTr(sc.kopukluk_baslangic)} tarihinden beri; bilgi sayacı)</li>}
                 {sc.durum === "kopuk" && sc.uyari_tarihi && <li><b>Onarım süresi (ç):</b> dağıtım şirketi uyarısı {gunTr(sc.uyari_tarihi)}; bir aylık süre {gunTr(sc.uyari_sure_sonu)} tarihinde dolar, sonrasında her gün için bedelin %1'i (askıda değil)</li>}   {/* v2.538 (DK-656); uyarı tarihi yoksa arka ucun «uygulanmayan» notu tablo altında */}
                 <li><b>Uzaktan açma-kapama yeteneği:</b> {sc.uzaktan_acma_var == null ? "girilmedi" : sc.uzaktan_acma_var ? "var" : "yok"} (envanter bilgisi; DUY m.75(4) acil durum talimatı 900 kW ve üzerinden başlar)</li>
                 <li><b>Uzaktan açma olayları (bu ay):</b> {sayiTr(sc.uzaktan_acma_ay)} — Olay kaydı › «Uzaktan açma yapılamadı» türüyle girilir</li>

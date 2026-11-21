@@ -57,7 +57,7 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
               <td>{say(r.gerceklesen_mwh, 3)}</td><td>{say(r.sapma_mwh, 3)}</td><td>{say(r.ptf_tl_mwh)}</td><td>{say(r.smf_tl_mwh)}</td><td>{kod(r.yon, YON)}</td>
               <td>{say(r.edt_borc_tl)}</td><td>{say(r.edt_alacak_tl)}</td><td>{say(r.kupsm_mwh, 3)}</td><td>{say(r.kupst_tl)}</td>
               {yekdemli && <><td>{say(r.yek_fiyat_tl_mwh)}</td><td>{r.m23_6 === "evet" ? <span className="rozet rozet-uyari rozet-kucuk">YEKDEM dışı</span> : kod(r.m23_6, M23)}</td><td>{say(r.yekdem_disi_mwh, 3)}</td><td>{say(r.yekdem_disi_tl)}</td></>}
-              <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}{r.talimat ? <> <span className="rozet rozet-amber rozet-kucuk" title={sd.talimat_notu ?? "talimat saati: sapma talimattan; tutar güvenilir değil"}>{TALIMAT[String(r.talimat)] ?? String(r.talimat)}</span></> : null}</td></tr>))}</tbody>
+              <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}{r.talimat ? <> <span className="rozet rozet-notr rozet-kucuk" title={sd.talimat_notu ?? "talimat saati: sapma talimattan; tutar güvenilir değil"}>{TALIMAT[String(r.talimat)] ?? String(r.talimat)}</span></> : null}</td></tr>))}</tbody>
         </table></div>)}
       {sd && <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada {sayiTr(sd.kolonlar.length)} sütunun tümü ve bu not yer alır.{yekdemli && " YEKDEM sütunları: YEK fiyatı o saatin fiyatı (+ yerli katkı); m.23(6) «YEKDEM dışı» = PTF ya da SMF taban değerin altında ve sistem fazlası saatinde program üstü üretim, PTF < YEK fiyatı (EPİAŞ uygulaması belirsiz; talimat saatleri sayılmadı)."}</p>}
     </details>
@@ -977,7 +977,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
            : !gt.toplam || gt.aylar.length === 0 ? <p className="soluk">Karşılaştırılabilir gün yok; tahmin ve ölçüm biriktikçe oluşur.</p>
            : (
             <>
-              <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
+              <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>{gt.baslik} Kural sürümü: <span className="kimlik">{gt.kural_surumu ?? "—"}</span></p>   {/* G3-C (U-20): kural kimliği gövde metninde değil .kimlik çipinde */}
               <div className="ızgara satir-4" style={{ gap: 12, marginBottom: 10 }}>
                 <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Yürürlükteki kuralla toplam" bilgi="Her saat, o gün yürürlükte olan kuralla hesaplanan dengesizlik maliyeti ile KÜPST toplamı." /></div><div className="kpi-dg">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                   <div className="kpi-br">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>

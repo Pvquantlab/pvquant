@@ -9,7 +9,8 @@ import { eylemAdi } from "../../lib/sozluk";   // 16.11: eylem kodu müşteri di
 
 /** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
 const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma",
-  "gerceklesen:oku": "Gerçekleşen üretim okuma", "alarm:oku": "Alarm okuma", "rapor:indir": "Dönem raporu indirme", "gerceklesen:yaz": "Üretim dosyası itme (CSV/XLSX)", "santral:yaz": "Santral ayarı yazma" };   // v2.528 (P10): rezerve kapsamlar canlı
+  "gerceklesen:oku": "Gerçekleşen üretim okuma", "alarm:oku": "Alarm okuma", "rapor:indir": "Dönem raporu indirme", "gerceklesen:yaz": "Üretim dosyası itme (CSV/XLSX)", "santral:yaz": "Santral ayarı yazma",
+  "veri_kalitesi:oku": "Veri kalitesi okuma", "portfoy:oku": "Portföy okuma", "finans:oku": "Finansal etki okuma" };   // G3-C (U-20): v2.603 kapsamları ham kodla kalıyordu   // v2.528 (P10): rezerve kapsamlar canlı
 
 /** 26.10 Faz 6 — KURULUŞ: Portföy'den taşınan yönetim kartları (Dış erişim, Hesap ve ekip, Santral arşivi — v2.608 F5-A: Kuruluşlar arası paylaşım kendi sayfasına, Paylasim.tsx —
  *  bileşenler ve mantıkları AYNEN), + müşteri içi denetim izi (yalnız yönetici) + «yöneticiler için 2FA zorunlu» politikası.
@@ -194,7 +195,8 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
             </div>)}
         </div>
         <div>
-          <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni, alarm.yeni; önceden eklenenler yalnız tahmin.yeni alır)</span></div>
+          <div className="etiket-ust" style={{ marginBottom: 2 }}>Webhook alıcıları</div>
+          <p className="soluk t-ikincil" style={{ margin: "0 0 10px" }}>Olaylar: tahmin.yeni ve alarm.yeni. Önceden eklenen alıcılar yalnız tahmin.yeni alır.</p>   {/* G3-C (U-20): eyebrow'da cümle yok */}
           {webhooklar.length === 0 ? <p className="soluk t-ikincil" style={{ margin: 0 }}>Henüz alıcı yok.</p> : (
             <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>

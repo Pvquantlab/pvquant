@@ -56,7 +56,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
     api.olayGuncelle(plantId, ol.id, { durum: "iptal" }).then(() => { setMesaj({ metin: `Geçersiz sayıldı: ${ol.tur_etiket}.`, ton: "ok" }); void yukle(); }).catch(hata); };
   if (o === undefined) return <Sayfa baslik="Olay kaydı"><SayfaIskeleti kpi={4} kart={2} /></Sayfa>;
   if (o === null) return <Sayfa baslik="Olay kaydı"><p className="soluk">Olay kaydı alınamadı.</p></Sayfa>;
-  const sayac = o.ariza_sayaci; const sayacTon = sayac.sayi >= sayac.esik ? "uyari" : sayac.sayi >= sayac.uyari ? "amber" : undefined;
+  const sayac = o.ariza_sayaci; const sayacTon = sayac.sayi >= sayac.esik ? "uyari" : undefined;   // G3-B (U-16): ara kademe amber degil (amber yalniz gerceklesen); esik alti on uyari alt metinde
   const dahili = o.dahili_bilgi.find((d) => !d.gecti) ?? o.dahili_bilgi[0];
   const ayAd = `${o.ariza_sayaci.ay.slice(5)}.${o.ariza_sayaci.ay.slice(0, 4)}`;
   return (
@@ -72,9 +72,9 @@ export function Olaylar({ plantId }: { plantId: string }) {
           alt={sayac.n_ariza == null || sayac.n == null ? `bu segmentte arıza sayısı sapma tutarı katsayısını değiştirmez; kaynak ${sayac.kaynak}`
                : sayac.sayi >= sayac.esik ? `eşik aşıldı: bu ay sapma tutarı katsayısı ${sayiTr(sayac.n_ariza, 2)}`
                : `${sayiTr(sayac.esik)} ve üzerinde sapma tutarı katsayısı ${sayiTr(sayac.n, 2)}'ten ${sayiTr(sayac.n_ariza, 2)}'e çıkar; kaynak ${sayac.kaynak}`} />   {/* v2.600: katsayılar kural sicilinden; kural yoksa sayı basılmaz */}
-        <Kpi etiket="Bugün kapasite düşümü" deger={sayiTr(o.eak_bugun.saat_sayisi)} birim="saat" ton={o.eak_bugun.saat_sayisi > 0 ? "amber" : undefined}
+        <Kpi etiket="Bugün kapasite düşümü" deger={sayiTr(o.eak_bugun.saat_sayisi)} birim="saat" ton={o.eak_bugun.saat_sayisi > 0 ? "uyari" : undefined}
           alt={o.eak_bugun.saat_sayisi > 0 ? `en çok ${sayiTr(o.eak_bugun.en_cok_kw, 0)} kW (taban ${sayiTr(o.eak_bugun.taban_kw, 0)} kW)${o.eak_bugun.kismi_saat > 0 ? `; ${sayiTr(o.eak_bugun.kismi_saat)} saatte kısmi süre, orantılı` : ""}${o.eak_bugun.suren > 0 ? "; bitişi girilmemiş olay gün sonuna kadar sayılır" : ""}` : "bugün kapasiteyi düşüren olay yok"} />
-        <Kpi etiket="Dâhilî bilgi açıklaması" deger={dahili ? (dahili.gecti ? "süre doldu" : `${sayiTr(dahili.kalan_dk)} dk`) : "—"} ton={dahili ? (dahili.basladi === false ? "amber" : "uyari") : undefined}
+        <Kpi etiket="Dâhilî bilgi açıklaması" deger={dahili ? (dahili.gecti ? "süre doldu" : `${sayiTr(dahili.kalan_dk)} dk`) : "—"} ton={dahili ? "uyari" : undefined}
           alt={dahili ? `${dahili.tur}, ${dahili.esik}${dahili.kosul ? " (YEK-G: açıklanıp açıklanmayacağı sizin değerlendirmenizde)" : " eşiği"}: en geç ${saatTr(dahili.son_saat)} (1 saat kuralı; yürürlük ${dahili.yururluk}${dahili.basladi === false ? " — henüz başlamadı, bilgi amaçlı" : ""})`
             : `1 saat kuralı (yürürlük ${o.dahili_yururluk?.etiket ?? "01.01.2027"}): tesis 30 MW / portföy 50 MW eşiğinde süren olay yok`} />   {/* v2.538 (DK-613) */}
       </div>
@@ -93,7 +93,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <label className="girdi-etiket">Açıklama (isteğe bağlı)<input className="girdi" maxLength={500} placeholder="ör. invertör 3 arızası" value={form.neden} onChange={(e) => setForm({ ...form, neden: e.target.value })} /></label>
             <label className="girdi-etiket">Belge / tutanak no (isteğe bağlı)<input className="girdi" maxLength={500} placeholder="ör. servis raporu SR-1182" value={form.kanit} onChange={(e) => setForm({ ...form, kanit: e.target.value })} /></label>
             <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>Kaydet</button>
-              {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
+              {mesaj && <span className={`ayar-durum ${mesaj.ton}`}>{mesaj.metin}</span>}</div>
           </div>
           {kural && <p className="form-not t-ikincil" style={{ marginTop: 10 }}><b>{kural.etiket}:</b> {kural.not}.</p>}
         </Kart>
@@ -130,7 +130,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
                 <td className="mono" style={{ whiteSpace: "nowrap" }}>{ol.evre === "planli" && !ol.bitis ? "—" : sureTr(ol.baslangic, ol.bitis)}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{ol.etkilenen_kw != null ? sayiTr(ol.etkilenen_kw, 0) : "tamamı"}</td>
                 <td style={sol}>{o.gerekceler.find((g) => g.kod === ol.eak_gerekcesi)?.etiket ?? "—"}</td>
                 <td style={{ ...sol, whiteSpace: "normal", minWidth: 160 }}>{ol.neden ?? ((ol.kanit || ol.tur === "acil_kesme" || ol.tur === "talimat_yat" || ol.tur === "talimat_yal") ? "" : "—")}{ol.kanit ? <span className="soluk">{ol.neden ? " · " : ""}belge: {ol.kanit}</span> : null}
-                  {ol.tur === "acil_kesme" && (ol.bildirim_zamani ? <span className="soluk">{ol.neden || ol.kanit ? " · " : ""}sona erme bildirimi {saatTr(ol.bildirim_zamani)}{ol.bildirim_gecikme_dk != null ? <> (bitişten {sayiTr(ol.bildirim_gecikme_dk)} dk sonra{ol.bildirim_15dk_asildi ? <span style={{ color: "var(--amber-koyu, #8a5a00)" }}>; 15 dk aşıldı</span> : null})</> : null}</span>
+                  {ol.tur === "acil_kesme" && (ol.bildirim_zamani ? <span className="soluk">{ol.neden || ol.kanit ? " · " : ""}sona erme bildirimi {saatTr(ol.bildirim_zamani)}{ol.bildirim_gecikme_dk != null ? <> (bitişten {sayiTr(ol.bildirim_gecikme_dk)} dk sonra{ol.bildirim_15dk_asildi ? <span style={{ color: "var(--uyari-metin)" }}>; 15 dk aşıldı</span> : null})</> : null}</span>
                     : <span className="soluk">{ol.neden || ol.kanit ? " · " : ""}sona erme bildirimi girilmedi</span>)}   {/* v2.541 (DK-741) */}
                   {(ol.tur === "talimat_yat" || ol.tur === "talimat_yal") && <span className="soluk">{ol.talimat_mw != null ? `${ol.neden || ol.kanit ? " · " : ""}talimat ${sayiTr(ol.talimat_mw, 1)} MW` : ""}{ol.gerekce_son_gunu ? `${ol.neden || ol.kanit || ol.talimat_mw != null ? " · " : ""}uyulamadıysa gerekçe son günü ${ol.gerekce_son_gunu.split("-").reverse().join(".")}` : ""}</span>}   {/* v2.541 (DK-743) */}</td>
                 <td><span className={`rozet rozet-kucuk ${ol.evre === "suruyor" ? "rozet-uyari" : ol.evre === "planli" ? "rozet-ok" : "rozet-notr"}`}>{EVRE[ol.evre]}</span></td>

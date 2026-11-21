@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten } from "../../api/client";
 import type { MutabakatOzet, MutabakatSatir, SaatlikKiyas } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { Cipler, Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 import { donemEtiket } from "../../lib/donem";   // 18.11: dönem eyebrow'u ortak biçimle
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
@@ -50,7 +50,7 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
         <label className="girdi-etiket form-tam">Saatlik detay dosyası ({ayAd(donem)})<input key={anahtar} className="girdi" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setDosya(e.target.files?.[0] ?? null)} /></label>
         <div className="form-tam dugme-sira"><button className="dugme" onClick={gonder} disabled={mesgul}>{mesgul ? "Yükleniyor…" : "Yükle"}</button>
           {k?.yuklu ? <button className="dugme" onClick={() => api.saatlikKiyasIndir(plantId, donem, uretim).catch((e) => setMesaj({ metin: String((e as Error).message ?? e), ton: "hata" }))}>Saatlik kıyas (CSV)</button> : null}
-          {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
+          {mesaj && <span className={`ayar-durum ${mesaj.ton}`}>{mesaj.metin}</span>}</div>
       </div>
       {k === undefined ? <YerTutucu yukseklik={60} /> : k === null ? <p className="soluk" style={{ margin: "10px 0 0" }}>Saatlik kıyas alınamadı.</p> : !k.yuklu ? (
         <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>Bu dönem için saatlik detay yüklenmedi. Aylık bildirimle karşılaştırma kapsam farkı taşır; saatlik dosya yüklenince fark saat bazında ve eş kapsamlı görülür.</p>
@@ -63,7 +63,7 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
             <Kpi etiket="Dengesizlik neti — EPİAŞ" deger={t?.edt_net_epias_tl != null ? binTl(t.edt_net_epias_tl) : "—"} birim={t?.edt_net_epias_tl != null ? "bin TL" : undefined} alt={t?.edt_net_epias_tl != null ? `alacak ${sayiTr(t.edt_poz_epias_tl ?? 0, 2)} − borç ${sayiTr(t.edt_neg_epias_tl ?? 0, 2)} TL` : "dosyada EDT sütunu yok"} />
             <Kpi etiket="Dengesizlik neti — PVQuant" deger={binTl(t?.edt_net_pvquant_tl)} birim="bin TL" alt={`alacak ${sayiTr(t?.edt_poz_pvquant_tl ?? 0, 2)} − borç ${sayiTr(t?.edt_neg_pvquant_tl ?? 0, 2)} TL; aynı ${sayiTr(k.ortak_saat)} saat`} />
             <Kpi etiket="Eş kapsamlı dengesizlik farkı" bilgi="Yalnız dengesizlik tutarı (EDT), yalnız ortak saatlerde: PVQuant − EPİAŞ. Artı: PVQuant daha çok alacak ya da daha az borç hesaplıyor. KÜPST ayrı kalemdir (altta); bu sayı toplam uzlaştırma farkı değildir. Aylık bildirimle karşılaştırmanın aksine kapsam farkı taşımaz."
-              deger={t?.edt_net_fark_tl != null ? fark(t.edt_net_fark_tl) : "—"} birim={t?.edt_net_fark_tl != null ? "TL" : undefined} ton={t?.edt_net_fark_tl != null && Math.abs(t.edt_net_fark_tl) > 50 ? "amber" : undefined}
+              deger={t?.edt_net_fark_tl != null ? fark(t.edt_net_fark_tl) : "—"} birim={t?.edt_net_fark_tl != null ? "TL" : undefined} ton={t?.edt_net_fark_tl != null && Math.abs(t.edt_net_fark_tl) > 50 ? "uyari" : undefined}
               alt={t?.kupst_fark_tl != null ? `KÜPST borcu ayrı: EPİAŞ ${sayiTr(t.kupst_epias_tl ?? 0, 2)}, PVQuant ${sayiTr(t.kupst_pvquant_tl, 2)} TL; fark ${fark(t.kupst_fark_tl)} (artı: PVQuant daha çok KÜPST borcu)` : "KÜPST sütunu yok"} />
           </div>
           {a && (
@@ -166,7 +166,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           alt={oz.kapsam ? `net; kapsam: ${oz.kapsam} (${sayiTr(m.pvquant.saat)} saat)` : m.pvquant.saat ? "karşılaştırılacak kalem yok" : "bu dönem için saatlik veri yok"} />
         <Kpi etiket="Hesaplama farkı (aylık bildirim)" bilgi="Aylık bildirim ↔ PVQuant: PVQuant net − EPİAŞ net, yalnız karşılaştırılan kalemlerde (dengesizlik + KÜPST). Kapsam farklıdır: EPİAŞ bütün ay, PVQuant hesaplanan saatler. Saatlik detay yüklüyse ikinci satırdaki eş kapsamlı dengesizlik farkı ayrı bir ölçüdür; ikisi birbirinin yerine geçmez. Artı: PVQuant daha çok alacak hesaplıyor; eksi: daha çok borç. Uyum ölçütü PVQuant'ın işletme ölçütüdür, mevzuat toleransı değildir."
           deger={oz.fark_tl != null ? `${oz.fark_tl > 0 ? "+" : ""}${binTl(oz.fark_tl)}` : "—"} birim={oz.fark_tl != null ? "bin TL" : undefined}
-          ton={oz.farkli > 0 ? "amber" : undefined}
+          ton={oz.farkli > 0 ? "uyari" : undefined}
           ikinci={m.saatlik_detay?.yuklu && m.saatlik_detay.toplam?.edt_net_fark_tl != null ? { etiket: `saatlik eş kapsamlı, ${sayiTr(m.saatlik_detay.ortak_saat)} saat (yalnız dengesizlik)`, deger: `${m.saatlik_detay.toplam.edt_net_fark_tl > 0 ? "+" : m.saatlik_detay.toplam.edt_net_fark_tl < 0 ? "−" : ""}${sayiTr(Math.abs(m.saatlik_detay.toplam.edt_net_fark_tl), 2)} TL` } : undefined}
           alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : g.durum === "kismi" ? `aylık bildirim ↔ PVQuant, ${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı — kapsam kısmi (${sayiTr(oz.kapsam_saat ?? m.pvquant.saat)}/${sayiTr(oz.beklenen_saat ?? 0)} saat), fark doğrulanmış değil` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına ${yuzdeTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
       </div>
@@ -181,7 +181,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             <label className="girdi-etiket">Sürüm (dosyada yoksa)<select className="girdi" value={yukSurum} onChange={(e) => setYukSurum(e.target.value)}>
               <option value="">dosyadan oku</option>{o.surumler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select></label>
             <div className="form-tam dugme-sira"><button className="dugme" onClick={gonder} disabled={yukleniyor}>{yukleniyor ? "Yükleniyor…" : "Yükle"}</button>
-              {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
+              {mesaj && <span className={`ayar-durum ${mesaj.ton}`}>{mesaj.metin}</span>}</div>
           </div>
           <p className="form-not t-ikincil" style={{ marginTop: 10 }}>Her yükleme ayrı sürüm olarak saklanır; önceki yüklemeler silinmez, dönem ve sürüm başına en yeni yükleme hesaba girer. Ön bildirim (izleyen ayın 11'i) ve nihai bildirim (15'i, iş günü) ayrı yüklenebilir; dosyadaki «Uzlaştırma Durumu» alanı seçiminizden üstündür.</p>
           {o.donemler.length > 0 && (
@@ -209,16 +209,16 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             {bil && <li><b>Bildirim sürümü:</b> {surumDurumu(bil)}{sd?.durum === "takvimden_once" ? ` (resmî yayın en erken ${sd.beklenen_tarih.split("-").reverse().join(".")})` : ""}</li>}
             {m.pvquant.hata && <li className="soluk">Hesap alınamadı: {m.pvquant.hata}</li>}
           </ul>
-          {m.program_notu && <p className="form-not t-ikincil" style={{ marginTop: 8, color: "var(--amber-koyu, #8a5a00)" }}>{m.program_notu}</p>}
+          {m.program_notu && <p className="form-not t-ikincil" style={{ marginTop: 8, color: "var(--uyari-metin)" }}>{m.program_notu}</p>}
           {m.eylem && <p className="form-not t-ikincil" style={{ marginTop: 8 }}><b>Ne yapmalı:</b> {m.eylem}</p>}
           <details className="aciklama" style={{ marginTop: 10 }}>
             <summary>Ayrıntılar: kural sürümü, güvenilirlik nedenleri, sayaç ile SCADA, sürüm takvimi</summary>
-            {m.pvquant.kural_surumu && <p style={{ margin: "6px 0 0" }}><b>Kural sürümü:</b> {m.pvquant.kural_surumu}{m.pvquant.kupst_kaynak ? <>; KÜPST katsayıları: {m.pvquant.kupst_kaynak}{m.pvquant.kupst_gecersiz_kilma ? <span style={{ color: "var(--amber-koyu, #8a5a00)" }}> — resmî tablo yerine santral ayarındaki değer kullanıldı, EPİAŞ ile fark buradan doğabilir</span> : null}</> : null}</p>}   {/* v2.541: kupst_kaynak */}
+            {m.pvquant.kural_surumu && <p style={{ margin: "6px 0 0" }}><b>Kural sürümü:</b> {m.pvquant.kural_surumu}{m.pvquant.kupst_kaynak ? <>; KÜPST katsayıları: {m.pvquant.kupst_kaynak}{m.pvquant.kupst_gecersiz_kilma ? <span style={{ color: "var(--uyari-metin)" }}> — resmî tablo yerine santral ayarındaki değer kullanıldı, EPİAŞ ile fark buradan doğabilir</span> : null}</> : null}</p>}   {/* v2.541: kupst_kaynak */}
             {g.nedenler.length > 0 && <p style={{ margin: "6px 0 0" }}><b>{g.etiket}:</b> {g.nedenler.join("; ")}</p>}
             <p style={{ margin: "6px 0 0" }}><b>Üretim kaynağı:</b> {sayacla ? "Sayaç dosyasının uzlaştırmaya esas UEVM ile aynı olduğu doğrulanmaz; sayaç satırı olmayan saatlerde SCADA kullanılır (Doğruluk sayfasındaki 90 günlük hesap SCADA ile kalır)." : "SCADA brüt üretimdir, EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir; sayaç net veriştir. Hesabı sayaçla görmek için yukarıdan «üretim: sayaç» seçin ya da Sayaç sayfasında kalıcı ayarlayın."}
               {uk?.kiyas && uk.kiyas.edt_net_fark_tl != null ? <> Aynı dönem SCADA ile hesaba göre: dengesizlik neti {uk.kiyas.edt_net_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.edt_net_fark_tl), 2)} TL ({uk.kiyas.edt_net_fark_tl >= 0 ? "sayaçla daha lehte" : "sayaçla daha aleyhte"}){uk.kiyas.kupst_fark_tl ? <>, KÜPST borcu {uk.kiyas.kupst_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.kupst_fark_tl), 2)} TL ({uk.kiyas.kupst_fark_tl >= 0 ? "daha aleyhte" : "daha lehte"})</> : null}.</> : null}
               {sy?.yuklu && sy.olc_fark_pct != null ? <> Ölçülmüş saatlerde sayaç − SCADA {sy.olc_fark_pct < 0 ? "−" : "+"}{yuzdeTr(Math.abs(sy.olc_fark_pct), 1)}.</> : null}</p>
-            {sd && <p style={{ margin: "6px 0 0", color: sd.durum === "takvimden_once" ? "var(--amber-koyu, #8a5a00)" : undefined }}><b>Sürüm:</b> {sd.aciklama}</p>}
+            {sd && <p style={{ margin: "6px 0 0", color: sd.durum === "takvimden_once" ? "var(--uyari-metin)" : undefined }}><b>Sürüm:</b> {sd.aciklama}</p>}
           </details>
           {m.itiraz && <details className="aciklama" style={{ marginTop: 6 }}>   {/* v2.538 (EK-3 DK-557/DK-395): itiraz süreleri ve geriye dönük düzeltme penceresi */}
             <summary>İtiraz süreleri ve geriye dönük düzeltme ({m.donem_etiket})</summary>
@@ -247,7 +247,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
       <section className="bolum">
       <div className="ozet-bas">Kalem kalem<span className="sag">bildirim ↔ yeniden hesap</span></div>
       <Kart baslik="Uzlaştırma kalemlerinin karşılaştırılması" alt={`${m.donem_etiket} dönemi; EPİAŞ bildirimi ↔ PVQuant yeniden hesabı; fark = PVQuant net − EPİAŞ net (artı: PVQuant daha çok alacak hesaplıyor); uyum alacak ve borç bileşenlerine ayrı bakılır`}
-        sag={<span className="cip"><Meta items={[bil ? surumDurumu(bil) : "bildirim yok", g.etiket, `${sayiTr(hesaplanan.length)} karşılaştırılan`, `${sayiTr(digerler.length)} yalnız bildirim`]} /></span>}>
+        sag={<Cipler items={[bil ? surumDurumu(bil) : "bildirim yok", g.etiket, `${sayiTr(hesaplanan.length)} karşılaştırılan`, `${sayiTr(digerler.length)} yalnız bildirim`]} />}>
         {m.satirlar.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu dönem için ne bildirim ne de saatlik hesap var. Önce bildirim dosyasını yükleyin.</p> : (
           <div className="grafik-kaydir"><table className="veri">
             <thead><tr><th style={sol}>Kalem</th><th title="EPİAŞ bildirimindeki alacak tutarı">EPİAŞ alacak (TL)</th><th title="EPİAŞ bildirimindeki borç tutarı">EPİAŞ borç (TL)</th>

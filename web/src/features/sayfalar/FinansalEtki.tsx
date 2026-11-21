@@ -4,9 +4,8 @@ import { api, bellekten } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { FINANS_NITELIK as NITELIK } from "../../lib/durum";
 import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
-import { HesapDurumu, IskeletHucre, IskeletSatir, type IskeletSutun, Kart, Kpi, KpiIskeleti, KunyeIskeleti, ListeIskeleti, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { Cipler, HesapDurumu, IskeletHucre, IskeletSatir, type IskeletSutun, Kart, Kpi, KpiIskeleti, KunyeIskeleti, ListeIskeleti, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
-import { Meta } from "../../lib/Meta";
 import { gunYaz, sonGunYaz, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
 
 /** v2.584 (Faz 2 F2-F) — Finansal etki: seçilen dönemde planlanan ve gerçekleşen üretim, sapma ve tahmini mali karşılığı. Var olan hesapların
@@ -14,7 +13,7 @@ import { gunYaz, sonGunYaz, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // 
  *  niteliğini taşır: resmî (EPİAŞ bildirimi) › hesaplanan (EPİAŞ fiyatıyla yeniden hesap) › sözleşme tahmini (tarife varsayımı) › senaryo › eksik.
  *  İşaret: artı santral lehine (alacak), eksi aleyhine (borç). Toplama yalnız satış geliri, dengesizlik ve KGÜP sapma tutarı girer; resmî satırlar,
  *  DSG, göstergeler, üretim düşüklüğü ve ileriye dönük maruziyet yan yana gösterilir, toplanmaz (çift sayım yok). */
-const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
+const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-notr", bilgi: "rozet-notr" };   // G3-B QA İ-1: eylem (uyarı) > öneri (nötr) hiyerarşisi
 const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", kgup: "KGÜP", mutabakat: "Mutabakat", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", olaylar: "Olay kaydı", hakkinda: "Hakkında", sayac: "Sayaç" };
 const sol = { textAlign: "left" as const };
 const yaz = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
@@ -148,7 +147,7 @@ function icerik(o: FinansalEtkiT, plantId: string, gecmisDetay: React.ReactNode)
           alt={<><Rozet n={top.nitelik} /> <HesapDurumu d={m.hesap_durumu} /> {top.giren.length ? `${top.giren.length} bileşen toplandı` : "toplanacak bileşen yok"}{top.eksik.length ? `; eksik: ${top.eksik.length}` : ""}</>} />   {/* v2.605 (F4-K): hesap durumu (tam / kısmi / senaryo) */}
       </div>
       <Kart baslik={KART.bilesenler.baslik} alt={KART.bilesenler.alt}
-        sag={<span className="cip"><Meta items={[`${sayiTr(o.donem.saat)} saat`, uz.fiyat.senaryo_saat > 0 ? `${sayiTr(uz.fiyat.senaryo_saat)} saat senaryo fiyatı` : "EPİAŞ fiyatı", uz.hesaplanamayan_saat > 0 && `${sayiTr(uz.hesaplanamayan_saat)} saat hesaplanamadı`, durumMetni]} /></span>}>
+        sag={<Cipler items={[`${sayiTr(o.donem.saat)} saat`, uz.fiyat.senaryo_saat > 0 ? `${sayiTr(uz.fiyat.senaryo_saat)} saat senaryo fiyatı` : "EPİAŞ fiyatı", uz.hesaplanamayan_saat > 0 && `${sayiTr(uz.hesaplanamayan_saat)} saat hesaplanamadı`, durumMetni]} />}>
         <div className="grafik-kaydir"><table className="veri sayisal">
           {BILESEN_BASLIK}
           <tbody>
@@ -228,7 +227,7 @@ function icerik(o: FinansalEtkiT, plantId: string, gecmisDetay: React.ReactNode)
           </ul>
         </Kart>
         <Kart baslik={KART.ufuk.baslik} alt={KART.ufuk.alt}
-          sag={<span className="cip"><Meta items={[`${sayiTr(ma.ufuk.gun)} gün`, ma.gecmis_gun > 0 && `son ${sayiTr(ma.gecmis_gun)} günün oranı`, ma.program_mwh != null && `${sayiTr(ma.program_mwh, 1)} MWh program`]} /></span>}>
+          sag={<Cipler items={[`${sayiTr(ma.ufuk.gun)} gün`, ma.gecmis_gun > 0 && `son ${sayiTr(ma.gecmis_gun)} günün oranı`, ma.program_mwh != null && `${sayiTr(ma.program_mwh, 1)} MWh program`]} />}>
           {ma.nitelik !== "senaryo" || !ma.aralik_tl ? (
             <div className="bos-durum"><div className="bos-bas">Aralık hesaplanamadı</div><p>{ma.notlar.slice(1).join(" ") || "Gelecek günler için program ya da yeterli geçmiş yok."}</p></div>
           ) : (

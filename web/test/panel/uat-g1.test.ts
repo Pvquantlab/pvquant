@@ -119,3 +119,76 @@ test("G2: iskelet yükseklikleri gerçek içerikle, kaydırma yeni içerikle ayn
   assert.equal((c.match(/bellekte\.clear\(\)/g) ?? []).length, 1, "O-3: her yazma bellekBosalt ile iki belleği de boşaltır");
   assert.match(c, /for \(const \[k, v\] of bellekte\) bellekte\.set\(k, \{ veri: v\.veri, zaman: 0 \}\);\s*olumsuz\.clear\(\); bellekNesli\+\+;/, "O-3: damga eskitmesi olumsuz belleği de düşürür");
 });
+
+// ---------------------------------------------------------------- G3-A (UAT video Y-5 / U-2, 21.11): saatlik grafik seyrek seriye dayanıklı --------
+test("G3-A: saatlik grafik sürekli ızgara (eksik saat null, veri uydurmaz), gün/doğuş etiketleri tutarlı, tikler gri", () => {
+  const c = oku("../../src/features/sayfalar/ProductionForecastChart.tsx");
+  assert.match(c, /const hamMs = forecast\.map\(\(p\) => toMs\(p\.ts\)\);\s*let adim = 3_600_000;/, "adım = serideki en küçük aralık, en çok 1 saat");
+  assert.match(c, /const byMs = new Map\(forecast\.map\(\(p\) => \[toMs\(p\.ts\), p\]\)\);\s*let pts: \(ForecastPoint \| null\)\[\] = \[\];/);
+  assert.match(c, /pts\.push\(byMs\.get\(t\) \?\? null\)/, "eksik saat null — istemci veri uydurmaz");
+  assert.match(c, /cats = izgaraUyumlu \? pts\.map\(\(p, i\) => p \? p\.ts : new Date\(hamMs\[0\] \+ i \* adim\)\.toISOString\(\)\) : forecast\.map\(\(p\) => p\.ts\);/);
+  assert.match(c, /const izgaraMakul = hamMs\.length > 0 && adim >= 60_000 && \(hamMs\[hamMs\.length - 1\] - hamMs\[0\]\) \/ adim <= 2000;\s*if \(izgaraMakul\) for/, "QA Ö-6: ms adımında döngüye girilmez");
+  assert.match(c, /const izgaraUyumlu = izgaraMakul && pts\.filter\(Boolean\)\.length === forecast\.length && hamMs\.every\(\(v, i\) => i === 0 \|\| v > hamMs\[i - 1\]\);\s*if \(!izgaraUyumlu\) pts = forecast\.slice\(\);/, "QA İ-1/İ-2: sırasız/ızgara dışı seride eski davranış, nokta silinmez");
+  for (const k of ["const loAdj = pts.map(", "const hiAdj = pts.map(", "pts.map((p) => (p ? (p.p25 as number) : null))", "splitPastFuture(pts.map((p) => (p ? p.p50 : null)), boundaryIdx)", "exceedIdx = pts.map(", "satureIdx = pts.map("])
+    assert.ok(c.includes(k), `ızgara tabanlı seri: ${k}`);
+  assert.doesNotMatch(c.slice(c.indexOf("if (!daily) {"), c.indexOf("} else {\n    // -------- daily envelope")), /forecast\.map\(\(p\) => p\.p50\)|forecast\.map\(\(p\) => \{\s*const lo = p\.p10/, "saatlik dalda forecast.map ile seri kalmadı");
+  assert.match(c, /return cats\.length > 96 \? h === 0 : h % 6 === 0;/, "eksen aralığı ızgara uzunluğuna göre");
+  assert.match(c, /itemStyle: \{ color: T\.mutedText \},   \/\/ G3-A \/ U-2/, "doğuş/batış tikleri amber değil");
+  assert.doesNotMatch(c.slice(c.indexOf('name: "__gunes"'), c.indexOf('name: "__gunes"') + 900), /T\.actualLine/, "amber yalnız gerçekleşen");
+});
+
+// ---------------------------------------------------------------- G3-B (UAT video O-9/U-3/U-16/U-17/U-6, 21.11): renk sözleşmesi + eksen ölçeği ------
+test("G3-B: amber yalnız gerçekleşen — dikkat rozeti uyarı ailesi, Mutabakat'ta tanımsız jeton yok, senaryo/hafta sonu/mevzuat nötr, 7g profili mavi", () => {
+  const css = oku("../../src/index.css");
+  assert.match(css, /\.rozet-dikkat \{ background: var\(--uyari-zemin\); color: var\(--uyari-metin\); \}/);
+  assert.doesNotMatch(css, /\.rozet-dikkat \{ background: var\(--amber-zemin\)/);
+  const m = oku("../../src/features/sayfalar/Mutabakat.tsx");
+  assert.doesNotMatch(m, /amber-koyu|#8a5a00|ton=\{[^}]*"amber"/, "Mutabakat: tanımsız --amber-koyu ve ton=amber kalmadı");
+  assert.equal((m.match(/\? "uyari" : undefined\}/g) ?? []).length, 2, "fark uyarıları ton=uyari");
+  assert.match(oku("../../src/lib/durum.ts"), /senaryo: \{ etiket: "senaryo", sinif: "rozet-notr"/);
+  const t = oku("../../src/features/sayfalar/Takvim.tsx");
+  assert.match(t, /<span className="rozet rozet-notr rozet-kucuk" title=\{o\.not \?\? "Hafta sonuna denk geliyor/);
+  assert.doesNotMatch(t, /o\.kaynak_turu === "mevzuat" \? "rozet-ok"/);
+  assert.match(oku("../../src/features/santralim/Santralim.tsx"), /stroke="var\(--chart-p50-future\)"[^\n]*\n\s*strokeWidth=\{vurgu \? 2\.4 : 1\.4\}/, "U-3: profil tahmin mavisi");
+  for (const f of ["../../src/features/sayfalar/Takvim.tsx", "../../src/features/sayfalar/FinansalEtki.tsx", "../../src/features/sayfalar/Portfoyler.tsx", "../../src/features/sayfalar/Hakkinda.tsx", "../../src/features/sayfalar/Digerleri.tsx", "../../src/features/sayfalar/Mutabakat.tsx", "../../src/features/sayfalar/Dogruluk.tsx"])
+    assert.doesNotMatch(oku(f), /--amber-zemin|--amber-metin|--amber\b/, `amber jetonu durum için kullanılmaz: ${f}`);
+  const d = oku("../../src/features/sayfalar/Digerleri.tsx");
+  assert.match(d, /const enb = Math\.max\(1, Math\.max\(\.\.\.degerler\.map\(\(v\) => Math\.abs\(v \?\? 0\)\)\) \* 1\.2\);[\s\S]{0,300}const tepe = \(kat <= 1 \? 1 : kat <= 2 \? 2 : kat <= 5 \? 5 : 10\) \* us;/, "U-6: eksen ucu veriden");
+  assert.doesNotMatch(d, /Math\.max\(100, Math\.ceil/);
+  assert.match(d, /\$\{sayiTr\(x\.ort_hata_kw, tepe < 10 \? 1 : 0\)\} kW/, "QA İ-4: ipucu ondalığı eksenle aynı");
+  // QA İ-6: Sayaç, Olay kaydı, kota rozeti, ölü rozet-amber; İ-1/İ-3
+  for (const f of ["../../src/features/sayfalar/Sayac.tsx", "../../src/features/sayfalar/Olaylar.tsx"]) assert.doesNotMatch(oku(f), /var\(--amber|"amber"|\{amber\}/, `${f}: amber durum rengi değil`);
+  assert.match(css, /\.plat-rozet-sari \{ background: var\(--uyari-zemin\); color: var\(--uyari-metin\); \}/);
+  assert.match(css, /\.ayar-durum\.uyari \{ color: var\(--uyari-metin\); \}/);
+  assert.doesNotMatch(oku("../../src/features/sayfalar/Dogruluk.tsx"), /rozet-amber/);
+  for (const f of ["../../src/features/sayfalar/FinansalEtki.tsx", "../../src/features/sayfalar/Portfoyler.tsx"]) assert.match(oku(f), /eylem: "rozet-dikkat", oneri: "rozet-notr", bilgi: "rozet-notr"/, `${f}: eylem > öneri`);
+  assert.doesNotMatch(oku("../../src/features/sayfalar/Mutabakat.tsx"), /\? "hata" : mesaj\.ton/, "QA İ-3: uyarı «hata» sınıfıyla basılmaz");
+});
+
+// ---------------------------------------------------------------- G3-C (UAT video O-13/O-11/U-12/U-19/U-20, 21.11): iç terimler, katlama, çipler ------
+test("G3-C: Cipler bileşeni ve beş çok bilgili çip, Santralim katlamaları, müşteri yüzünde iç terim yok", () => {
+  const p = oku("../../src/features/sayfalar/parcalar.tsx");
+  assert.match(p, /export function Cipler\(\{ items, title \}: \{ items: \(string \| false \| null \| undefined\)\[\]; title\?: string \}\)/);
+  assert.match(p, /<span className="dugme-sira kart-arac" title=\{title\}>\{liste\.map\(\(x, i\) => <span key=\{i\} className="cip">\{x\}<\/span>\)\}<\/span>/);
+  for (const [f, n] of [["../../src/features/sayfalar/Mutabakat.tsx", 1], ["../../src/features/sayfalar/FinansalEtki.tsx", 2], ["../../src/features/sayfalar/Sayac.tsx", 1], ["../../src/features/sayfalar/Digerleri.tsx", 1]] as const)
+    assert.equal((oku(f).match(/<Cipler items=\{/g) ?? []).length, n, `${f}: ${n} Cipler`);
+  const s = oku("../../src/features/santralim/Santralim.tsx");
+  assert.match(s, /<Katla ozet="Saatlik kıyas tablosu" not=\{`son \$\{sayiTr\(Math\.min\(24, golge\.saatler\.length\)\)\} saat; özet rozetleri yukarıda`\}>/);
+  assert.match(s, /<Katla className="ayar-gelismis form-tam" ozet="YEK-G kaydı ve depolama ünitesi" not="nadiren değişen beyanlar">/);
+  assert.match(s, /<Katla className="ayar-gelismis form-tam" ozet="İşletme ayarları" not="üretim programı sınırları, bakım pencereleri, tarife ve bütçe">/);
+  assert.match(oku("../../src/index.css"), /\.ayar-izgara > \.katla \{ grid-column: 1 \/ -1; \}/);
+  // U-19: Pilot kartı müşteri dilinde; sunucu notu ve kod şartı teknik notu yalnız ipucunda, saha beyan notu görünür
+  assert.equal((s.match(/baslik="Sahaya bağlantı ön şartları ve saha toplayıcısı"/g) ?? []).length, 2);
+  assert.doesNotMatch(s, /P0 kapı|P0 değil|>\{pilot\.not\}</, "P0 kapısı ve sunucu notu görünür yüzeyde yok");
+  assert.match(s, /title=\{pilot\.not\}>Sahaya bağlantı, listedeki ön şartlar tamamlanmadan başlatılmaz\./);
+  assert.match(s, /title=\{\[k\.aciklama, k\.kaynak === "saha" \? null : k\.not\]\.filter\(Boolean\)\.join\(" — "\)\}/);
+  assert.match(s, /\{k\.kaynak === "saha" && k\.not \? ` · \$\{k\.not\}` : ""\}/, "QA İ-2: saha beyan notu görünür");
+  // U-20
+  assert.match(oku("../../src/features/sayfalar/Dogruluk.tsx"), /Kural sürümü: <span className="kimlik">\{gt\.kural_surumu \?\? "—"\}<\/span>/);
+  const k = oku("../../src/features/sayfalar/Kurulus.tsx");
+  for (const kap of ["veri_kalitesi:oku", "portfoy:oku", "finans:oku"]) assert.ok(k.includes(`"${kap}": `), `KAPSAM_AD ${kap}`);
+  assert.match(k, /<div className="etiket-ust" style=\{\{ marginBottom: 2 \}\}>Webhook alıcıları<\/div>\s*<p className="soluk t-ikincil" style=\{\{ margin: "0 0 10px" \}\}>Olaylar: tahmin\.yeni ve alarm\.yeni\./);
+  assert.doesNotMatch(s, /kapanması gereken kapılar|Pilot kapıları ya da|Pilot bilgisi bu kez/, "QA: Pilot kartı alt başlığı ve hata metni de müşteri dilinde");
+  const d = oku("../../src/features/sayfalar/Digerleri.tsx");
+  assert.doesNotMatch(d, /sunucu günlüğü/, "müşteri yüzünde «sunucu günlüğü» yok");
+});

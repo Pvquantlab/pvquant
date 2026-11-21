@@ -48,7 +48,7 @@ test("hiçbir alan kaldırılmadı: her bağlı girdi tam bir kez kaynakta", () 
     "value={butceMwh}", "value={prRef}", "value={kullSoz}", "value={sonTemizlik}", "value={temizlikTl}", "value={dosyaSiklik}", "value={teminatKat}", "value={arizaAy}",
     "value={akEsik[a.k] ?? \"\"}", "value={akAlici}", "value={ftSon[k] ?? ft[k]}", "value={sf.marka_model}", "value={sf.kalibrasyon_tarihi}"])
     assert.equal(santralim.split(g).length - 1, 1, `${g} tam bir kez`);
-  assert.equal(santralim.split('<Katla').length - 1, 4, "Santralim'de 4 katlama: işletme, eşik, gelişmiş ayarlar, sensör");
+  assert.equal(santralim.split('<Katla').length - 1, 7, "Santralim'de 7 katlama: işletme(gelişmiş alanlar), eşik, gelişmiş ayarlar, sensör + G3-C (21.11): saatlik kıyas tablosu, YEK-G/depolama, işletme ayarları bölümü");
 });
 
 test("Kalibrasyon: kayıp ayrışımı ve hava verisi tutarlılığı gövdeleri katlı; hüküm çipte, kayma varsa açık", () => {
