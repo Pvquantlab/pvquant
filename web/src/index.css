@@ -249,10 +249,14 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .kart-baslik { min-width: 0; flex: 1 1 auto; }
 /* 02.11 v2.525 inceleme: başlık sağında seçici + düğme şeridi (.kart-arac) taşıyan kart, 900 px altında şeridi başlığın
    altına kırar — yoksa başlık/alt metin dar bir sütuna sıkışıyordu (375'te «Dönem raporu»). Rozet taşıyan kartlar etkilenmez. */
-.kart-bas > .kart-arac { flex: 0 0 auto; flex-wrap: nowrap; }   /* geniş ekranda şerit tek satır; açıklama metni kırılır */
+/* G1-B (UAT video Y-1, 21.11): «flex: 0 0 auto; nowrap» şerit hiç daralmıyordu — 900 px üstünde uzun çip şeridi (Doğruluk «Uzlaştırma
+   kalemleri») başlık sütununu 1382 px'te 0 px'e eziyor, alt başlık harf harf dikey akıp ~1000 px boşluk açıyordu (ÖLÇÜLDÜ: başlık 0×1003 px).
+   Şerit artık daralır ve kendi içinde sarar, en çok %60 alır; başlık sütunu en az %40 kalır. ≤900 kuralı aynen (şerit başlığın altına). */
+.kart-bas > .kart-arac { flex: 0 1 auto; min-width: 0; max-width: 60%; flex-wrap: wrap; justify-content: flex-end; }
+.kart-bas:has(> .kart-arac) > .kart-baslik { flex-basis: 40%; }   /* QA İ-1: başlığın esas boyu uzun alt metin değil %40 — yer varken şerit daralmaz, tek satır kalır */
 @media (max-width: 900px) {
   .kart-bas:has(> .kart-arac) { flex-wrap: wrap; }
-  .kart-bas > .kart-arac { flex: 1 1 100%; flex-wrap: wrap; }
+  .kart-bas > .kart-arac { flex: 1 1 100%; max-width: none; flex-wrap: wrap; }
 }
 .kart-alt { margin: 3px 0 0; font-family: var(--font); font-size: var(--t-ikincil); font-weight: 400;
             color: var(--ikincil); letter-spacing: 0; line-height: 1.45; max-width: 80ch; overflow-wrap: anywhere; }

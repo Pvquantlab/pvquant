@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
-import { api, bellekten, ayniysaEskisi } from "../../api/client";
+import { api, bellekten, ayniysaEskisi, hataDurumu } from "../../api/client";
 import type { AylikBeklenti, SantralOzeti, Bankable, PDegerleri, Performans } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
@@ -24,6 +24,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   type Durum = "bekliyor" | "tamam" | "hata";
   const [b, setB] = useState<AylikBeklenti | null | undefined>(() => bellekten.aylik(plantId));
   const [bD, setBD] = useState<Durum>("bekliyor");
+  const [bHata, setBHata] = useState<string | null>(null);   // G1-C (UAT Y-3): 404 = «birikiyor»; başka hata boş durum gibi gösterilmez
   const [o, setO] = useState<SantralOzeti | null | undefined>(() => bellekten.ozet(plantId));
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   // 18.11 Aylık (Grup 1): yıllık beklenti, P-değerleri ve performans da BAYAT-ÖNCE (santral geçişinde bellekte olan anında, ağdan tazelenir);
@@ -37,8 +38,8 @@ export function Aylik({ plantId }: { plantId: string }) {
 
   useEffect(() => {
     let acik = true;
-    setB(bellekten.aylik(plantId)); setBD("bekliyor"); setO(bellekten.ozet(plantId)); setBk(bellekten.bankable(plantId));
-    api.aylik(plantId).then((v) => { if (acik) { setB((e) => ayniysaEskisi(e, v)); setBD("tamam"); } }, () => { if (acik) { setB((e) => e ?? null); setBD("hata"); } });
+    setB(bellekten.aylik(plantId)); setBD("bekliyor"); setBHata(null); setO(bellekten.ozet(plantId)); setBk(bellekten.bankable(plantId));
+    api.aylik(plantId).then((v) => { if (acik) { setB((e) => ayniysaEskisi(e, v)); setBD("tamam"); } }, (e) => { if (acik) { setB((x) => x ?? null); setBD("hata"); const d = hataDurumu(e); if (d !== 404) setBHata(d ? `Hata kodu ${d}.` : "Bağlantı kurulamadı."); } });   // G1-C
     api.ozet(plantId).then((v) => { if (acik) setO((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setO((e) => e ?? null); });
     api.bankable(plantId).then((v) => { if (acik) setBk((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setBk(null); });
     setPd(bellekten.pDegerleri(plantId)); api.pDegerleri(plantId).then((v) => { if (acik) setPd((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setPd(null); });
@@ -46,7 +47,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama
   const hazir = b !== undefined || bD !== "bekliyor";
-  const birikiyor = hazir && b === null;   // aylık beklenti ucu yok/alınamadı → «birikiyor» kartı (eski davranış)
+  const birikiyor = hazir && b === null && !bHata;   // aylık beklenti 404 → «birikiyor» kartı; G1-C: diğer hatalar «alınamadı» kartı
   const tazeleniyor = hazir && bD === "bekliyor";
 
   // Solargis Tablo 4.3/5.2 formati: sayi + isi-skalasi arka plan (v2.115)
@@ -144,6 +145,14 @@ export function Aylik({ plantId }: { plantId: string }) {
   }, [b, n]);  // v2.148
 
   if (!hazir) return aylikCerceve();   // 18.11 yükleme düzeltmesi: aynı <Sayfa> kökü, dört bölüm gerçek başlıklarıyla
+  if (hazir && b === null && bHata) return (   /* G1-C: gerçek hata boş durum gibi gösterilmez */
+    <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
+      <Kart baslik="Aylık beklenti alınamadı">
+        <p className="t-ikincil" style={{ color: "var(--ikincil)", margin: 0 }} role="status">
+          {bHata} Sayfayı yenileyin; sorun sürerse Hakkında sayfasındaki hizmet sağlığına bakın.
+        </p>
+      </Kart>
+    </Sayfa>);
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">

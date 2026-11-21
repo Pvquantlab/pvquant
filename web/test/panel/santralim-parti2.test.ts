@@ -11,7 +11,7 @@ test("rol: dört yazma kartı fieldset ile pasifleşir, sessiz catch kalmadı", 
   assert.equal((s.match(/<fieldset className="rol-alan" disabled=\{!yazabilir\}>/g) ?? []).length, 4);
   assert.equal((s.match(/<\/fieldset>/g) ?? []).length, 4);
   // veri çeken efektlerdeki catch(() => {}) kalır; yazma işlemlerinde kalmaz
-  for (const yazma of ["api.pilotKapi(", "api.edgeToplayiciOlustur(", "api.edgeToplayiciIptal(", "api.bulutKimlikSil(", "api.segmentAyarla(plantId, e.target.value", "api.tarifeAyarla(plantId, null)"]) {
+  for (const yazma of ["api.pilotKapi(", "api.edgeToplayiciOlustur(", "api.edgeToplayiciIptal(", "api.bulutKimlikSil(", "api.segmentAyarla(hedef, segYeni"   /* G1-A (21.11): seçim anında yazma kalktı; yazma Kaydet'te */, "api.tarifeAyarla(plantId, null)"]) {
     const i = s.indexOf(yazma); assert.ok(i > 0, yazma);
     const par = s.slice(i, i + 420);
     assert.doesNotMatch(par, /\.catch\(\(\) => \{\}\)/, yazma);

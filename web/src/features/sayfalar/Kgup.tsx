@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import { api, ayniysaEskisi, bellekten } from "../../api/client";
+import { api, ayniysaEskisi, bellekten, hataDurumu, hataDetayi } from "../../api/client";
 import type { KgupRevizyon, KgupOnizleme, KgupSurum, KgupKiyas } from "../../api/types";
 import { Kart, Sayfa, sayiTr } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
@@ -21,6 +21,7 @@ export function Kgup({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(() => bellekten.kgup(plantId));   // v2.260; 17.11 bayat-önce
   const [kgupHata, setKgupHata] = useState<string | null>(null);
+  const [kgupNeden, setKgupNeden] = useState<{ durum: number; detay?: string } | null>(null);   // G1-C (UAT Y-3): 422/5xx boş durum DEĞİL — sunucu gerekçesi gösterilir
   const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
   // 19.11 (canlı özellik testi, Bulgu 2): seçici yalnız indirilecek dosyayı belirliyordu; büyük değer, seviye çipi, dosya adı ve SHA hep P50 kalıyordu
   // (P10 seçip 1.062,9 MWh görüp 665,7 MWh indirmek). Artık önizleme seçili seviyeyi izler; yoldayken eski değer solgun bekler (iskelet seçiciyi sökerdi).
@@ -65,9 +66,9 @@ export function Kgup({ plantId }: { plantId: string }) {
     const santralDegisti = oncekiSantral.current !== plantId; oncekiSantral.current = plantId;
     const bellek = bellekten.kgup(plantId, kgupKantil);
     if (bellek || santralDegisti) setKgup(bellek);
-    setKgupBekliyor(!bellek);
+    setKgupBekliyor(!bellek); setKgupNeden(null);
     // inceleme: seviye değişiminde yanıt gelmezse (null) eski geçerli değer kalır ve uyarı yazılır — null kartı boşaltıp seçiciyi sökerdi (geri dönüş yolu kapanırdı)
-    api.kgupOnizleme(plantId, undefined, kgupKantil).then((v) => { if (acik) { setKgup((e) => (v ? ayniysaEskisi(e, v) : (santralDegisti || e === undefined) ? v : e)); if (!v && !santralDegisti) setKgupHata("Seçilen seviye için önizleme alınamadı; önceki seviyenin değeri gösteriliyor."); setKgupBekliyor(false); } }, () => { if (acik) { setKgup(null); setKgupBekliyor(false); } });
+    api.kgupOnizleme(plantId, undefined, kgupKantil).then((v) => { if (acik) { setKgup((e) => (v ? ayniysaEskisi(e, v) : (santralDegisti || e === undefined) ? v : e)); if (!v && !santralDegisti) setKgupHata("Seçilen seviye için önizleme alınamadı; önceki seviyenin değeri gösteriliyor."); setKgupBekliyor(false); } }, (e) => { if (acik) { setKgup((x) => ((santralDegisti || x === undefined) ? null : x)); setKgupNeden({ durum: hataDurumu(e) ?? 0, detay: hataDetayi(e) }); if (!santralDegisti) setKgupHata(`Seçilen seviye için önizleme alınamadı${hataDurumu(e) ? ` (hata kodu ${hataDurumu(e)})` : ""}; önceki seviyenin değeri gösteriliyor.`); setKgupBekliyor(false); } });   // G1-C: hata = boş durum değil; QA İ-1: seviye değişiminde hata sessiz kalmaz
     return () => { acik = false; };
   }, [plantId, ds, kgupKantil]);
   return (
@@ -82,7 +83,7 @@ export function Kgup({ plantId }: { plantId: string }) {
       <section className="bolum">
       <div className="ozet-bas">Yarın<span className="sag">teslim günü programı</span></div>
       <Kart baslik="Program dosyası — yarının saatlik programı; bildirim beyanı ve kıyas"
-        sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : kgup === undefined ? "hesaplanıyor" : "tahmin bekleniyor"}</span>}>
+        sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : kgup === undefined ? "hesaplanıyor" : kgupNeden ? (kgupNeden.durum === 422 ? "dosya üretilemedi" : "alınamadı") : "tahmin bekleniyor"}</span>}>   {/* QA İ-3: çip gövdeyle çelişmez */}
         {kgup === undefined ? (
           /* 24.10: yanıt yoldayken «program henüz yok» yazılmaz — yer tutucu (önce boş durum görünüp sonra doluyordu); 17.11: gövde kalıbında iskelet */
           <ProgramIskeleti />
@@ -204,9 +205,17 @@ export function Kgup({ plantId }: { plantId: string }) {
             </details>
           </>
         ) : (
-          <div className="bos-durum">
-            <div className="bos-bas">Yarın için program henüz yok</div>
-            <p>Teslim saatinden önce verilmiş tahmin yok; sabah tahmini üretildiğinde burada görünür.</p>
+          <div className="bos-durum" role="status">   {/* G1-C: 409 (program yok) ile 422 (dosya üretilemedi) ve diğer hatalar ayrı metin; sunucu gerekçesi gizlenmez */}
+            {kgupNeden?.durum === 422 ? (<>
+              <div className="bos-bas">Yarının program dosyası üretilemedi</div>
+              <p>{kgupNeden.detay ? `${kgupNeden.detay} ` : ""}Tahmin yayını tamamlanınca bu sayfayı yenileyin; sorun sürerse Santralim'de veri kaynağınızı kontrol edin.</p>
+            </>) : kgupNeden ? (<>
+              <div className="bos-bas">Program önizlemesi alınamadı</div>
+              <p>{kgupNeden.durum ? `Hata kodu ${kgupNeden.durum}. ` : "Bağlantı kurulamadı. "}Sayfayı yenileyin; sorun sürerse Hakkında sayfasındaki hizmet sağlığına bakın.</p>
+            </>) : (<>
+              <div className="bos-bas">Yarın için program henüz yok</div>
+              <p>Teslim saatinden önce verilmiş tahmin yok; sabah tahmini üretildiğinde burada görünür.</p>
+            </>)}
           </div>
         )}
       </Kart>

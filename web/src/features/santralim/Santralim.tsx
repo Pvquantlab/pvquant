@@ -293,7 +293,29 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const yazabilir = rolum() !== "viewer";   // v2.641 (02A-B2/02C-B14): yalnız bilinen izleyici rolü pasif görür (örnek kipte/jetonsuz rol boş → açık); her çizimde okunur — oturum yenilemesi rolü değiştirirse kabuk yeniden çizer; sunucu 403 yine kapı
   const [segMesaj, setSegMesaj] = useState<string | null>(null);
   const [sinif, setSinif] = useState<{ santral_turu: string; veri_turu: string } | null>(null);   // Faz 0 P0-01 (C1): santral türü / veri türü; null = henüz okunmadı
-  const sinifAyarla = (g: { santral_turu?: string; veri_turu?: string }) => { setSegMesaj(null); api.santralSinifiAyarla(plantId, g).then((r) => setSinif({ santral_turu: r.santral_turu, veri_turu: r.veri_turu })).catch((err) => setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`)); };
+  // G1-A (UAT K-1, 21.11): segment / santral türü / veri türü seçimi YEREL tutulur; yazma yalnız «Kaydet» ile (seçim anında yazma
+  // kayıttaki istemsiz segment değişikliğine yol açmıştı). Santral değişince seçimler düşer; yalnız değişen alan gönderilir.
+  const [segSecim, setSegSecim] = useState<string | null>(null);
+  const [sinifSecim, setSinifSecim] = useState<{ santral_turu?: string; veri_turu?: string }>({});
+  const [segYolda, setSegYolda] = useState(false);   // QA İ-2: uçuşta çift tık yok
+  useEffect(() => { setSegSecim(null); setSinifSecim({}); setSegMesaj(null); setSegYolda(false); }, [plantId]);
+  const segYeni = segSecim !== null && segSecim !== (seg?.segment ?? "") ? segSecim : null;
+  const sinifYeni: { santral_turu?: string; veri_turu?: string } = {};
+  if (sinifSecim.santral_turu !== undefined && sinifSecim.santral_turu !== sinif?.santral_turu) sinifYeni.santral_turu = sinifSecim.santral_turu;
+  if (sinifSecim.veri_turu !== undefined && sinifSecim.veri_turu !== sinif?.veri_turu) sinifYeni.veri_turu = sinifSecim.veri_turu;
+  const segDegisti = segYeni !== null || Object.keys(sinifYeni).length > 0;
+  const segKaydet = () => {
+    if (segYolda) return;
+    setSegMesaj(null); setSegYolda(true);
+    const hedef = plantId;   // QA İ-1: yanıt gelene dek santral değişirse eski santralın yanıtı yeni ekrana yazılmaz (plantRef kalıbı)
+    const ayni = () => plantRef.current === hedef;
+    // sıralı zincir (tek kapı yok): önce segment, sonra sınıf; biri düşerse başarılı olan durumda kalır, seçim yalnız o alan için düşer.
+    // QA İ-3: segment Kaydet UEVÇB göndermez — UEVÇB'nin kendi Kaydet'i var; kutudaki kaydedilmemiş metin buradan sızmasın.
+    let zincir: Promise<unknown> = Promise.resolve();
+    if (segYeni) zincir = zincir.then(() => api.segmentAyarla(hedef, segYeni).then((r) => { if (!ayni()) return; setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi }); setSegSecim(null); }));
+    if (Object.keys(sinifYeni).length) zincir = zincir.then(() => api.santralSinifiAyarla(hedef, sinifYeni).then((r) => { if (!ayni()) return; setSinif({ santral_turu: r.santral_turu, veri_turu: r.veri_turu }); setSinifSecim({}); }));
+    zincir.then(() => { if (ayni()) setSegMesaj("Kaydedildi"); }).catch((err) => { if (ayni()) setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`); }).finally(() => { if (ayni()) setSegYolda(false); });
+  };
   const pilotKapi = (kod: string, tamam: boolean) => { const n = tamam ? window.prompt("Beyan notu (isteğe bağlı): izin belgesi, tarih, kişi", "") : null; if (tamam && n === null) return; setRefMesaj(null); api.pilotKapi(plantId, kod, { tamam, aciklama: n || null }).then(setPilot).catch((e) => setRefMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`)); };   // v2.641: hata artık görünür
   const [refSaatSonu, setRefSaatSonu] = useState(false);   // v2.640: portal dışa aktarımında damga saat SONU ise 1 saat geri alınır
   const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinirEtkin, refSaatSonu).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
@@ -396,7 +418,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (!altGorunur) return; setKir(undefined); api.kirlenme(plantId).then((v) => { if (plantRef.current === plantId) setKir(v); }).catch(() => { if (plantRef.current === plantId) setKir(null); }); }, [plantId, ds, altGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!santralGorunur) return; setVy(null); api.veriYolu(plantId).then((v) => { if (plantRef.current !== plantId) return; vyDoldur(v); vybDoldur(v); }).catch(() => {}); }, [plantId, ds, santralGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const [vyDurum, setVyDurum] = useState<"bekliyor" | "tamam" | "hata">("bekliyor");   // G1-C (UAT B5-2): yüklenirken «alınamadı» yazılmaz
+  useEffect(() => { if (!santralGorunur) return; setVy(null); setVyDurum("bekliyor"); api.veriYolu(plantId).then((v) => { if (plantRef.current !== plantId) return; vyDoldur(v); vybDoldur(v); setVyDurum(v ? "tamam" : "hata"); }).catch(() => { if (plantRef.current === plantId) setVyDurum("hata"); }); }, [plantId, ds, santralGorunur]);   // eslint-disable-line react-hooks/exhaustive-deps
   const sensKaydet = (liste: Sensor[]) => {   // v2.542 (P8b-2): envanter bütünüyle gönderilir; vade sunucuda türetilir
     setSensMesaj(null);
     api.sensorlerAyarla(plantId, liste.map((s) => ({ tur: s.tur, olcum: s.olcum, marka_model: s.marka_model ?? null, seri_no: s.seri_no ?? null, sinif: s.sinif ?? null,
@@ -1011,7 +1034,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
           </>
         )}
         </fieldset>
-        {!vy && <p className="soluk" style={{ margin: 0 }}>Veri kaynağı bilgisi şu anda alınamadı.</p>}
+        {!vy && (vyDurum === "bekliyor" ? <YerTutucu yukseklik={120} /> : <p className="soluk" style={{ margin: 0 }} role="status">Veri kaynağı bilgisi şu anda alınamadı.</p>)}   {/* G1-C (B5-2): yükleniyor ≠ hata */}
       </Kart>
       {golge ? (   /* v2.550 (D5) + v2.555 (V2): gölge görünüm ve cihaz olay adayları — tahmin bu görünümü kullanmaz; örnek kipte ve API yokken gizli */
         <Kart baslik="Kaynak kıyası ve cihaz durumu" alt="Canlı okumalardan türetilen saatlerin üretim serisiyle yan yana görünümü; cihaz durumundan olay adayları. Tahmin ve doğruluk bu görünümü kullanmaz.">
@@ -1068,24 +1091,28 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
               </div>
             <div className="ayar-kontrol">
               <label className="girdi-etiket">Segment (uzlaştırma hesapları için gerekli)
-                <select className="girdi" value={seg?.segment ?? ""}
-                  onChange={(e) => { setSegMesaj(null); api.segmentAyarla(plantId, e.target.value, uevcb || undefined).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch((err) => setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`)); }}>
+                <select className="girdi" value={segSecim ?? seg?.segment ?? ""} disabled={seg === null} aria-label="Piyasa segmenti"
+                  onChange={(e) => { setSegMesaj(null); setSegSecim(e.target.value); }}>   {/* G1-A: yalnız yerel seçim; yazma Kaydet'te */}
                   <option value="" disabled>seçiniz</option>
                   {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
                 </select>
               </label>
               {seg?.dengesizlik_sahibi && <span className="ayar-durum">Dengesizlik sorumlusu: {seg.dengesizlik_sahibi}</span>}
               <label className="girdi-etiket">Santral türü <span className="soluk">(sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; tahmin, karne ve kota değişmez)</span>
-                <select className="girdi" value={sinif?.santral_turu ?? ""} disabled={sinif === null} aria-label="Santral türü" onChange={(e) => sinifAyarla({ santral_turu: e.target.value })}>
+                <select className="girdi" value={sinifSecim.santral_turu ?? sinif?.santral_turu ?? ""} disabled={sinif === null} aria-label="Santral türü" onChange={(e) => { setSegMesaj(null); setSinifSecim((x) => ({ ...x, santral_turu: e.target.value })); }}>
                   {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="operasyonel">operasyonel santral</option><option value="sanal_test">sanal test santralı (geliştirme)</option>
                 </select>
               </label>
               <label className="girdi-etiket">Veri türü <span className="soluk">(yalnız etiket; karne ve finans çıktılarında arşiv/sentetik notu)</span>
-                <select className="girdi" value={sinif?.veri_turu ?? ""} disabled={sinif === null} aria-label="Veri türü" onChange={(e) => sinifAyarla({ veri_turu: e.target.value })}>
+                <select className="girdi" value={sinifSecim.veri_turu ?? sinif?.veri_turu ?? ""} disabled={sinif === null} aria-label="Veri türü" onChange={(e) => { setSegMesaj(null); setSinifSecim((x) => ({ ...x, veri_turu: e.target.value })); }}>
                   {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="canli">canlı ölçüm</option><option value="tarihsel_arsiv">tarihsel arşiv verisi</option><option value="sentetik">sentetik veri</option><option value="yok">ölçüm verisi yok</option>
                 </select>
               </label>   {/* Faz 0 P0-01 C1 (21.11) */}
-              {segMesaj && <span className="ayar-durum hata">{segMesaj}</span>}
+              <div className="dugme-sira" style={{ marginTop: 8 }}>
+                <button className="dugme" disabled={!segDegisti || segYolda} onClick={segKaydet} aria-label="Piyasa segmenti, santral türü ve veri türünü kaydet">{segYolda ? "Kaydediliyor…" : "Kaydet"}</button>
+                {segDegisti && !segYolda && <span className="soluk t-ikincil">kaydedilmemiş değişiklik</span>}
+              </div>
+              {segMesaj && <span role="status" className={`ayar-durum ${segMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{segMesaj}</span>}
             </div>
             {ayrintiGovdesi(ayrinti, "segment", <>
                 <p><b>Ne zaman değiştirilir:</b> lisans ya da YEKDEM durumu değiştiğinde (örneğin YEKDEM süresi bitince serbest piyasaya geçiş) ve toplayıcı ya da görevli tedarik şirketi (GTŞ) portföyüne giriş-çıkışta.</p>
@@ -1098,7 +1125,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                   <li><b>Lisanssız (dağıtım):</b> programı GTŞ ya da toplayıcı bildirir; dengesizlik ve sapma tutarı santrale değil GTŞ/toplayıcı portföyüne (UEVÇB) yansır, santrale dağılımı sözleşmeye bağlıdır.</li>
                   <li><b>Öz tüketim (saatlik mahsup):</b> dengesizlik yok; fazla enerji GTŞ fiyatıyla, eksik tüketim tarifeyle mahsuplaşır.</li>
                 </ul>
-                <p><b>Ne zaman geçerli:</b> seçim anında kaydedilir; sonraki hesaplar ve program dosyaları yeni segmenti kullanır.</p>
+                <p><b>Ne zaman geçerli:</b> «Kaydet»e basınca kaydedilir; sonraki hesaplar ve program dosyaları yeni segmenti kullanır.</p>
               </>)}
           </div>
           {/* v2.539 (EK-3 DK-258/261): DSG kodu ve toplayıcı portföyü — Portföy sayfasındaki DSG hesabının gruplaması bu alanlara bağlı */}

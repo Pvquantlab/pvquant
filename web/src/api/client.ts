@@ -76,7 +76,11 @@ function getir<T>(yol: string): Promise<T> {
       ucustakiler.delete(yol);
       return new Promise<T>(() => {});
     }
-    if (!y.ok) throw new Error(`${y.status} ${yol}`);
+    if (!y.ok) {   // G1-C (UAT Y-3, 21.11): hataya durum kodu ve sunucu gerekçesi iliştirilir — mesaj metni aynı (startsWith("404") kontrolleri bozulmaz)
+      let detay: string | undefined;
+      try { const g = (await y.json()) as { detail?: unknown }; const m = detayMesaji(g.detail, ""); detay = m || undefined; } catch { /* gövde yok */ }
+      throw Object.assign(new Error(`${y.status} ${yol}`), { durum: y.status, detay });
+    }
     const veri = (await y.json()) as T;
     bellekte.set(yol, { veri, zaman: Date.now() });
     bayatIsle(yol, y.headers.get("x-bayat") === "1"); surumIsle(y.headers.get("x-pvq-yazilim"));
@@ -245,6 +249,10 @@ function detayMesaji(d: unknown, varsayilan: string): string {
   return varsayilan;
 }
 
+/** G1-C (21.11): getir/gonder hatasındaki HTTP durum kodu ve sunucu gerekçesi — sayfalar «veri yok» (404/409) ile gerçek hatayı ayırır. */
+export function hataDurumu(e: unknown): number | undefined { const d = (e as { durum?: unknown } | null)?.durum; return typeof d === "number" ? d : undefined; }
+export function hataDetayi(e: unknown): string | undefined { const d = (e as { detay?: unknown } | null)?.detay; return typeof d === "string" && d ? d : undefined; }
+
 /** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
 async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT" | "PATCH", govde?: unknown): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");
@@ -256,7 +264,7 @@ async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT" | "PATCH
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
     try { const g = (await y.json()) as { detail?: unknown }; mesaj = detayMesaji(g.detail, mesaj); } catch { /* gövde yok */ }
-    throw new Error(mesaj);
+    throw Object.assign(new Error(mesaj), { durum: y.status });   // G1-C: durum kodu
   }
   // v2.325: her başarılı yazmadan sonra GET belleği düşer — kullanıcı kendi
   // değişikliğini taze görür. Tek istisna oturum yenileme: veri değiştirmez ve
@@ -889,7 +897,8 @@ export const api = {
   /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */
   kgupOnizleme: async (p: string, gun?: string, kantil = "p50"): Promise<KgupOnizleme | null> => {
     if (TABAN == null) return null;
-    try { return await getir<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=${kantil}${gun ? `&gun=${gun}` : ""}`); } catch { return null; }
+    try { return await getir<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=${kantil}${gun ? `&gun=${gun}` : ""}`); }
+    catch (e) { if (hataDurumu(e) === 409) return null; throw e; }   // G1-C: 409 = program yok (boş durum); 422/5xx sayfaya çıkar, gizlenmez
   },
   /** v2.512: fmt "eak" → TPYS EAK.csv biçiminde EAK dosyası (ayrı ekran/servis; arşive yazılmaz) */
   kgupIndir: async (p: string, gun?: string, kantil = "p50", fmt: "csv" | "eak" = "csv"): Promise<void> => {
