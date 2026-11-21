@@ -214,8 +214,8 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
                  ikinci={m!.bant_genisligi_oran != null ? { etiket: "Ortalama aralık genişliği", deger: yuzdeTr(m!.bant_genisligi_oran, 0), birim: "kurulu güç" } : undefined}
                  alt={m!.picp80 == null ? "aralık verisi yeterli değil" : "hedef %80; dar aralık iddialı, geniş aralık temkinli"} />
             <Kpi etiket="Değerlendirilen ölçüm" deger={b?.degerlendirilen_pct == null ? "—" : yuzdeTr(b.degerlendirilen_pct, 0)}
-                 ikinci={b ? { etiket: "Ölçülen saat", deger: `${sayiTr(b.olcum.olculdu_saat)} / ${sayiTr(b.olcum.beklenen_saat)}`, birim: "saat" } : undefined}
-                 alt={b ? `gündüz saatlerinin; ${b.olcum.sinir_etiketi}` : undefined} />
+                 ikinci={b ? { etiket: "Değerlendirilen gündüz saati", deger: `${sayiTr(b.degerlendirilen_saat)} / ${sayiTr(b.gunduz_saat)}`, birim: "saat" } : undefined}   /* G4-5 (Q-07): KPI ile aynı payda */
+                 alt={b ? `ölçülen ${sayiTr(b.olcum.olculdu_saat)} / ${sayiTr(b.olcum.beklenen_saat)} saat (gece dahil tüm saatler); ${b.olcum.sinir_etiketi}` : undefined} />
           </div>
           {dis.length > 0 && (
             <details className="aciklama">

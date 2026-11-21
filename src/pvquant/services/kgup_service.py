@@ -100,6 +100,23 @@ def segment_notu(pj: dict) -> str | None:
     return None
 
 
+def saat_araliklari(saatler) -> str:
+    """G4-6: eksik saat listesini okunur aralıklara çevirir — [0,1,2,3,18,19,23] → «0–3, 18–19, 23»."""
+    h = sorted({int(x) for x in (saatler or [])})
+    if not h:
+        return "—"
+    parcalar: list[str] = []
+    bas = onceki = h[0]
+    for x in [*h[1:], None]:
+        if x is not None and x == onceki + 1:
+            onceki = x
+            continue
+        parcalar.append(f"{bas}–{onceki}" if onceki != bas else f"{bas}")
+        if x is not None:
+            bas = onceki = x
+    return ", ".join(parcalar)
+
+
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
     """Program tablosu + doğrulama + TPYS CSV metni. Koşu yoksa {'hata': ..., 'kod': 409}; eksik saat varsa {'hata', 'kod': 422, 'eksik_saatler'}."""
     import json as _j
@@ -126,7 +143,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
         eak_seri = eak
     son = kg.program_uret(seri, gun.isoformat(), uevcb or plant.get("uevcb") or str(plant["id"])[:8].upper(), kap, eak_mw=eak_seri, kantil=None)
     if son.eksik_saatler:
-        return {"hata": f"tahmini olmayan saat var (saat {', '.join(map(str, son.eksik_saatler))}); KGÜP 0 yazılmaz, dosya üretilmedi",
+        return {"hata": f"{gun.strftime('%d.%m.%Y')} programı üretilemedi: {saat_araliklari(son.eksik_saatler)} saatleri için tahmin yok; KGÜP'e 0 yazılmaz. Tahmin yayını tamamlanınca yeniden deneyin.",   # QA İ-2: uç ?gun= ile her gün için çağrılır   # G4-6 (UAT 21.11): müşteri dili, saat aralıkları
                 "gun": gun.isoformat(), "kod": 422, "eksik_saatler": son.eksik_saatler, "kosu": kosu}
     hatalar = kg.dogrula(son, kap)
     dengeleme_birimi = bool(pj.get("dengeleme_birimi"))

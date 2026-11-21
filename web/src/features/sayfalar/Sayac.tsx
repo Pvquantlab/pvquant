@@ -71,7 +71,7 @@ export function Sayac({ plantId }: { plantId: string }) {
       <td className="mono">{sayiTr(r.saat_ortak)}{r.saat_ortak < 24 ? <span className="soluk"> / {sayiTr(Math.max(r.saat_scada, r.saat_sayac))}</span> : null}</td>
       <td className="mono" style={{ whiteSpace: "nowrap" }}>{imzali(r.fark_kwh)}</td>
       <td className="mono">{yuzde(r.fark_pct)}</td>
-      <td className="mono">{r.saat_tahmini ? yuzde(r.olc_fark_pct) : <span className="soluk">aynı</span>}</td>
+      <td className="mono">{r.saat_tahmini ? yuzde(r.olc_fark_pct) : r.saat_ortak ? <span className="soluk">aynı</span> : "—"}</td>   {/* G4-10 (Q-17): ortak saat yokken «aynı» denmez */}
       <td className="mono">{r.saat_tahmini ? <span style={uyari}>{sayiTr(r.saat_tahmini)}</span> : "0"}</td>
     </tr>);
   return (

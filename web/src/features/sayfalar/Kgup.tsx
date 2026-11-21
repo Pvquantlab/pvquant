@@ -235,6 +235,8 @@ export function Kgup({ plantId }: { plantId: string }) {
           <>
             {rv.oneri_saatleri.length > 0
               ? <p className="t-ikincil" style={{ margin: "0 0 8px" }}><b>Öneri:</b> saat {rv.oneri_saatleri.map((h) => `${String(h).padStart(2, "0")}:00`).join(", ")} için program güncel beklentiden eşik üstü sapıyor; bu saatlerde fark {sayiTr(rv.saatler.filter((u) => u.oneri).reduce((a, u) => a + (u.fark_mwh ?? 0), 0), 1)} MWh.{rv.ilk_revizyon_son && <> İlk saat için revizyon son anı <b>{new Date(rv.ilk_revizyon_son).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</b>.</>}</p>
+              : rv.saatler.length === 0
+              ? <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>Bugün için kalan üretim saati yok; revizyon önerisi yarının programıyla yenilenir.</p>   /* G4-10 (Q-23) */
               : <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>Kalan saatlerde program ile güncel beklenti arasındaki fark eşiğin altında; revizyon gerekmiyor.</p>}
             <div className="grafik-kaydir">
               <table className="veri">

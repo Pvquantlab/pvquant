@@ -192,3 +192,13 @@ test("G3-C: Cipler bileşeni ve beş çok bilgili çip, Santralim katlamaları, 
   const d = oku("../../src/features/sayfalar/Digerleri.tsx");
   assert.doesNotMatch(d, /sunucu günlüğü/, "müşteri yüzünde «sunucu günlüğü» yok");
 });
+
+// ---------------------------------------------------------------- G4-A web parçası (UAT 21.11: Q-07, Q-23, Q-17, Q-13) ----------------------------------
+test("G4-A web: kapsama satırı KPI ile aynı payda; boş kümede yanıltıcı metin yok", () => {
+  const d = oku("../../src/features/sayfalar/Dogruluk.tsx");
+  assert.match(d, /etiket: "Değerlendirilen gündüz saati", deger: `\$\{sayiTr\(b\.degerlendirilen_saat\)\} \/ \$\{sayiTr\(b\.gunduz_saat\)\}`, birim: "saat"/, "G4-5: 434/621 kalıbı");
+  assert.match(d, /alt=\{b \? `ölçülen \$\{sayiTr\(b\.olcum\.olculdu_saat\)\} \/ \$\{sayiTr\(b\.olcum\.beklenen_saat\)\} saat \(gece dahil tüm saatler\); \$\{b\.olcum\.sinir_etiketi\}` : undefined\}/);
+  assert.match(oku("../../src/features/sayfalar/Kgup.tsx"), /rv\.saatler\.length === 0\s*\? <p className="soluk t-ikincil"[^>]*>Bugün için kalan üretim saati yok;/, "G4-10/Q-23");
+  assert.match(oku("../../src/features/sayfalar/Sayac.tsx"), /r\.saat_tahmini \? yuzde\(r\.olc_fark_pct\) : r\.saat_ortak \? <span className="soluk">aynı<\/span> : "—"/, "G4-10/Q-17");
+  assert.match(oku("../../src/features/sayfalar/Portfoy.tsx"), /\$\{sayiTr\(\(p\?\.santraller \?\? \[\]\)\.filter\(\(r\) => r\.bugun_kwh == null \|\| r\.yarin_kwh == null\)\.length\)\} santralde tam gün tahmini yok; toplam gösterilmez/, "G4-10/Q-13");
+});

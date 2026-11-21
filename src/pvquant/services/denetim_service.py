@@ -79,12 +79,12 @@ def maskele_url(url: str | None) -> str | None:
 
 
 def ayar_degisikligi_kaydet(eylem: str, *, aktor_id, tenant_id, plant_id, eski_pj, yeni_pj, ek: dict | None = None, ip: str | None = None,
-                            kapsam: str = "musteri") -> bool:
+                            kapsam: str = "musteri", aktor_eposta: str | None = None) -> bool:
     """v2.602 (F4-H): santral ayarı değişikliği izi — ayrıntı standardı {"degisen": {alan: {eski, yeni}}, "ayar_sha": {eski, yeni}, …ek}.
     Damga dışı alanlar `ek` ile (eski/yeni olarak çağıran verir); sır yazılmaz."""
     from pvquant.services import ayar_damgasi as ad
     ayrinti = {"degisen": ad.degisenler(eski_pj, yeni_pj), "ayar_sha": {"eski": ad.ayar_sha16(eski_pj), "yeni": ad.ayar_sha16(yeni_pj)}, **(ek or {})}
-    return kaydet(kapsam, eylem, aktor_id=aktor_id, tenant_id=tenant_id, nesne_tur="plant", nesne_id=plant_id, ayrinti=ayrinti, ip=ip)
+    return kaydet(kapsam, eylem, aktor_id=aktor_id, aktor_eposta=aktor_eposta, tenant_id=tenant_id, nesne_tur="plant", nesne_id=plant_id, ayrinti=ayrinti, ip=ip)   # G4-4: «Kim» + IP
 
 
 def etkilenen_sonuclar(tenant_id, iz_id: int, n: int = 100) -> dict:

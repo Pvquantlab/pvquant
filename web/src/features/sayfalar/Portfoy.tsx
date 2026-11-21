@@ -109,7 +109,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
              deger={ikisi ? yaz(t!.bugun_kwh!) : t ? enj(t.bugun_kwh) : "—"}
              birim={ikisi ? b : undefined}
              ikinci={t ? { etiket: "Yarın", deger: ikisi ? yaz(t.yarin_kwh!) : enj(t.yarin_kwh), birim: ikisi ? b : undefined } : undefined}
-             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />;
+             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? `${sayiTr((p?.santraller ?? []).filter((r) => r.bugun_kwh == null || r.yarin_kwh == null).length)} santralde tam gün tahmini yok; toplam gösterilmez` : "tüm santrallerin beklenen (P50) toplamı"} />;   /* G4-10 (Q-13): sayı */
         })()}
         <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? yuzdeTr(t.wmape_agirlikli, 1) : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede, kapasite ağırlıklı${(() => { const e = (p?.santraller ?? []).filter((r) => r.wmape_30g == null).length; return e > 0 ? ` · ${sayiTr(e)} santral ölçüm yetersiz` : ""; })()}` : ""} />

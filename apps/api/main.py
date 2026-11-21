@@ -67,9 +67,17 @@ from apps.api.yonetim import yonetim as _yonetim  # noqa: E402
 from pvquant.services import denetim_service as _denetim  # noqa: E402
 
 
-def _ayar_izi(eylem: str, claims: dict, plant_id, eski_pj, yeni_pj, ek: dict | None = None) -> None:
-    """v2.602 (F4-H): santral ayarı değişikliği izi — {degisen: {alan: {eski, yeni}}, ayar_sha: {eski, yeni}} standardı; iz, kapı değildir."""
-    _denetim.ayar_degisikligi_kaydet(eylem, aktor_id=claims.get("sub"), tenant_id=claims["tenant_id"], plant_id=str(plant_id), eski_pj=eski_pj or {}, yeni_pj=yeni_pj or {}, ek=ek)
+def _ayar_izi(eylem: str, claims: dict, plant_id, eski_pj, yeni_pj, ek: dict | None = None, ip: str | None = None) -> None:
+    """v2.602 (F4-H): santral ayarı değişikliği izi — {degisen: {alan: {eski, yeni}}, ayar_sha: {eski, yeni}} standardı; iz, kapı değildir.
+    G4-4 (UAT 21.11, Q-02): «Kim» sütunu boş kalıyordu — aktör e-postası jetondan, IP çağıran uçtan (varsa) yazılır."""
+    eposta = claims.get("email")
+    if not eposta and claims.get("sub"):   # QA G4-A İ-1: müşteri jetonu «email» taşımaz (yalnız sub/tenant_id/role/sv) → kullanıcı tablosundan; iz, kapı değildir
+        try:
+            eposta = auth_service.eposta_getir(claims["sub"])
+        except Exception:   # noqa: BLE001 — iz yazımı ayar kaydını düşürmez
+            eposta = None
+    _denetim.ayar_degisikligi_kaydet(eylem, aktor_id=claims.get("sub"), aktor_eposta=eposta or None, tenant_id=claims["tenant_id"], plant_id=str(plant_id),
+                                     eski_pj=eski_pj or {}, yeni_pj=yeni_pj or {}, ek=ek, ip=ip)
 
 
 # ---------------------------------------------------------------- v2.603 (F4-I): dış API sözleşmesi ---------------------------------------------
@@ -1296,7 +1304,7 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
                                       "params_json": pj},   # v2.275: EAK alanı / geçici kısıt params_json'dan
                           g, kantil)
     if "hata" in r:
-        raise HTTPException(int(r.get("kod", 409)), r["hata"] + (f" (eksik saatler: {r['eksik_saatler']})" if r.get("eksik_saatler") else ""))
+        raise HTTPException(int(r.get("kod", 409)), r["hata"])   # G4-6: eksik saatler metnin içinde (aralık olarak); yinelenen liste eki kalktı
     if fmt == "json":
         return {k: v for k, v in r.items() if k not in ("csv", "eak_csv")}
     from pvquant.services import kgup_arsiv_service
@@ -1881,7 +1889,7 @@ class SegmentIstek(BaseModel):
 
 
 @app.put("/v1/plants/{plant_id}/segment")
-def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi())):
+def segment_ayarla(plant_id: str, p: SegmentIstek, request: Request, claims=Depends(yazma_yetkisi())):
     """v2.260 — piyasa segmenti (YEKDEM / serbest / lisanssız …) ve UEVÇB kodu; params_json'a yazılır."""
     from pvquant.ext.turkiye.segment import Segment
     from pvquant.services import dengesizlik_service, plant_service
@@ -1914,7 +1922,7 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
             raise HTTPException(422, str(e)) from e
     eski_pj = dict((plant_service.getir(claims["tenant_id"], plant_id) or {}).get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
-    _ayar_izi("santral_segment", claims, plant_id, eski_pj, pj, ek={"istek": dict(anahtarlar)})   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
+    _ayar_izi("santral_segment", claims, plant_id, eski_pj, pj, ek={"istek": dict(anahtarlar)}, ip=(request.client.host if request.client else None))   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi", "depolama_gucu_mw", "depolama_kapasite_mwh", "depolama_konfigurasyon", "depolama_uevcb", "depolama_kabul_tarihi", "depolama_butunlesik")}, **dengesizlik_service.segment_bilgisi(pj),
             "depolama": dengesizlik_service.segment_bilgisi(pj)["depolama"]}   # v2.543 (P9)
 
@@ -1925,7 +1933,7 @@ class SantralSinifiIstek(BaseModel):
 
 
 @app.put("/v1/plants/{plant_id}/santral-sinifi")
-def santral_sinifi_ayarla(plant_id: str, p: SantralSinifiIstek, claims=Depends(yazma_yetkisi())):
+def santral_sinifi_ayarla(plant_id: str, p: SantralSinifiIstek, request: Request, claims=Depends(yazma_yetkisi())):
     """Faz 0 P0-01 (21.11.2026, karar C1): santral TÜRÜ (operasyonel | sanal test) ve VERİ TÜRÜ (canlı | tarihsel arşiv | sentetik | yok) beyanı.
     Sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; veri türü yalnız etiket. Tahmin, karne, uzlaştırma ve kota DEĞİŞMEZ.
     Kısmi istek: yalnız verilen alan yazılır."""
@@ -1945,7 +1953,10 @@ def santral_sinifi_ayarla(plant_id: str, p: SantralSinifiIstek, claims=Depends(y
         sinif_eski = _ds.santral_sinifi(eski_pj)
         anahtarlar = {"santral_turu": sinif_eski["santral_turu"], "veri_turu": sinif_eski["veri_turu"], **anahtarlar, "veri_sinifi": None}
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
-    _ayar_izi("santral_sinifi", claims, plant_id, eski_pj, pj, ek={"istek": anahtarlar})
+    # G4-4: santral_turu/veri_turu damga anahtarı değildir (degisen boş kalıyordu) — sınıf farkı ayrı alanda; damga sha'ya DOKUNULMAZ
+    sinif_e, sinif_y = _ds.santral_sinifi(eski_pj), _ds.santral_sinifi(pj)
+    degisen_sinif = {k: {"eski": sinif_e.get(k), "yeni": sinif_y.get(k)} for k in ("santral_turu", "veri_turu") if sinif_e.get(k) != sinif_y.get(k)}
+    _ayar_izi("santral_sinifi", claims, plant_id, eski_pj, pj, ek={"istek": anahtarlar, "degisen_sinif": degisen_sinif}, ip=(request.client.host if request.client else None))
     return _ds.santral_sinifi(pj)
 
 

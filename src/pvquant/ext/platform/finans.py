@@ -208,7 +208,12 @@ def toplam(bilesenler: list[Bilesen]) -> dict:
     nit = en_zayif(*[b.nitelik for b in giren]) if giren else Nitelik.EKSIK
     if eksik and giren:
         nit = en_zayif(nit, Nitelik.SENARYO) if nit != Nitelik.EKSIK else nit   # eksik kalemle toplam en iyi hâlde «senaryo» kadar güvenilirdir
-    al, bo = alacak_borc(net)
+    # G4-1 (UAT 21.11, Q-10): alacak/borç NET'ten türetilmez — bileşen satırlarının alacak ve borç sütunlarından toplanır (net aynıdır;
+    # Karapınar 10.2026: 793.905 net = 824.901 alacak − 30.996 borç; eski yol 793.905 / 0 yazıyordu). Formül değişmez, yalnız dağılım.
+    al = sum(float(b.alacak_tl or 0.0) for b in giren) if giren else None
+    bo = sum(float(b.borc_tl or 0.0) for b in giren) if giren else None
+    if net is not None and al is not None and bo is not None and abs((al - bo) - net) > 0.01:   # QA İ-3: satır alacak/borç ile net çelişirse net esastır
+        al, bo = alacak_borc(net)
     return {"tutar_tl": _yuvarla(net), "alacak_tl": _yuvarla(al), "borc_tl": _yuvarla(bo), "nitelik": nit.value, "nitelik_ad": NITELIK_AD[nit],
             "giren": [b.kod for b in giren], "eksik": eksik, "isaret": ISARET_KURALI}
 

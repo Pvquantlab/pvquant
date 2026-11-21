@@ -401,7 +401,22 @@ NOT_DSG = ("DSG içindeki tutar tek başına dengesizlik tutarının yerine geç
            "olmadığından senaryo niteliğindedir.")
 NOT_SEGMENT_YOK = "Piyasa segmenti seçilmedi; dengesizlik tutarı lisanslı güneş varsayımıyla hesaplandı, KÜPST hesaplanmadı (Santralim › Santral ayarları)."   # v2.641: Doğruluk/dengesizlik ile tek politika
 NOT_B4 = ("Mutabakat sayfasındaki fark saatlik alacak/borç toplamıyla hesaplanır; burada 19.10.2026'dan geçerli EDTA/EDTB ayrık toplama kuralı "
-          "kullanıldığından alacak ve borç dağılımı farklı olabilir, net tutar aynıdır.")
+          "kullanıldığından alacak ve borç dağılımı farklı olabilir, net tutar aynıdır. Toplam satırındaki alacak ve borç, bileşen satırlarının toplamıdır.")
+
+
+def _tr_sayi(x, d: int = 0) -> str:
+    """G4-8 (UAT 21.11, U-20): müşteri yüzüne giden not metinlerinde Türkçe sayı biçimi (binlik nokta, ondalık virgül); sayı değilse «—»."""
+    if isinstance(x, bool):
+        return "—"
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return "—"
+    if v != v or v in (float("inf"), float("-inf")):
+        return "—"
+    if abs(v) < 0.5 * 10 ** (-d):
+        v = 0.0   # «-0,0» basılmasın
+    return f"{v:,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def saatlik(g: dict):
@@ -729,7 +744,7 @@ def dusukluk_saf(donem: dict, izgara: pd.DatetimeIndex, pv: pd.DataFrame | None,
             nit = fn.Nitelik.EKSIK
         b = fn.Bilesen(KOD_DUSUKLUK, "Üretim düşüklüğü (gelir kaybı tahmini)", tutar_tl=(fn.fem_isareti("kayip.toplam_kayip_tl", top) if (top is not None and nit != fn.Nitelik.EKSIK) else None),
                        nitelik=nit, toplanir=False, kaynak=f"kayıp ayrışımı × {kf.get('etiket') or 'fiyat yok'}", kapsam_saat=kayip.get("veri_saat"), beklenen_saat=n,
-                       notlar=[f"Nedeni bilinen kayıp {kayip.get('toplam_kayip_kwh')} kWh; EPI {kayip.get('epi')}."])
+                       notlar=[f"Nedeni bilinen kayıp {_tr_sayi(kayip.get('toplam_kayip_kwh'), 1)} kWh; EPI {('%' + _tr_sayi(float(kayip['epi']) * 100, 1)) if kayip.get('epi') is not None else '—'}."])   # G4-8: Türkçe biçim
         if kayip.get("fiyatsiz_saat"):
             b.notlar.append(f"{kayip['fiyatsiz_saat']} saatte fiyat olmadığından TL karşılığı eksik.")
     # --- sözleşme açığı
