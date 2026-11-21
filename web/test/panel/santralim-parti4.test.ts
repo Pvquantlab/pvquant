@@ -35,3 +35,14 @@ test("02C-B13: şartlı senaryo sayıları soluk ve normal ağırlıkta", () => 
   assert.equal((s.match(/className=\{kir\.kayip\.nitelik !== "tahmin" \? "soluk" : undefined\} style=\{\{ fontWeight: kir\.kayip\.nitelik !== "tahmin" \? 400 : 500 \}\}/g) ?? []).length, 2, "MWh ve TL");
   assert.match(s, /title=\{kir\.kayip\.nitelik !== "tahmin" \? "şartlı senaryo: güvenilirlik zayıf\/belirsiz; karşılaştırma için değil" : undefined\}/);
 });
+
+test("bekçi: types.ts ve sozluk.ts'de satır içi // yorumu alan/anahtar yutmaz (Faz 0 QA A-2 ve sanal test itirazı)", () => {
+  for (const yol of ["../../src/api/types.ts", "../../src/lib/sozluk.ts", "../../src/api/yonetim.ts"]) {
+    const satirlar = oku(yol).split("\n");
+    satirlar.forEach((satir, i) => {
+      const k = satir.indexOf("//"); if (k < 0 || satir.slice(0, k).includes("http")) return;
+      const kuyruk = satir.slice(k + 2);
+      assert.doesNotMatch(kuyruk, /\b[a-z_]+\??\s*:\s*(string|number|boolean|"[^"]*")\s*[;|,]/, `${yol}:${i + 1} satır içi yorum alan yutuyor: ${satir.trim().slice(0, 120)}`);
+    });
+  }
+});

@@ -81,6 +81,7 @@ export function Sistem() {
               <div><dt>Bağlantı</dt><dd><Rozet durum={sg.bilesenler.veritabani.baglanti.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.baglanti.neden}; boyut {boyutTr(sg.bilesenler.veritabani.baglanti.boyut_bayt)}</span></dd></div>
               <div><dt>Yedek</dt><dd><Rozet durum={sg.bilesenler.veritabani.yedek.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yedek.neden}</span></dd></div>
               <div><dt>Yedek doğrulaması</dt><dd><Rozet durum={sg.bilesenler.veritabani.yedek_dogrulama.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yedek_dogrulama.neden}</span></dd></div>
+              {sg.bilesenler.veritabani.hiz_sayaci && <div><dt>Hız sayacı</dt><dd><Rozet durum={sg.bilesenler.veritabani.hiz_sayaci.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.hiz_sayaci.neden}</span></dd></div>}
               <div><dt>API</dt><dd><Rozet durum={sg.bilesenler.sunucu.api.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.api.neden}</span></dd></div>
               <div><dt>Hata günlüğü</dt><dd><Rozet durum={sg.bilesenler.sunucu.hata_gunlugu.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.hata_gunlugu.neden}</span></dd></div>
               <div><dt>İş hataları (24 sa)</dt><dd><Rozet durum={sg.bilesenler.sunucu.is_hatalari.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.is_hatalari.neden}</span></dd></div>
@@ -99,7 +100,7 @@ export function Sistem() {
               : o.izlenen && o.izlenen.bayat.length > 0 ? `eşiğini aşan izlenen iş: ${o.izlenen.bayat.join(", ")}`
               : `son üretici iş ${yasTr(o.gece_turu.son)}${o.izlenen ? "; izlenen işlerde eşik aşımı yok" : ""}`} />
           <Kpi etiket="İşler" deger={sayiTr(o.isler_24.hata)} birim="hata" ton={o.isler_24.hata > 0 ? "uyari" : undefined}
-            alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı`} />
+            alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı${(o.isler_24.bos_ok ?? 0) > 0 ? `; ${sayiTr(o.isler_24.bos_ok ?? 0)} iş çıktı yazmadan bitti (boş «ok»: başarı doğrulanamaz)` : ""}`} />   {/* Faz 0 P0-06 (20.11) */}
           <Kpi etiket="Hava verisi" deger={o.meteo.kaynaklar.length ? yasTr(en_yeni(o.meteo.kaynaklar.map((k) => k.son_indirme))) : "arşiv yok"}
             ton={o.meteo.kaynaklar.length === 0 || o.meteo.kaynaklar.some((k) => k.bayat) ? "uyari" : undefined}
             alt={o.meteo.kaynaklar.length === 0 ? "meteo_arsiv tablosu boş"
@@ -375,7 +376,7 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
               <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>
               {/* v2.515 inceleme: «Kurulu güç» santral adının, «Son hata» sorun çiplerinin altına künye olarak indi — 1440 px'te dokuz sütun kaydırıyordu */}
               <td className="plat-cipler plat-sorun">{p.sorunlar.length === 0 ? <span className="rozet rozet-ok">yok</span>
-                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-uyari">{sorunAdi(s)}</span>)}</span>}
+                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className={s === "sanal_test" || s.startsWith("veri_") ? "rozet rozet-notr" : "rozet rozet-uyari"}>{sorunAdi(s)}</span>)}</span>}
                 {p.son_hata && <div className="kunye-not"><button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster (başarısız biten son iş)" onClick={() => santralSec(p.id, p.ad)}
                   style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>son hata {yasTr(p.son_hata)}</button></div>}</td></tr>))}</tbody>
         </table></div>)}

@@ -96,6 +96,47 @@ def _sonuc(durum: Durum, neden: str, **ek) -> dict:
     return {"durum": durum.value, "etiket": etiket(durum), "neden": neden, **ek}
 
 
+# Faz 0 P0-01 (21.11.2026, karar C1): SANTRAL TÜRÜ ile VERİ TÜRÜ AYRI. `params_json.santral_turu` ∈ SANTRAL_TURLERI, `params_json.veri_turu`
+# ∈ VERI_TURLERI. Ölçüm tazeliği (hizmet sağlığı veri boyutu, `veri_gelmedi` alarmı) YALNIZ operasyonel santralda izlenir; veri türü yalnız
+# etiket/not üretir. Tahmin, karne, uzlaştırma ve kota sayımı DEĞİŞMEZ (sanal test santralleri geliştirme için gece tahmin almaya devam eder).
+# 20.11'in tek alanlı `veri_sinifi` beyanı okuma yolunda eşlenir (silinmez): operasyonel→(operasyonel, canli), tarihsel→(operasyonel,
+# tarihsel_arsiv), demo→(sanal_test, yok).
+SANTRAL_TURLERI = {"operasyonel": "operasyonel santral", "sanal_test": "sanal test santralı (geliştirme)"}
+VERI_TURLERI = {"canli": "canlı ölçüm", "tarihsel_arsiv": "tarihsel arşiv verisi", "sentetik": "sentetik veri", "yok": "ölçüm verisi yok"}
+_ESKI_VERI_SINIFI = {"operasyonel": ("operasyonel", "canli"), "tarihsel": ("operasyonel", "tarihsel_arsiv"), "demo": ("sanal_test", "yok")}
+
+
+def _pj_sozluk(params_json) -> dict:
+    pj = params_json
+    if isinstance(pj, str):
+        import json as _j
+        try:
+            pj = _j.loads(pj)
+        except ValueError:
+            pj = {}
+    return pj if isinstance(pj, dict) else {}
+
+
+def santral_sinifi(params_json) -> dict:
+    """SAF. {santral_turu, veri_turu, santral_turu_etiketi, veri_turu_etiketi, tazelik_izlenir}; bilinmeyen/boş değer varsayılana düşer."""
+    pj = _pj_sozluk(params_json)
+    st, vt = pj.get("santral_turu"), pj.get("veri_turu")
+    eski = _ESKI_VERI_SINIFI.get(pj.get("veri_sinifi"))
+    if st not in SANTRAL_TURLERI:
+        st = eski[0] if eski else "operasyonel"
+    if vt not in VERI_TURLERI:
+        vt = eski[1] if eski else "canli"
+    return {"santral_turu": st, "veri_turu": vt, "santral_turu_etiketi": SANTRAL_TURLERI[st], "veri_turu_etiketi": VERI_TURLERI[vt],
+            "tazelik_izlenir": st == "operasyonel"}
+
+
+def veri_durumu_uygulanmiyor(sinif: dict, son_olcum, son_alim, simdi: dt.datetime, *, kapsama_saat_7g: int | None = None) -> dict:
+    """Sanal test santralı: veri boyutu hükme girmez; damgalar yine raporlanır (sayı uydurulmaz)."""
+    return _sonuc(Durum.UYGULANMIYOR, f"{sinif['santral_turu_etiketi']}: ölçüm tazeliği izlenmez ({sinif['veri_turu_etiketi']}); tahmin ve karne hesapları değişmez",
+                  son_veri_alimi=_iso(son_alim), en_yeni_kayit=_iso(son_olcum), yas_saat=yas_saat(son_olcum, simdi), kapsama_saat_7g=kapsama_saat_7g,
+                  santral_turu=sinif["santral_turu"], veri_turu=sinif["veri_turu"])
+
+
 # ----------------------------------------------------------------------------------------------------------------- boyutlar
 def veri_durumu(son_olcum, son_alim, simdi: dt.datetime, *, kapsama_saat_7g: int | None = None, esik: dict = ESIK) -> dict:
     """Ölçüm verisi: en yeni GEÇERLİ ölçüm damgası (en_yeni_kayit) ile son geliş anı (son_veri_alimi) ayrı; hüküm damgadan.

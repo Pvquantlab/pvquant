@@ -65,7 +65,7 @@ _KUKLA_HASH = bcrypt.hash("kukla-" + "x" * 16)   # yalnız zamanlama eşitlemek 
 def giris(email, sifre, kod=None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text(
-            "SELECT u.id, u.tenant_id, u.pw_hash, u.role, u.aktif, u.totp_aktif, u.oturum_surumu, t.status AS kiraci_durum "
+            "SELECT u.id, u.tenant_id, u.pw_hash, u.role, u.aktif, u.totp_aktif, u.oturum_surumu, t.status AS kiraci_durum, t.yonetici_2fa_zorunlu "
             "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.email=:e"), {"e": email.lower()}).first()
         if not row:
             bcrypt.verify(sifre or "", _KUKLA_HASH)   # 26.10 denetim-3: hesap yokken de bcrypt koşar — zamanlamayla varlık sızmasın
@@ -78,11 +78,13 @@ def giris(email, sifre, kod=None) -> dict | None:
     # v2.338: parola doğru; iki adımlı doğrulama açıksa ikinci adım şart.
     # Kod yoksa TOKEN ÜRETİLMEZ; istemciye "kod iste" işareti döner (parola
     # doğrulaması geçildi ama oturum henüz açılmadı — last_login de yazılmaz).
+    ikinci_adim = None
     if row.totp_aktif:
         if not kod:
             return {"iki_adim_gerekli": True}
         from pvquant.services import iki_adim_service
-        if not iki_adim_service.giris_dogrula(row.id, kod):
+        ikinci_adim = iki_adim_service.giris_dogrula_yontem(row.id, kod)   # Faz 0 P0-08 (20.11): "totp" | "kurtarma" | None
+        if ikinci_adim is None:
             return None   # yanlış kod da 'hatalı' — deneme sızdırılmaz
     with sistem_baglami() as s:
         s.execute(text("UPDATE users SET last_login=now() WHERE id=:i"),
@@ -93,7 +95,21 @@ def giris(email, sifre, kod=None) -> dict | None:
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)},
         _sir(), algorithm="HS256")
     return {"token": token, "user_id": str(row.id),
-            "tenant_id": str(row.tenant_id), "role": row.role}
+            "tenant_id": str(row.tenant_id), "role": row.role,
+            "ikinci_adim": ikinci_adim,   # Faz 0 P0-08: kurtarma koduyla giriş denetim izinde ayrışır
+            "iki_adim_kurulmali": iki_adim_kurulmali(row.role, row.totp_aktif, getattr(row, "yonetici_2fa_zorunlu", False))}   # Faz 0 P0-08: oturum_durumu ile tek formül
+
+
+def iki_adim_kurulmali(role, totp_aktif, yonetici_2fa_zorunlu) -> bool:
+    """Faz 0 P0-08 (inceleme): kiracı «yöneticiler için 2FA zorunlu» politikası — tek formül (giriş yanıtı ve oturum_durumu)."""
+    return bool(yonetici_2fa_zorunlu) and role == "admin" and not bool(totp_aktif)
+
+
+def eposta_kiracisi(email: str):
+    """Faz 0 P0-08 (20.11): başarısız giriş izi için kiracı (hesap yoksa None; yanıt gövdesine sızmaz, yalnız denetim izine)."""
+    with sistem_baglami() as s:
+        r = s.execute(text("SELECT tenant_id FROM users WHERE email=:e"), {"e": (email or "").lower()}).first()
+    return str(r.tenant_id) if r else None
 
 
 def token_coz(token) -> dict | None:
@@ -126,7 +142,7 @@ def oturum_durumu(user_id: str) -> dict | None:
             "JOIN tenants t ON t.id = u.tenant_id WHERE u.id = :i"), {"i": str(user_id)}).first()
     # 26.10 Faz 6 (O7): kiracı «yöneticiler için 2FA zorunlu» politikası — kapı (deps) bu alanlarla karar verir, jeton değişmez
     d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "kiraci_durum": r.status,
-                                "iki_adim_kurulmali": bool(r.yonetici_2fa_zorunlu) and r.role == "admin" and not bool(r.totp_aktif)}
+                                "iki_adim_kurulmali": iki_adim_kurulmali(r.role, r.totp_aktif, r.yonetici_2fa_zorunlu)}
     _oturum_onbellegi[str(user_id)] = (simdi, d)
     return d
 

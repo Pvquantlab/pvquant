@@ -8,6 +8,15 @@ const ANAHTAR = "pvq_platform_token";
 
 export function platformJeton(): string | null { return localStorage.getItem(ANAHTAR); }
 export function platformCikis(): void { localStorage.removeItem(ANAHTAR); }
+/** A3/#2 (21.11): oturumun ikinci adımı — jetonun `yontem` iddiası (yalnız arayüz ipucu; yetki kararı sunucuda). Eski jetonda yok → "totp". */
+export function oturumYontemi(): "totp" | "kurtarma" {
+  try {
+    const p = platformJeton()?.split(".")[1];
+    if (!p) return "totp";
+    const g = JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/"))) as { yontem?: string };
+    return g.yontem === "kurtarma" ? "kurtarma" : "totp";
+  } catch { return "totp"; }
+}
 let dusunce: (() => void) | null = null;
 export function platformDusunce_kaydet(fn: (() => void) | null): void { dusunce = fn; }
 
@@ -34,7 +43,7 @@ async function istek<T>(yol: string, method: "GET" | "POST" | "PUT" = "GET", gov
   return (await y.json()) as T;
 }
 
-export interface Ben { id: string; email: string; rol: "sahip" | "operator"; totp_aktif: boolean; son_giris: string | null; olusturma: string }
+export interface Ben { id: string; email: string; rol: "sahip" | "operator"; totp_aktif: boolean; son_giris: string | null; olusturma: string; kalan_kurtarma?: number | null }
 export interface Kiraci { id: string; ad: string; plan: string; durum: string; olusturma: string; guncelleme: string | null; notlar: string | null;
   santral: number; kurulu_guc_kwp: number; kullanici: number; son_giris: string | null }
 export interface KiraciKullanici { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }
@@ -54,7 +63,7 @@ export interface SistemOzet {
   zaman: string;
   nabiz: { durum: "calisiyor" | "sessiz" | "yok"; son: string | null; yas_dk: number | null; ayrinti: Record<string, unknown>; aralik_dk: number; sessiz_dk: number };
   gece_turu: { taze: boolean; bayat_isler: string[]; son: string | null; esik_saat: number; uretici_isler: { kod: string; is: string; son_ok: string | null }[] };
-  isler_24: { toplam: number; hata: number };
+  isler_24: { toplam: number; hata: number; bos_ok?: number };   // Faz 0 P0-06
   meteo: { esik_saat: number; kaynaklar: { kaynak: string; son_indirme: string | null; nokta: number | null; satir: number | null; ilk: string | null; son_ts: string | null; yas_saat: number | null; bayat: boolean }[] };
   piyasa: { son_ts: string | null; son_guncelleme: string | null; satir: number; yas_saat: number | null; esik_saat: number; bayat: boolean;
     /** v2.516 (#4): EPİAŞ kimliği var mı (null = bilinmiyor), yön kapsamı (son yönlü saat, 7 günde yönlü/toplam saat, yön eksik mi), gün öncesi PTF ufku */
@@ -89,7 +98,7 @@ export interface SistemSagligi {
     gece_isleri: SagDurum & { bayat: string[]; son: string | null; uretici_isler: { kod: string; is: string; son_ok: string | null }[]; is_hatasi_24: number };
     hava: SagDurum & { son_indirme: string | null; en_yeni_kosu: string | null; kaynak_sayisi: number; esik_saat: number; son_is: SonIs | null };
     epias: SagDurum & { kimlik: boolean | null; son_baglanti: SonIs | null; son_veri_alimi: string | null; en_yeni_kayit: string | null; yon_son: string | null; yon_saat_7g: number; gop_son: string | null; epias_uretim: SonIs | null };
-    veritabani: SagDurum & { baglanti: SagDurum & { boyut_bayt: number }; yedek: SagDurum & { son_basarili: string | null; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null; esik_saat: number }; yedek_dogrulama: SagDurum };
+    veritabani: SagDurum & { baglanti: SagDurum & { boyut_bayt: number }; yedek: SagDurum & { son_basarili: string | null; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null; esik_saat: number }; yedek_dogrulama: SagDurum; hiz_sayaci?: SagDurum & { hata_sayisi: number; son_hata: string | null; son_basari: string | null } };
     sunucu: SagDurum & { api: SagDurum; hata_gunlugu: SagDurum; is_hatalari: SagDurum };
   };
   sureler: { is: string; kod: string; n: number; hata: number; ort_sn: number | null; en_uzun_sn: number | null; son: string | null }[];
@@ -154,17 +163,20 @@ const sorgu = (p: Record<string, unknown>): string => {
 };
 
 export const yonetim = {
-  /** "hata" | "iki_adim" | { rol, email, iki_adim_kurulmali } — jeton depoya yazılır */
-  giris: async (email: string, sifre: string, kod?: string): Promise<"hata" | "iki_adim" | { rol: string; email: string; iki_adim_kurulmali: boolean }> => {
+  /** "hata" | "iki_adim" | "kilit" (429, R2) | { rol, email, iki_adim_kurulmali } — jeton depoya yazılır */
+  giris: async (email: string, sifre: string, kod?: string): Promise<"hata" | "iki_adim" | "kilit" | { rol: string; email: string; iki_adim_kurulmali: boolean; ikinci_adim?: string | null; kurtarma_kalan?: number; kurtarma_uyari?: string | null }> => {
     if (PTABAN == null) return "hata";
     const y = await fetch(`${PTABAN}/v1/yonetim/giris`, { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, sifre, ...(kod ? { kod } : {}) }) });
+    if (y.status === 429) return "kilit";   /* R2 QA İ-3: hesap/IP sınırı — «parola hatalı» değil */
     if (!y.ok) return "hata";
-    const g = (await y.json()) as { token?: string; rol?: string; email?: string; iki_adim_gerekli?: boolean; iki_adim_kurulmali?: boolean };
+    const g = (await y.json()) as { token?: string; rol?: string; email?: string; iki_adim_gerekli?: boolean; iki_adim_kurulmali?: boolean;
+      ikinci_adim?: string | null; kurtarma_kalan?: number; kurtarma_uyari?: string | null };
     if (g.iki_adim_gerekli) return "iki_adim";
     if (!g.token) return "hata";
     localStorage.setItem(ANAHTAR, g.token);
-    return { rol: g.rol ?? "", email: g.email ?? email, iki_adim_kurulmali: !!g.iki_adim_kurulmali };
+    return { rol: g.rol ?? "", email: g.email ?? email, iki_adim_kurulmali: !!g.iki_adim_kurulmali,
+      ikinci_adim: g.ikinci_adim ?? null, kurtarma_kalan: g.kurtarma_kalan, kurtarma_uyari: g.kurtarma_uyari ?? null };   /* A3 (QA İ-2): uyarı giriş ekranında gösterilir */
   },
   oturumYenile: async (): Promise<{ rol: string; email: string; iki_adim_kurulmali: boolean } | null> => {
     try { const y = await istek<{ token: string; rol: string; email: string; iki_adim_kurulmali: boolean }>("/oturum/yenile", "POST");
@@ -173,7 +185,10 @@ export const yonetim = {
   ben: (): Promise<Ben> => istek("/ben"),
   parolaDegistir: (eski: string, yeni: string): Promise<{ tamam: boolean }> => istek("/parola", "POST", { eski, yeni }),
   ikiAdimBaslat: (): Promise<{ secret: string; otpauth_uri: string }> => istek("/iki-adim/baslat", "POST"),
-  ikiAdimDogrula: (kod: string): Promise<{ tamam: boolean }> => istek("/iki-adim/dogrula", "POST", { kod }),
+  ikiAdimDogrula: (kod: string): Promise<{ tamam: boolean; kurtarma_kodlari: string[] }> => istek("/iki-adim/dogrula", "POST", { kod }),
+  /** A3 (21.11): kurtarma kodu rotasyonu (TOTP şart) ve kurtarma oturumundan doğrulayıcıyı yeniden kurma. */
+  ikiAdimKurtarmaYenile: (kod: string): Promise<{ kurtarma_kodlari: string[] }> => istek("/iki-adim/kurtarma-yenile", "POST", { kod }),
+  ikiAdimYenidenKur: (g: { sifre?: string; kod?: string }): Promise<{ secret: string; otpauth_uri: string }> => istek("/iki-adim/yeniden-kur", "POST", g),
   operatorler: (): Promise<{ operatorler: Operator[]; roller: string[] }> => istek("/operatorler"),
   // 26.10 denetim-3: rol=sahip ve iki_adim_sifirla için aktörün parolası + kodu (yeniden doğrulama; çalınmış jeton yetmez)
   operatorEkle: (email: string, rol: string, dogrulama?: { sifre: string; kod: string }): Promise<Operator & { gecici_parola: string }> => istek("/operatorler", "POST", { email, rol, ...dogrulama }),

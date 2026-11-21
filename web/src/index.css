@@ -605,6 +605,7 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .plat-anahtar { display: block; font-family: var(--mono); font-size: 15px; letter-spacing: .06em; word-break: break-all; padding: 10px 12px;
                 border: 1px solid var(--kenar); border-radius: var(--r); background: var(--yuzey); color: var(--metin); margin: 0 0 12px; user-select: all; }
 .plat-anahtar--kucuk { font-size: 12.5px; letter-spacing: 0; }
+.plat-anahtar--liste { white-space: pre-line; word-break: keep-all; }   /* #2 (21.11): kurtarma kodları satır satır */
 .plat-tek-seferlik { margin: 12px 0 14px; padding: 14px 16px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
 .plat-cikis { margin-top: 4px; background: none; border: none; padding: 6px 0; min-height: 28px; font-size: 13.5px; color: var(--yan-metin); cursor: pointer;
               font-family: var(--display); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }

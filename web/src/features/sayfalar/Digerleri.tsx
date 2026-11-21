@@ -784,8 +784,10 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </div>
       )}
       <div className="ızgara satir-3">
-        <Kpi etiket={`Kalibre model hatası (MAPE), Mod ${k.mode}`} deger={yzd(k.mape_sonra)}
-             alt="kalibrasyon dönemi, saatlik" />
+        <Kpi etiket={`Kalibrasyon uyum hatası (örneklem içi MAPE), Mod ${k.mode}`} deger={yzd(k.mape_sonra)}
+             alt="uydurma dönemiyle aynı saatler; gelecek doğruluğu değil — tahmin doğruluğu Doğruluk sayfasındaki WMAPE'dir" />   {/* Faz 0 P0-04 (20.11) */}
+        <Kpi etiket="Kronolojik holdout (son %20) MAPE" deger={k.mape_holdout == null ? "\u2014" : yzd(k.mape_holdout)}
+             alt={k.mape_holdout == null ? (k.holdout_not ?? "bu kayıtta holdout ölçümü yok; sonraki kalibrasyonda hesaplanır") : `örneklem dışı: ilk %80 ile uydurulan modelin son dilimdeki ${sayiTr(k.holdout_saat ?? 0)} geçerli gündüz saatindeki hatası (ölçülen ışınımla); üretim parametreleri tüm pencereden`} />   {/* Faz 0 P0-04 (C4-1) */}
         <Kpi etiket="Fiziksel model, aynı dönem" deger={yzd(k.mape_once)}
              alt="karşılaştırma tabanı" />
         <Kpi etiket="İyileşme" deger={iyilesme === null ? "\u2014" : `%${iyilesme}`}
@@ -1005,7 +1007,7 @@ function kalibrasyonCercevesi(kayipAgaci: React.ReactNode, gucMatrisi: React.Rea
       <section className="bolum">
       <div className="ozet-bas">Sonuç<span className="sag">kalibre model, fiziksel modele karşı</span></div>
       <div className="ızgara satir-3">
-        <KpiIskeleti etiket="Kalibre model hatası (MAPE)" alt={1} />
+        <KpiIskeleti etiket="Kalibrasyon uyum hatası (örneklem içi MAPE)" alt={1} />
         <KpiIskeleti etiket="Fiziksel model, aynı dönem" alt={1} />
         <KpiIskeleti etiket="İyileşme" alt={1} />
       </div>

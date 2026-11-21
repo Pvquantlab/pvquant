@@ -112,6 +112,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Faz 0 P0-06 (21.11, karar C6): hazırlık denetimi /v1/readyz'e bağlandı (DB SELECT 1 + worker nabzı; DB yoksa 503). İmajda curl yok,
+    # python ile yoklanır. `restart: unless-stopped` sağlıksız konteyneri kendiliğinden yeniden BAŞLATMAZ; durum `docker compose ps`
+    # ve Sistem sayfasında görünür, dış yoklama bu uca bağlanabilir. Worker ve db dokunulmadı.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/v1/readyz', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped        # v2.72
 
   web:

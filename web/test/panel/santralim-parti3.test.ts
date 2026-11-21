@@ -38,7 +38,7 @@ test("fizik terimleri çoklu seçim, pilot hata kartı, metinler", () => {
   assert.match(s, /onClick=\{\(\) => \{ if \(Object\.keys\(ftSon\)\.length > 0\) ftUygula\(ftSon\); \}\}>Uygula/);
   assert.match(s, /const \[pilotHata, setPilotHata\] = useState<string \| null>\(null\)/);
   assert.match(s, /\) : pilotHata \? \(\n\s+<Kart baslik="Pilot kapıları ve saha toplayıcısı"/);
-  assert.match(s, /hiç ölçüm gelmemiş santralda bu alarm üretilmez/);
+  assert.match(s, /hiç ölçüm gelmemiş santralda ve sanal test santralında bu alarm üretilmez/);
   assert.match(s, /Sağlayıcı adı \(yalnız santral ayarına ve denetim izine yazılır\)/);
   assert.doesNotMatch(s, /talep olarak not edilir/);
 });

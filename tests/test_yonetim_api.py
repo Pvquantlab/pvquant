@@ -367,9 +367,12 @@ def test_d3_parola_baglantisi_yalniz_sahibe(monkeypatch, _ortam):
 def test_d3_giris_paylasimli_pencere_429(monkeypatch, _ortam):
     """slowapi süreç başına sayar; hiz_pencere tabanlı sayaç işçiler arası 5/dk/IP — 6. istek 429, DB yoksa (0) kapı açık."""
     from pvquant.services import kullanim_service as ks
-    sayim = iter([1, 2, 3, 4, 5, 6, 0])
+    sayac: dict[str, int] = {}
     anahtarlar = []
-    monkeypatch.setattr(ks, "pencere_say", lambda a, saniye=60, simdi=None: anahtarlar.append(a) or next(sayim))
+    def _say(a, saniye=60, simdi=None):   # A3 (21.11): giriş ucu artık IP penceresine ek HESAP penceresi de sayar → anahtar başına sayaç
+        anahtarlar.append(a); sayac[a] = sayac.get(a, 0) + 1
+        return sayac[a] if a.startswith("ygiris:") else 0   # yalnız IP penceresi dolar; hesap/müşteri pencereleri açık
+    monkeypatch.setattr(ks, "pencere_say", _say)
     monkeypatch.setattr(ps, "giris", lambda e, s, k=None: None)
     monkeypatch.setattr(au, "giris", lambda e, s, k=None: None)
     api_main.limiter.enabled = False           # süreç içi katmanı kapat: yalnız paylaşımlı pencere ölçülür

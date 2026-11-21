@@ -70,7 +70,7 @@ const KURAL_GRUPLARI: { ad: string; kurallar: string[] }[] = [
 /** 01.11 (ikinci dil turu): her kuralın koşulu düz cümle, güncel eşikle — kutunun altında ikinci satır (mono kısaltma «>%3 gelir» kalktı).
  *  Ek türeten sayılarda Türkçe ek sorunu olmasın diye eşik parantezde yazılır. Kaynak: alarm_service.ek_alarmlar / tara / worker zamanları. */
 const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
-  veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse (hiç ölçüm gelmemiş santralda bu alarm üretilmez). Kontrol: her gece 07:00",   // v2.641 (02C-B5)
+  veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse (hiç ölçüm gelmemiş santralda ve sanal test santralında bu alarm üretilmez). Kontrol: her gece 07:00",   // v2.641 (02C-B5)
   skill_dustu: () => "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşınca. Kontrol: her gece 07:00",
   iletisim_kesintisi: (e) => `Son ölçüm ${sayiTr(e.iletisim_esik_saat ?? 6, 0)} saatten eskiyse. Kontrol: her saat`,
   pr_dustu: (e) => `30 günlük performans oranı eşiğin (${yuzdeTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
@@ -240,7 +240,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setSinif({ santral_turu: d.segment.santral_turu ?? "operasyonel", veri_turu: d.segment.veri_turu ?? "canli" }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh).replace(".", ",") : "");   // v2.641: ondalık virgülle (28000.5 → «28000,5»; noktalı gösterim binlik sanılıp 280005 oluyordu) setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then((v) => { if (plantRef.current === plantId) setSg(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -292,6 +292,8 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
   const pilotYukle = () => { setPilotHata(null); api.pilot(plantId).then(setPilot).catch((e) => { setPilot(null); setPilotHata((h) => h ?? pilotHatasi(e)); }); api.edgeToplayicilar(plantId).then(setEdge).catch((e) => { setEdge(null); setPilotHata((h) => h ?? pilotHatasi(e)); }); };   // inceleme (yarış): başarı hatayı silmez; ilk hata kalır
   const yazabilir = rolum() !== "viewer";   // v2.641 (02A-B2/02C-B14): yalnız bilinen izleyici rolü pasif görür (örnek kipte/jetonsuz rol boş → açık); her çizimde okunur — oturum yenilemesi rolü değiştirirse kabuk yeniden çizer; sunucu 403 yine kapı
   const [segMesaj, setSegMesaj] = useState<string | null>(null);
+  const [sinif, setSinif] = useState<{ santral_turu: string; veri_turu: string } | null>(null);   // Faz 0 P0-01 (C1): santral türü / veri türü; null = henüz okunmadı
+  const sinifAyarla = (g: { santral_turu?: string; veri_turu?: string }) => { setSegMesaj(null); api.santralSinifiAyarla(plantId, g).then((r) => setSinif({ santral_turu: r.santral_turu, veri_turu: r.veri_turu })).catch((err) => setSegMesaj(`Kaydedilemedi: ${String((err as Error).message ?? err)}`)); };
   const pilotKapi = (kod: string, tamam: boolean) => { const n = tamam ? window.prompt("Beyan notu (isteğe bağlı): izin belgesi, tarih, kişi", "") : null; if (tamam && n === null) return; setRefMesaj(null); api.pilotKapi(plantId, kod, { tamam, aciklama: n || null }).then(setPilot).catch((e) => setRefMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`)); };   // v2.641: hata artık görünür
   const [refSaatSonu, setRefSaatSonu] = useState(false);   // v2.640: portal dışa aktarımında damga saat SONU ise 1 saat geri alınır
   const pilotRef = (dosya: File | null) => { if (!dosya) return; setRefMesaj("kıyaslanıyor…"); api.pilotReferans(plantId, dosya, refSinirEtkin, refSaatSonu).then(() => { setRefMesaj(null); pilotYukle(); }).catch((e) => setRefMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
@@ -1073,6 +1075,16 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 </select>
               </label>
               {seg?.dengesizlik_sahibi && <span className="ayar-durum">Dengesizlik sorumlusu: {seg.dengesizlik_sahibi}</span>}
+              <label className="girdi-etiket">Santral türü <span className="soluk">(sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; tahmin, karne ve kota değişmez)</span>
+                <select className="girdi" value={sinif?.santral_turu ?? ""} disabled={sinif === null} aria-label="Santral türü" onChange={(e) => sinifAyarla({ santral_turu: e.target.value })}>
+                  {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="operasyonel">operasyonel santral</option><option value="sanal_test">sanal test santralı (geliştirme)</option>
+                </select>
+              </label>
+              <label className="girdi-etiket">Veri türü <span className="soluk">(yalnız etiket; karne ve finans çıktılarında arşiv/sentetik notu)</span>
+                <select className="girdi" value={sinif?.veri_turu ?? ""} disabled={sinif === null} aria-label="Veri türü" onChange={(e) => sinifAyarla({ veri_turu: e.target.value })}>
+                  {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="canli">canlı ölçüm</option><option value="tarihsel_arsiv">tarihsel arşiv verisi</option><option value="sentetik">sentetik veri</option><option value="yok">ölçüm verisi yok</option>
+                </select>
+              </label>   {/* Faz 0 P0-01 C1 (21.11) */}
               {segMesaj && <span className="ayar-durum hata">{segMesaj}</span>}
             </div>
             {ayrintiGovdesi(ayrinti, "segment", <>

@@ -139,14 +139,71 @@ def kalibrasyon_bayat_mi(son_ts, simdi=None) -> tuple[bool, str]:
     return False, f"son ölçüm {yas} gün önce"
 
 
+HOLDOUT_PAY = 0.2            # Faz 0 P0-04 (karar C4-1, 21.11): zaman sırasıyla son %20 holdout
+HOLDOUT_ASGARI_SAAT = 72     # holdout diliminde bundan az geçerli saat varsa metrik yazılmaz (sayı uydurulmaz)
+
+
+def _kronolojik_holdout(scada, meteo, plant_spec, *, threshold_kw: float = 1.0, pay: float = HOLDOUT_PAY, asgari_saat: int = HOLDOUT_ASGARI_SAAT,
+                        temizle: bool = True) -> dict:
+    """Faz 0 P0-04 (karar C4-1, 21.11.2026). ÜRETİM PARAMETRELERİNE DOKUNMAZ: pencere zaman sırasıyla (1−pay)/pay bölünür, ilk dilimle
+    İKİNCİ (atılacak) bir uydurma yapılır, son dilimde `validate` koşulur. Dönen MAPE/WMAPE örneklem dışıdır; `kalibre_et`'in tüm
+    pencereyle uydurduğu η_BoS/BG değişmez (bu fonksiyon girdilerini değiştirmez, çıktısı yalnız quality_json'a yazılır).
+    Yetersiz veri / hata → metrik None + `holdout_not` (kalibrasyon düşmez)."""
+    import time
+    from pvquant.io.scada import SCADAData
+    from pvquant.pipeline.forecast import forecast_7day
+    from pvquant.validation.metrics import validate
+    t0 = time.perf_counter()
+    bos = {"mape_holdout_pct": None, "wmape_holdout_pct": None, "holdout_saat": None, "holdout_egitim_saat": None,
+           "holdout_bas": None, "holdout_bit": None, "holdout_pay": pay, "holdout_sure_sn": None}
+    pw = scada.power_kw.dropna().sort_index()
+    if len(pw) < 2 * asgari_saat:
+        return {**bos, "holdout_not": f"holdout için yetersiz ölçüm ({len(pw)} saat < {2 * asgari_saat})"}
+    kesim = pw.index[int(len(pw) * (1.0 - pay))]
+    def _dilim(s, egitim: bool):
+        if s is None:
+            return None
+        return s[s.index < kesim] if egitim else s[s.index >= kesim]
+    # QA C4-6: eğitim ızgarası NaN'lı ORİJİNAL seriden kesilir (dropna ızgarayı deler, zaman adımı denetimi düşer); pw yalnız kesim/holdout gerçeği için
+    scada_e = SCADAData(power_kw=_dilim(scada.power_kw, True), energy_kwh=_dilim(scada.energy_kwh, True), poa_irradiance=_dilim(scada.poa_irradiance, True),
+                        temp_ambient=_dilim(scada.temp_ambient, True), temp_module=_dilim(scada.temp_module, True), wind_speed=_dilim(scada.wind_speed, True),
+                        plant_name=scada.plant_name, timestep_minutes=scada.timestep_minutes)
+    try:
+        cr_e = calibrate_from_scada(scada=scada_e, historical_meteo=meteo, plant=plant_spec, fit_bg=True, fit_eta_bos=True, clean_outliers=temizle,   # üretimle aynı bayraklar
+                                    threshold_kw=threshold_kw)
+    except ValueError as e:   # «Yetersiz veri» gibi beklenen durumlar
+        return {**bos, "holdout_not": f"eğitim dilimi uydurulamadı: {e}"}
+    pred = forecast_7day(meteo, cr_e.plant, measured_poa=scada.poa_irradiance).hourly["p_ac_kw"]
+    gercek = _dilim(pw, False)
+    ortak = pred.index.intersection(gercek.index)
+    if len(ortak) < asgari_saat:
+        return {**bos, "holdout_not": f"holdout diliminde ortak saat yetersiz ({len(ortak)} < {asgari_saat})"}
+    rep = validate(pred.loc[ortak], gercek.loc[ortak], threshold=threshold_kw)
+    if int(rep.n_samples) < asgari_saat:   # eşik üstü (gündüz) geçerli saat sayısı; gece saatleri metrik tabanına girmez
+        return {**bos, "holdout_not": f"holdout diliminde geçerli saat yetersiz ({int(rep.n_samples)} < {asgari_saat})"}
+    wm = getattr(rep, "wmape_pct", None)
+    wm = None if wm is None or wm != wm else float(wm)   # NaN → None
+    return {"mape_holdout_pct": float(rep.mape_pct), "wmape_holdout_pct": wm, "holdout_saat": int(rep.n_samples), "holdout_egitim_saat": int(cr_e.n_valid_hours),
+            "holdout_bas": kesim.isoformat(), "holdout_bit": gercek.index.max().isoformat(), "holdout_pay": pay,
+            "holdout_sure_sn": round(time.perf_counter() - t0, 2), "holdout_not": None}
+
+
 def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
+    import time as _time
     scada = _scada_data(tenant_id, plant)
     pencere_gun = _pencere_gun(scada.power_kw.index)   # v2.175: ölçülü pencere
     meteo = _meteo(plant, scada.power_kw.index)
+    _t0 = _time.perf_counter()
     cr = calibrate_from_scada(
         scada=scada, historical_meteo=meteo, plant=_plant_spec(plant),
         fit_bg=True, fit_eta_bos=True, clean_outliers=True,
     )
+    _uretim_sure = round(_time.perf_counter() - _t0, 2)
+    try:   # Faz 0 P0-04 (C4-1): örneklem dışı ölçüm — üretim uydurması (cr) yukarıda tamamlandı, buradan etkilenmez
+        holdout = _kronolojik_holdout(scada, meteo, _plant_spec(plant))
+    except Exception as e:   # ölçüm yardımcı; kalibrasyonu düşürmez
+        holdout = {"mape_holdout_pct": None, "wmape_holdout_pct": None, "holdout_saat": None, "holdout_egitim_saat": None, "holdout_bas": None,
+                   "holdout_bit": None, "holdout_pay": HOLDOUT_PAY, "holdout_sure_sn": None, "holdout_not": f"hesaplanamadı: {type(e).__name__}"}
     sonuc = {
         "mode": "B", "eta_bos": cr.eta_bos, "bg": cr.bg,
         "warnings": list(cr.warnings or []),
@@ -226,6 +283,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                                     f"{_cfg.gate_min_improvement_pct:g} ({_iyi_dil})"
                                     if _iyi_etkin is not None
                                     else "iyilesme hesaplanamadi"))),            }
+    from pvquant.surum import yazilim_surumu as _ys   # Faz 0 P0-04 (20.11): kalite kaydına sürüm ve değerlendirme sınıfı damgası
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "UPDATE calibrations SET active=false WHERE plant_id=:p"),
@@ -238,6 +296,10 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
              "pa": json.dumps({"eta_bos": cr.eta_bos, "bg": cr.bg}),
              "q": json.dumps({
                  "meteo_kaynak":        getattr(meteo, "kaynak", "open-meteo"),   # v2.269: künye gerçek kullanımı okur
+                 "degerlendirme":       ("orneklem_ici+holdout" if holdout.get("mape_holdout_pct") is not None else "orneklem_ici"),   # Faz 0 P0-04: mape/wmape uydurma dönemiyle AYNI saatlerde; *_holdout_* son %20 örneklem dışı (C4-1)
+                 "yazilim_surumu":      _ys(),
+                 "kalibrasyon_sure_sn": _uretim_sure,
+                 **holdout,
                  "mape_pct":            getattr(cr.validation_after,  "mape_pct", None),
                  "mape_before_pct":     getattr(cr.validation_before, "mape_pct", None),
                  "wmape_pct":           getattr(cr.validation_after,  "wmape_pct", None),
@@ -297,6 +359,9 @@ def kalibrasyon_ozeti(tenant_id, plant_id):
         "mape_once": q.get("mape_before_pct"), "mape_sonra": q.get("mape_pct"),
         "wmape_once": q.get("wmape_before_pct"), "wmape_sonra": q.get("wmape_pct"),
         "sapma_once": q.get("deviation_before_pct"), "sapma_sonra": q.get("deviation_pct"),
+        # Faz 0 P0-04 (C4-1): örneklem dışı ölçüm (eski kayıtlarda yok → None; UI «—» ve not)
+        "degerlendirme": q.get("degerlendirme"), "mape_holdout": q.get("mape_holdout_pct"), "wmape_holdout": q.get("wmape_holdout_pct"),
+        "holdout_saat": q.get("holdout_saat"), "holdout_bas": q.get("holdout_bas"), "holdout_bit": q.get("holdout_bit"), "holdout_not": q.get("holdout_not"),
         "uyarilar": q.get("warnings") or [],
     }
 

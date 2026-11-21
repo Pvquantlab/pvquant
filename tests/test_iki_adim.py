@@ -78,13 +78,13 @@ def test_login_2fa_dali(monkeypatch):
     assert r == {"iki_adim_gerekli": True}
 
     # yanlış kod → None
-    monkeypatch.setattr(ia, "giris_dogrula", lambda uid, kod: False)
+    monkeypatch.setattr(ia, "giris_dogrula_yontem", lambda uid, kod: None)   # Faz 0 P0-08 (20.11): giriş artık yöntem döndüren çekirdeği çağırır
     assert au.giris("a@b.co", "parola", "000000") is None
 
     # doğru kod → token
-    monkeypatch.setattr(ia, "giris_dogrula", lambda uid, kod: True)
+    monkeypatch.setattr(ia, "giris_dogrula_yontem", lambda uid, kod: "totp")
     r = au.giris("a@b.co", "parola", "123456")
-    assert "token" in r and r["role"] == "admin"
+    assert "token" in r and r["role"] == "admin" and r["ikinci_adim"] == "totp" and r["iki_adim_kurulmali"] is False
 
 
 def test_login_2fa_kapali_kod_gerekmez(monkeypatch):

@@ -73,6 +73,14 @@ def _yas_dk(zaman, simdi) -> int | None:
     return None if zaman is None else max(0, int((simdi - zaman).total_seconds() // 60))
 
 
+def _hiz_sayaci_durumu() -> dict | None:
+    try:
+        from pvquant.services import kullanim_service
+        return kullanim_service.sayac_durumu()
+    except Exception:   # noqa: BLE001 — özet bu yüzden düşmez
+        return None
+
+
 def ozet(aktor_id: str) -> dict:
     """Sistem sayfasının KPI'ları. Her alan ya gerçek değer ya None — hiçbir değer uydurulmaz."""
     simdi = dt.datetime.now(dt.timezone.utc)
@@ -83,7 +91,8 @@ def ozet(aktor_id: str) -> dict:
             {"g": list(URETEN_ISLER)}).mappings().all()}
         gece_son = s.execute(text("SELECT max(started) FROM jobs_log WHERE job = ANY(:g)"), {"g": list(URETEN_ISLER)}).scalar()
         sayim = s.execute(text(
-            "SELECT count(*) AS toplam, count(*) FILTER (WHERE status <> 'ok') AS hata "
+            "SELECT count(*) AS toplam, count(*) FILTER (WHERE status <> 'ok') AS hata, "
+            "count(*) FILTER (WHERE status = 'ok' AND coalesce(detail, '') = '' AND sonuc_json IS NULL) AS bos_ok "   # Faz 0 P0-06 (20.11): çıktısız «ok» = başarı kanıtı değil
             "FROM jobs_log WHERE started >= now() - interval '24 hours'")).mappings().first()
         yedek_ok = s.execute(text("SELECT max(started) FROM jobs_log WHERE job IN ('gece_yedek','acilis_yedek') AND status = 'ok'")).scalar()
         yedek_son = s.execute(text(
@@ -138,7 +147,8 @@ def ozet(aktor_id: str) -> dict:
                   "aralik_dk": NABIZ_ARALIK_DK, "sessiz_dk": NABIZ_SESSIZ_DK},
         "gece_turu": {"taze": not bayat, "bayat_isler": [ISIM_TR.get(b, b) for b in bayat], "son": _iso(gece_son), "esik_saat": BAYAT_SAAT,
                       "uretici_isler": [{"kod": j, "is": ISIM_TR.get(j, j), "son_ok": _iso(son_ok.get(j))} for j in URETEN_ISLER]},
-        "isler_24": {"toplam": int(sayim["toplam"]), "hata": int(sayim["hata"])},
+        "isler_24": {"toplam": int(sayim["toplam"]), "hata": int(sayim["hata"]), "bos_ok": int(sayim["bos_ok"] or 0)},   # Faz 0 P0-06
+        "hiz_sayaci": _hiz_sayaci_durumu(),   # Faz 0 §24 #3 (21.11): paylaşımlı hız sayacı sağlığı (bu işçi süreci)
         "meteo": {"esik_saat": METEO_BAYAT_SAAT,
                   "kaynaklar": [{"kaynak": k, "son_indirme": v.get("son"), "nokta": v.get("nokta"), "satir": v.get("satir"),
                                  "ilk": v.get("ilk"), "son_ts": v.get("son_ts"), "yas_saat": saat_yas(v.get("son")),
@@ -234,6 +244,37 @@ def isler(aktor_id: str, *, saat: int = 48, yalniz_hata: bool = False, job: str 
     return {"isler": cikti, "pencere_saat": p["h"], "is_turleri": [{"kod": k, "is": v} for k, v in ISIM_TR.items()]}
 
 
+BILGI_BAYRAKLARI = ("sanal_test", "veri_tarihsel_arsiv", "veri_sentetik", "veri_yok")   # Faz 0 P0-01 (21.11): sorun değil, bilgi
+
+
+def sorun_bayraklari(sb: dict, son_scada, son_kosu, kiraci_durum: str | None, simdi: dt.datetime) -> list[str]:
+    """SAF. Platform santral listesinin bayrakları. Faz 0 (21.11, kullanıcı onayı): sanal test santralında (`santral_turu=sanal_test`)
+    `segment_yok`/`scada_yok`/`scada_bayat` üretilmez — canlı ölçüm ve piyasa kaydı beklenmez; yerine bilgi bayrağı `sanal_test`.
+    Veri türü (`veri_turu` ≠ canli) ayrı bilgi bayrağıdır (santral türüyle karıştırılmaz). Operasyonel santral bayrakları DEĞİŞMEZ;
+    tahmin koşusu bayrakları (`kosu_*`) her türde korunur (sanal test santralları da gece tahmin alır)."""
+    sorunlar: list[str] = []
+    sanal = sb.get("santral_turu") == "sanal_test"
+    if sanal:
+        sorunlar.append("sanal_test")
+    vt = sb.get("veri_turu")
+    if vt and vt != "canli":
+        sorunlar.append(f"veri_{vt}")
+    if not sanal:
+        if sb["segment"] is None:
+            sorunlar.append("segment_yok")   # v2.515: segment seçilmeden KÜPST/DSG hesaplanamaz, KGÜP yükümlülüğü bilinmez
+        if son_scada is None:
+            sorunlar.append("scada_yok")
+        elif (simdi - son_scada) > dt.timedelta(hours=SCADA_BAYAT_SAAT):
+            sorunlar.append("scada_bayat")
+    if son_kosu is None:
+        sorunlar.append("kosu_yok")
+    elif (simdi - son_kosu) > dt.timedelta(hours=KOSU_BAYAT_SAAT):
+        sorunlar.append("kosu_bayat")
+    if kiraci_durum != "active":
+        sorunlar.append("kiraci_askida")
+    return sorunlar
+
+
 def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
     """Tüm kiracıların etkin santralleri: son geçerli SCADA, son tahmin koşusu, son iş hatası; sorun bayrakları eşiklerle.
     `sorunlu=True` yalnız en az bir bayrağı olanları döndürür."""
@@ -256,21 +297,9 @@ def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
     from pvquant.services.dengesizlik_service import segment_bilgisi
     cikti = []
     for r in rows:
-        sorunlar = []
         sb = segment_bilgisi(r["params_json"])
-        if sb["segment"] is None:
-            sorunlar.append("segment_yok")   # v2.515: segment seçilmeden KÜPST/DSG hesaplanamaz, KGÜP yükümlülüğü bilinmez
-        if r["son_scada"] is None:
-            sorunlar.append("scada_yok")
-        elif (simdi - r["son_scada"]) > dt.timedelta(hours=SCADA_BAYAT_SAAT):
-            sorunlar.append("scada_bayat")
-        if r["son_kosu"] is None:
-            sorunlar.append("kosu_yok")
-        elif (simdi - r["son_kosu"]) > dt.timedelta(hours=KOSU_BAYAT_SAAT):
-            sorunlar.append("kosu_bayat")
-        if r["kiraci_durum"] != "active":
-            sorunlar.append("kiraci_askida")
-        if sorunlu and not sorunlar:
+        sorunlar = sorun_bayraklari(sb, r["son_scada"], r["son_kosu"], r["kiraci_durum"], simdi)
+        if sorunlu and not [x for x in sorunlar if x not in BILGI_BAYRAKLARI]:   # Faz 0 (21.11): bilgi bayrakları «sorunlu» süzgecine girmez
             continue
         ar = arsiv.get(str(r["id"]), {})
         cikti.append({"id": str(r["id"]), "ad": r["name"], "kapasite_kwp": float(r["capacity_kwp"] or 0), "tz": r["tz"],
@@ -368,15 +397,29 @@ def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> d
     yedek.update({"son_basarili": yd["son_basarili"], "son_deneme": yd["son_deneme"], "esik_saat": yd["esik_saat"]})
     db = {"baglanti": k(D.SAGLIKLI, "özet sorguları yanıt verdi", boyut_bayt=o["db"]["boyut_bayt"]), "yedek": yedek,
           "yedek_dogrulama": k(D.DOGRULANAMADI, "geri yükleme sınaması yapılmıyor; yedek dosyasının açılabilirliği sınanmadı")}
-    db_genel = ds.en_kotu([db["baglanti"]["durum"], db["yedek"]["durum"], db["yedek_dogrulama"]["durum"]])
-    db = {**k(db_genel, db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"]), **db}
+    # Faz 0 §24 #3 (21.11): paylaşımlı hız sayacı (hiz_pencere) — bu işçi sürecinin gördüğü durum; arızada süreç içi yedek sayaç devrededir
+    hs = o.get("hiz_sayaci")
+    if hs is not None:
+        if hs["saglikli"]:
+            db["hiz_sayaci"] = k(D.SAGLIKLI, ("hız sayacı DB'ye yazıyor" if hs["son_basari"] else "hız sayacında hata görülmedi (henüz istek yok)") + " (yanıtı üreten işçi)",
+                                 hata_sayisi=hs["hata_sayisi"], son_hata=hs["son_hata"], son_basari=hs["son_basari"])
+        else:
+            db["hiz_sayaci"] = k(D.DIKKAT, f"hız sayacı DB'ye yazamıyor ({hs['son_hata_turu']}); süreç içi yedek sayaç devrede (yanıtı üreten işçi) — "
+                                 "sayım işçi başına, hesap tavanı işçi sayısı kadar gevşer; sunucu günlüğünde [hiz] uyarıları",
+                                 hata_sayisi=hs["hata_sayisi"], son_hata=hs["son_hata"], son_basari=hs["son_basari"])
+    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci")])
+    db_neden = (db["hiz_sayaci"]["neden"] if hs is not None and not hs["saglikli"]
+                else db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"])
+    db = {**k(db_genel, db_neden), **db}
     # --- sunucu: API (bu yanıt üretildi), hata günlüğü (yok), 24 sa iş hataları
     h24 = o["isler_24"]
     sunucu = {"api": k(D.SAGLIKLI, "bu yanıt API tarafından üretildi; ayrı dış yoklama yok"),
               "hata_gunlugu": k(D.DOGRULANAMADI, "uygulama ve API hata günlüğü panele bağlı değil; sunucu günlüğüne bakılır"),
-              "is_hatalari": (k(D.DIKKAT, f"son 24 saatte {h24['hata']} başarısız iş ({h24['toplam']} kayıt)") if h24["hata"] > 0 else k(D.SAGLIKLI, f"son 24 saatte {h24['toplam']} iş, hata yok"))}
+              "is_hatalari": (k(D.DIKKAT, f"son 24 saatte {h24['hata']} başarısız iş ({h24['toplam']} kayıt)") if h24["hata"] > 0
+                              else k(D.DOGRULANAMADI, f"son 24 saatte {h24['toplam']} iş, istisna yok; {h24.get('bos_ok', 0)} iş çıktı yazmadan bitti (boş «ok»: başarı doğrulanamaz — Faz 0 P0-06)") if h24.get("bos_ok", 0) > 0
+                              else k(D.SAGLIKLI, f"son 24 saatte {h24['toplam']} iş, hata yok"))}
     sunucu = {**k(ds.en_kotu([sunucu["api"]["durum"], sunucu["hata_gunlugu"]["durum"], sunucu["is_hatalari"]["durum"]]),
-                  sunucu["is_hatalari"]["neden"] if h24["hata"] > 0 else sunucu["hata_gunlugu"]["neden"]), **sunucu}
+                  sunucu["is_hatalari"]["neden"] if (h24["hata"] > 0 or h24.get("bos_ok", 0) > 0) else sunucu["hata_gunlugu"]["neden"]), **sunucu}   # inceleme: boş «ok» nedeni özete çıkar
     bil = {"zamanlayici": zam, "gece_isleri": gece, "hava": hava, "epias": ep, "veritabani": db, "sunucu": sunucu}
     genel = ds.en_kotu([b["durum"] for b in bil.values()])
     return {"durum": genel.value, "etiket": ds.etiket(genel), "sayim": ds.sayim([b["durum"] for b in bil.values()]), "bilesenler": bil,

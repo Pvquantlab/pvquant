@@ -53,6 +53,17 @@ def rampali_persistans_guc(gercek: pd.Series, p50: pd.Series, simdi: pd.Timestam
                      for t, v, a in zip(hedef, nc, w)]}
 
 
+def bayat_yaniti(plant: dict) -> dict:
+    """SAF. Canlı ölçüm yok/eski: operasyonel santralda «scada_bayat» (katman devre dışı); sanal test santralında (`santral_turu=sanal_test`,
+    Faz 0 21.11) «sanal_test» — canlı SCADA beklenmez, katman uygulanmaz. Veri türü (arşiv/sentetik) ayrıca nota yazılır."""
+    from pvquant.services.durum_sozlugu import santral_sinifi
+    sinif = santral_sinifi(plant.get("params_json"))
+    if not sinif["tazelik_izlenir"]:
+        return {"durum": "sanal_test", "oran": None, "n_saat": 0, "ufuk": [],
+                "not": f"sanal test santralı — canlı SCADA beklenmez; katman uygulanmaz ({sinif['veri_turu_etiketi']})"}
+    return {"durum": "scada_bayat", "oran": None, "n_saat": 0, "ufuk": [], "not": "canlı SCADA gerektirir — son ölçüm 3 saatten eski; katman devre dışı"}
+
+
 def hesapla(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -69,8 +80,7 @@ def hesapla(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
              "son_olcum": son.isoformat() if son is not None else None,
              "tazelik_saat": round(float((simdi - pd.Timestamp(son).tz_convert("UTC")).total_seconds() / 3600), 1) if son is not None else None}
     if son is None or ortak["tazelik_saat"] > TAZELIK_SINIRI_SAAT:
-        return {**ortak, "durum": "scada_bayat", "oran": None, "n_saat": 0, "ufuk": [],
-                "not": "canlı SCADA gerektirir — son ölçüm 3 saatten eski; katman devre dışı"}
+        return {**ortak, **bayat_yaniti(plant)}
     df = forecast_service.son_kosu(tenant_id, pid)
     if df is None or df.empty:
         return {**ortak, "durum": "tahmin_yok", "oran": None, "n_saat": 0, "ufuk": [], "not": "henüz tahmin üretilmedi"}

@@ -71,7 +71,7 @@ def taze_veri(json_yolu=None):
 
 
 def uret_kos(json_yolu, cikti_dizin):
-    env = dict(os.environ, PVQ_CIKTI=str(cikti_dizin))
+    env = dict(os.environ, PVQ_CIKTI=str(cikti_dizin), PYTHONFAULTHANDLER="1")   # Faz 0 (21.11): alt süreç SIGABRT/zaman aşımında C yığını stderr'e düşsün (CI taklidinde -6 boş stderr ile düştü)
     if json_yolu is None:
         env.pop("PVQ_VERI_JSON", None)
     else:

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json as _json
+import logging
 
 from sqlalchemy import text
 
@@ -21,6 +22,41 @@ from pvquant.services import yetki_service as _ys  # v2.609 (F6-B): kota hüküm
 
 TURLER = ("dis_api", "webhook", "webhook_hata")
 PENCERE_SN = 60
+_log = logging.getLogger("pvq.hiz")
+# Faz 0 §24 #3 (21.11): paylaşımlı hız sayacının (hiz_pencere) SAĞLIK DURUMU — süreç içi; DB yazılamadığında hiz.py süreç içi yedek
+# sayaca geçer, uyarı günlüğe düşer (dakikada en çok bir), sistem sağlığı «veritabanı → hız sayacı» bileşeni bunu gösterir.
+_SAYAC: dict = {"hata_sayisi": 0, "son_hata": None, "son_hata_turu": None, "son_basari": None, "_son_uyari": 0.0}
+
+
+def _sayac_basari() -> None:
+    _SAYAC["son_basari"] = dt.datetime.now(dt.timezone.utc)
+
+
+def hata_ozeti(e: BaseException) -> str:
+    """Günlük için güvenli özet (R3 QA itiraz 1): SQLAlchemy `str(e)` ifadeyi ve parametreleri («[parameters: {'a': 'ygiris-hesap:<e-posta>'}]»)
+    ekler; burada yalnız DBAPI iç hatasının (`e.orig`) ilk satırı, `[SQL:` / `[parameters:` öncesinde kesilmiş ve 200 karakterle sınırlı yazılır.
+    Anahtar, e-posta, parola ya da sır günlüğe düşmez."""
+    ic = getattr(e, "orig", None) or e
+    metin = next((s for s in str(ic).splitlines() if s.strip()), type(e).__name__)   # ilk DOLU satır; boş mesaj → tür adı
+    for kes in ("[SQL:", "[parameters:"):
+        if kes in metin:
+            metin = metin.split(kes, 1)[0]
+    return metin.strip()[:200]
+
+
+def _sayac_hata(islem: str, e: Exception) -> None:
+    simdi = dt.datetime.now(dt.timezone.utc)
+    _SAYAC["hata_sayisi"] += 1; _SAYAC["son_hata"] = simdi; _SAYAC["son_hata_turu"] = type(e).__name__
+    if simdi.timestamp() - _SAYAC["_son_uyari"] >= 60:   # günlük taşmasın: dakikada bir uyarı, sayaç toplamı taşır
+        _SAYAC["_son_uyari"] = simdi.timestamp()
+        _log.warning("[hiz] pencere %s: %s: %s (toplam hata %d; süreç içi yedek sayaç devrede)", islem, type(e).__name__, hata_ozeti(e), _SAYAC["hata_sayisi"])
+
+
+def sayac_durumu() -> dict:
+    """Bu işçi sürecinin paylaşımlı sayaç sağlığı: `saglikli` = hiç hata yok ya da son başarı son hatadan sonra. Zamanlar ISO/None."""
+    sh, sb = _SAYAC["son_hata"], _SAYAC["son_basari"]
+    return {"saglikli": sh is None or (sb is not None and sb > sh), "son_hata": sh.isoformat() if sh else None,
+            "son_hata_turu": _SAYAC["son_hata_turu"], "hata_sayisi": int(_SAYAC["hata_sayisi"]), "son_basari": sb.isoformat() if sb else None}
 
 
 def say(tenant_id, tur: str, adet: int = 1) -> None:
@@ -50,19 +86,59 @@ def pencere_temizle(saat: int = 1) -> int:
         return int(s.execute(text("DELETE FROM hiz_pencere WHERE pencere < now() - make_interval(hours => :h)"), {"h": int(saat)}).rowcount)
 
 
+def hesap_anahtari(ad: str, hesap: str | None) -> str:
+    """R2 (Faz 0 §24, 21.11): hesap başına pencere anahtarı tek yerde — hiz.hesap_siniri ve CLI kilit açma aynı anahtarı kullanır."""
+    return f"{ad}:{(hesap or '').strip().lower()[:200]}"
+
+
+def pencere_oku(anahtar: str, saniye: int = PENCERE_SN, simdi: dt.datetime | None = None) -> int:
+    """Sabit penceredeki mevcut sayıyı ARTIRMADAN okur (R2: hesap sınırı yalnız başarısız denemeleri sayar; deneme öncesi okunur,
+    başarısızlıkta pencere_say ile artırılır). DB'ye ulaşılamazsa 0 (kapı açık; pencere_say ile aynı karar)."""
+    bas = pencere_basi(simdi or dt.datetime.now(dt.timezone.utc), saniye)
+    try:
+        with sistem_baglami() as s:
+            n = int(s.execute(text("SELECT adet FROM hiz_pencere WHERE anahtar = :a AND pencere = :p"), {"a": anahtar, "p": bas}).scalar() or 0)
+        _sayac_basari()
+        return n
+    except Exception as e:  # noqa: BLE001
+        _sayac_hata("okunamadı", e)
+        return 0
+
+
+def pencere_azalt(anahtar: str, saniye: int = PENCERE_SN, simdi: dt.datetime | None = None) -> None:
+    """R2 QA itiraz 1: hesap sınırı «atomik rezerve et, başarıda geri al» düzeni — pencere_say ile +1 rezerve edilen deneme başarılı girişte
+    (ya da 429'da) geri alınır; taban 0. Hata yutulur (sayaç kesintisi kapı değildir)."""
+    bas = pencere_basi(simdi or dt.datetime.now(dt.timezone.utc), saniye)
+    try:
+        with sistem_baglami() as s:
+            s.execute(text("UPDATE hiz_pencere SET adet = GREATEST(adet - 1, 0) WHERE anahtar = :a AND pencere = :p"), {"a": anahtar, "p": bas})
+        _sayac_basari()
+    except Exception as e:  # noqa: BLE001
+        _sayac_hata("azaltılamadı", e)
+
+
+def pencere_sil(anahtar: str) -> int:
+    """R2: bir anahtarın tüm pencerelerini siler (CLI kilit açma); silinen satır sayısını döner. Hata yutulmaz (CLI görmeli)."""
+    with sistem_baglami() as s:
+        return int(s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a"), {"a": anahtar}).rowcount)
+
+
 def pencere_say(anahtar: str, saniye: int = PENCERE_SN, simdi: dt.datetime | None = None) -> int:
-    """Sabit pencerede paylaşımlı artış; pencere içindeki yeni toplamı döner. Eski pencereler silinir.
-    DB'ye ulaşılamazsa 0 döner (kapı açık kalır: sayaç kesintisi müşteriyi kilitlemesin; olay günlükte)."""
+    """Sabit pencerede paylaşımlı artış; pencere içindeki yeni toplamı (≥ 1) döner. Eski pencereler silinir.
+    DB'ye yazılamazsa 0 döner — başarı hiç 0 vermez, bu yüzden 0 «sayaç arızası» demektir: hiz.py süreç içi yedek sayaca geçer
+    (§24 #3, 21.11); sayaç kesintisi kapı değildir ama sayım durmaz. Olay günlükte (WARNING) ve sayac_durumu()'nda."""
     bas = pencere_basi(simdi or dt.datetime.now(dt.timezone.utc), saniye)
     try:
         with sistem_baglami() as s:
             s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a AND pencere < :p"), {"a": anahtar, "p": bas})
-            return int(s.execute(text(
+            n = int(s.execute(text(
                 "INSERT INTO hiz_pencere(anahtar, pencere, adet) VALUES (:a, :p, 1) "
                 "ON CONFLICT (anahtar, pencere) DO UPDATE SET adet = hiz_pencere.adet + 1 RETURNING adet"),
                 {"a": anahtar, "p": bas}).scalar())
+        _sayac_basari()
+        return n
     except Exception as e:  # noqa: BLE001
-        print(f"[hiz] pencere sayılamadı: {type(e).__name__}: {e}")
+        _sayac_hata("sayılamadı", e)
         return 0
 
 

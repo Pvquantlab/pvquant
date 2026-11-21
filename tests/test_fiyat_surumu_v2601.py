@@ -151,7 +151,9 @@ def test_db_fem_deterministik_girdi_referanslari_ve_fiyat_surumu(santral):
     # kaydet → aynı girdiyle ikinci kayıt YAZILMAZ (ayni_girdili_kayit), fiyat düzeltmesi gelince yazılır
     kid = fe.kaydet(tid, o1, plant["id"])
     assert fe.ayni_girdili_kayit(tid, plant, o2) == kid
-    t_once = datetime.now(timezone.utc)
+    from pvquant.db import sistem_baglami as _sb
+    with _sb() as _s:   # O-1 kapısı (21.11): kesim anı DB saatinden — guncelleme=now() DB'de yazılır; Docker VM saati ana makineden geri kalınca (0,3 s ölçüldü) host saati yarış yaratıyordu
+        t_once = _s.execute(text("SELECT now()")).scalar()
     ps.kaydet(pd.DataFrame({"ptf": 2500.0, "smf": 1900.0, "yon": "acik", "kaynak": "epias"}, index=idx))   # EPİAŞ düzeltmesi: sürüm 2
     o4 = fe.ozet(tid, plant, "2097-06-01", bugun=bugun)
     assert o4["meta"]["girdi"]["fiyat"]["sha16"] != g["fiyat"]["sha16"] and fe.ayni_girdili_kayit(tid, plant, o4) is None

@@ -153,7 +153,7 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
     df = son_kosu(tenant_id, santral["id"])
     if df is not None and len(df) > 0:
         df_yerel = df.tz_convert(tz).copy()
-        bugun_yerel = datetime.now().astimezone().date()
+        bugun_yerel = datetime.now(ZoneInfo(tz)).date()   # Faz 0 P0-01 (20.11.2026): santral günü; eskiden sunucu (UTC) günüydü, 21–24 UTC arasında :201 imleciyle farklı günü maskeliyordu
 
         bugun_mask = df_yerel.index.date == bugun_yerel
         if bugun_mask.any():

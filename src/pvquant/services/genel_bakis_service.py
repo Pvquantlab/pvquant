@@ -239,8 +239,12 @@ def ozet(tenant_id, plant: dict, simdi: dt.datetime | None = None) -> dict:
         "finans": finans,
     }
     genel = ds.en_kotu([k["durum"] for k in kartlar.values()])
+    from pvquant import zaman as _zaman
+    vs = ds.santral_sinifi(plant.get("params_json"))   # Faz 0 P0-01 (C1): santral türü / veri türü etiketleri
     return {"zaman": simdi.isoformat(), "santral": {"id": pid, "ad": plant.get("name"), "tz": str(tz), "kapasite_kwp": float(plant.get("capacity_kwp") or 0),
-                                                     "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"]},
+                                                     "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"],
+                                                     **vs,
+                                                     "tz_uyari": _zaman.tz_koordinat_uyumu(plant.get("lon"), str(tz))},   # Faz 0 P0-02: koordinat–dilim uyumu
             "bugun_gun": bugun.isoformat(), "yarin_gun": yarin.isoformat(), **kartlar,
             "genel": {"durum": genel.value, "etiket": ds.etiket(genel), "eylem_gereken": [k for k, v in kartlar.items() if v["durum"] in ("kritik", "dikkat")]},
             "esik": dict(ds.ESIK), "sozluk_surumu": ds.SOZLUK_SURUMU}

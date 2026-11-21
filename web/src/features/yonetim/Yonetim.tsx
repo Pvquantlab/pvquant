@@ -59,7 +59,7 @@ export function Yonetim() {
       {sayfa === "denetim" && <Denetim />}
       {sayfa === "operatorler" && ben?.rol === "sahip" && <Operatorler ben={ben} />}
       {sayfa === "planlar" && ben?.rol === "sahip" && <Planlar />}
-      {sayfa === "hesap" && <Hesap ben={ben} />}
+      {sayfa === "hesap" && <Hesap ben={ben} onBen={() => { yonetim.ben().then(setBen).catch(() => {}); }} onCikis={cikis} />}
     </PlatformKabugu>
   );
 }

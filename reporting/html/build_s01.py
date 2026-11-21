@@ -340,11 +340,12 @@ VARIANTS = [("PVQuant_Konya_GES_s01_kapak", CSS_A, BODY_A,
                        highlight=CEPHE, hl_label="cephe geçişi"))]
 
 from weasyprint import HTML as WH
+from pvq import font_config as _font_config   # Faz 0 (21.11): paylaşılan yazı tipi yapılandırması (bkz. pvq.font_config)
 for name, css, body, ch in VARIANTS:
     html = shell(css, body.replace("__CHART__", ch), "PVQuant — Konya GES · Kapak")
     hp = f"{OUT}/{name}.html"
     from veri import doldur
     open(hp, "w", encoding="utf-8").write(doldur(html))
-    doc = WH(hp).render()
+    doc = WH(hp).render(font_config=_font_config())
     doc.write_pdf(f"{OUT}/{name}.pdf")
     print(name, "sayfa:", len(doc.pages))

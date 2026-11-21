@@ -13,7 +13,8 @@ export const SOZLUK = {
   kaynak: { hava: "Hava verisi", piyasa: "Piyasa fiyatları (PTF/SMF)", piyasaKisa: "Piyasa fiyatları", yedek: "Yedek",
             zamanlayici: "Zamanlayıcı", geceIsleri: "Gece işlemleri", isKayitlari: "İş kayıtları" },
   /** santral envanteri sorun kodları (sistem_service.santraller) */
-  sorun: { scada_yok: "veri yok", scada_bayat: "veri eski", kosu_yok: "tahmin yok", kosu_bayat: "tahmin eski", kiraci_askida: "müşteri askıda",
+  sorun: { sanal_test: "sanal test santralı", veri_tarihsel_arsiv: "tarihsel arşiv verisi", veri_sentetik: "sentetik veri", veri_yok: "ölçüm verisi yok",   // Faz 0 (21.11): bilgi bayrakları
+           scada_yok: "veri yok", scada_bayat: "veri eski", kosu_yok: "tahmin yok", kosu_bayat: "tahmin eski", kiraci_askida: "müşteri askıda",
            segment_yok: "segment seçilmedi" } as Record<string, string>,   // v2.515: segment yoksa KÜPST/DSG hesaplanamaz
   /** v2.515: platform tablolarında kısa segment adı (müşteri paneli SEGMENTLER'in uzun etiketini kullanır) */
   segmentKisa: { lisansli_serbest: "Lisanslı serbest", lisansli_yekdem: "Lisanslı YEKDEM", yeka: "YEKA", lisanssiz_iletim: "Lisanssız iletim",
@@ -29,6 +30,7 @@ export const SOZLUK = {
     kiraci_olustur: "Müşteri hesabı açıldı", kiraci_guncelle: "Müşteri güncellendi", kiraci_goruntule: "Müşteri görüntülendi",
     kiraci_temsil: "Müşteri gözüyle görüntüleme", kullanici_guncelle: "Kullanıcı güncellendi",
     parola_sifirlama_gonder: "Parola bağlantısı gönderildi", parola_sifirla_cli: "Parola sıfırlandı (sunucu)", eposta_degistir_cli: "E-posta değiştirildi (sunucu)",
+    iki_adim_sifirla_cli: "İki adımlı doğrulama sıfırlandı (sunucu)", kilit_ac_cli: "Giriş kilidi açıldı (sunucu)", cli_hata: "Sunucu komutu başarısız",
     iki_adim_ac: "İki adımlı doğrulama açıldı", iki_adim_sifirla: "İki adımlı doğrulama sıfırlandı",
     basvuru_okundu: "Başvuru okundu", operator_ekle: "Operatör eklendi", operator_guncelle: "Operatör güncellendi", plan_guncelle: "Plan güncellendi",
     abonelik_guncelle: "Abonelik güncellendi", plan_modul_guncelle: "Plan modülleri güncellendi",   // v2.609 (Faz 6 F6-C)
@@ -42,7 +44,10 @@ export const SOZLUK = {
     // v2.516 (#7) — uzlaştırma katmanı
     kgup_indir: "KGÜP dosyası indirildi", eak_indir: "EAK dosyası indirildi", kgup_bildirilen_yukle: "Bildirilen KGÜP yüklendi",
     kgup_sablon_ogren: "KGÜP şablonu öğrenildi", kgup_sablon_sifirla: "KGÜP şablonu sıfırlandı",
-    santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi", sensor_ayar: "Sensör envanteri değiştirildi", veri_yolu_ayar: "Veri kaynağı beyanı değiştirildi", veri_yolu_nokta_tablosu: "IEC 104 nokta tablosu yüklendi", uretim_dosyasi_itme: "Üretim dosyası itildi (dış API)", bulut_kimlik_kaydet: "Bulut kimliği şifreli kaydedildi", bulut_kimlik_ayar: "Bulut çekiş ayarı değiştirildi", bulut_kimlik_sil: "Bulut kimliği silindi", bulut_oauth_baslat: "Bulut sahip onayı başlatıldı", bulut_oauth_donus: "Bulut sahip onayı dönüşü işlendi", bulut_birim_kiyas: "Bulut birim kıyası yapıldı", pilot_kapi: "Pilot kapısı beyanı değiştirildi", pilot_referans: "Pilot referans kıyası yapıldı", edge_toplayici_olustur: "Saha toplayıcısı anahtarı üretildi", edge_toplayici_iptal: "Saha toplayıcısı anahtarı iptal edildi", veri_yolu_sinama: "Veri kaynağı bağlantısı sınandı",
+    /* Faz 0 (20–21.11): santral_sinifi, abonelik_kota_asimi eklendi — QA A-2: satır içi // yorumu satırın kalanını yutmuştu, blok yorum kullanılır */
+    santral_segment: "Segment / UEVÇB ayarlandı", santral_sinifi: "Santral / veri türü ayarlandı", abonelik_kota_asimi: "Abonelik kotası aşımı (günlük iz)",
+    /* A3 (21.11): platform kurtarma kodları (iki_adim_kurtarma_yenile müşteri sözlüğünde zaten var) */
+    iki_adim_yeniden_kur: "Doğrulayıcı yeniden kuruldu (kurtarma)", eak_ayar: "EAK ayarı değiştirildi", sensor_ayar: "Sensör envanteri değiştirildi", veri_yolu_ayar: "Veri kaynağı beyanı değiştirildi", veri_yolu_nokta_tablosu: "IEC 104 nokta tablosu yüklendi", uretim_dosyasi_itme: "Üretim dosyası itildi (dış API)", bulut_kimlik_kaydet: "Bulut kimliği şifreli kaydedildi", bulut_kimlik_ayar: "Bulut çekiş ayarı değiştirildi", bulut_kimlik_sil: "Bulut kimliği silindi", bulut_oauth_baslat: "Bulut sahip onayı başlatıldı", bulut_oauth_donus: "Bulut sahip onayı dönüşü işlendi", bulut_birim_kiyas: "Bulut birim kıyası yapıldı", pilot_kapi: "Pilot kapısı beyanı değiştirildi", pilot_referans: "Pilot referans kıyası yapıldı", edge_toplayici_olustur: "Saha toplayıcısı anahtarı üretildi", edge_toplayici_iptal: "Saha toplayıcısı anahtarı iptal edildi", veri_yolu_sinama: "Veri kaynağı bağlantısı sınandı",
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
     // v2.602 (Faz 4 F4-H) — izsiz uçlar iz bırakır; v2.603 platform temizliği

@@ -141,11 +141,26 @@ def shell(css, body, title):
             % (title, FONTCSS, BASE, css, body))
 
 
+_FONT_CONFIG = None
+
+
+def font_config():
+    """Faz 0 (21.11.2026): süreç başına TEK WeasyPrint yazı tipi yapılandırması. Belge başına kurulan pango fontmap'ler çöp
+    toplayıcıda sırasız finalize edilince macOS/Homebrew pango+harfbuzz yığınında SIGABRT/SIGSEGV görüldü (CI taklidi -6; çökme
+    raporları hb_face_destroy ← pango_fc_font_map_finalize ← g_object_unref ← cffi gc). Paylaşılan yapılandırma bu yolu 16+ kez
+    yerine süreç sonunda bir kez yürütür. HTML çıktısı ve sayfa düzeni değişmez (aynı fontlar); yalnız fontmap ömrü."""
+    global _FONT_CONFIG
+    if _FONT_CONFIG is None:
+        from weasyprint.text.fonts import FontConfiguration
+        _FONT_CONFIG = FontConfiguration()
+    return _FONT_CONFIG
+
+
 def build(name, css, body, title):
     from weasyprint import HTML as WH
     hp = f"{OUT}/{name}.html"
     open(hp, "w", encoding="utf-8").write(doldur(shell(css, body, title)))
-    doc = WH(hp).render()
+    doc = WH(hp).render(font_config=font_config())   # Faz 0 (21.11): paylaşılan yazı tipi yapılandırması
     doc.write_pdf(f"{OUT}/{name}.pdf")
     n = len(doc.pages)
     print(f"{name}: {n} sayfa" + ("" if n == 1 else "   ← TAŞMA VAR"))

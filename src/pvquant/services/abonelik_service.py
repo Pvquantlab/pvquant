@@ -233,3 +233,30 @@ def gece_turet(s, bugun: dt.date | None = None, aktor: str = "gece_abonelik") ->
             degisen.append({"tenant_id": str(r["tenant_id"]), "eski": r["durum"], "yeni": yeni})
             yetki_service.onbellek_dusur(r["tenant_id"])
     return {"durum": "ok", "kiraci": len(rows), "degisen": len(degisen), "sayim": sayim, "degisenler": degisen[:50]}
+
+
+def kota_asimi_izi(s, bugun: dt.date | None = None, tenant_id=None) -> list[dict]:
+    """Faz 0 P0-07 (20.11.2026): DURAĞAN kota aşımı (göç öncesi oluşturulmuş santrallar gibi) uyarı kipinde yalnız yeni yazma isteğinde
+    iz bırakıyordu; şimdi gece işi her kiracı için gün başına bir kez `abonelik_kota_asimi` denetim izi yazar (kapı değil, kısıt yok).
+    Döner: bugün yazılan kayıtlar [{tenant_id, asilan}]."""
+    from pvquant.services import denetim_service, yetki_service
+    bugun = bugun or dt.datetime.now(dt.timezone.utc).date()
+    yazilan = []
+    rows = s.execute(text("SELECT a.tenant_id, a.plan FROM kiraci_abonelik a" + (" WHERE a.tenant_id = CAST(:t AS uuid)" if tenant_id else "")), ({"t": str(tenant_id)} if tenant_id else {})).mappings().all()
+    for r in rows:   # tenant_id verilirse tek kiracı (test/elle koşu); gece işi hepsini dolaşır
+        tid = str(r["tenant_id"])
+        try:
+            h = yetki_service.haklar(tid, bugun=bugun, taze=True)
+        except Exception:   # bir kiracının hakkı okunamazsa iz atlanır, iş düşmez
+            continue
+        asilan = {a: {"limit": k.get("limit"), "kullanim": k.get("kullanim")} for a, k in (h.get("kotalar") or {}).items() if k.get("durum") == "asildi"}
+        if not asilan:
+            continue
+        var = s.execute(text("SELECT 1 FROM denetim_izi WHERE eylem = 'abonelik_kota_asimi' AND tenant_id = CAST(:t AS uuid) AND zaman >= :g LIMIT 1"),
+                        {"t": tid, "g": dt.datetime.combine(bugun, dt.time.min, tzinfo=dt.timezone.utc)}).first()
+        if var:
+            continue
+        denetim_service.kaydet("platform", "abonelik_kota_asimi", tenant_id=tid, nesne_tur="abonelik", nesne_id=tid,
+                               ayrinti={"plan": r["plan"], "asilan": asilan, "zorlama": h.get("zorlama"), "not": "durağan aşım; kapı yalnız yeni yazma isteğinde"})
+        yazilan.append({"tenant_id": tid, "asilan": asilan})
+    return yazilan

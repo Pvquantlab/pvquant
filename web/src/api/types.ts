@@ -76,7 +76,8 @@ export interface Hakkinda {
 }
 /** v2.266 — kısa ufuk (0–6 s), ölçüm persistansı; uydu değil. */
 export interface Nowcast {
-  durum: "ok" | "gece" | "scada_bayat" | "tahmin_yok" | "olcum_yok"; uydu: boolean; yontem?: string; ufuk_saat?: number;
+  /** Faz 0 (21.11): sanal_test = canlı SCADA beklenmez */
+  durum: "ok" | "gece" | "scada_bayat" | "sanal_test" | "tahmin_yok" | "olcum_yok"; uydu: boolean; yontem?: string; ufuk_saat?: number;
   son_olcum?: string | null; tazelik_saat?: number | null; oran: number | null; n_saat: number; not?: string;
   ufuk: { ts: string; p50_kw: number; nowcast_kw: number; agirlik: number }[];
 }
@@ -297,7 +298,7 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   /** v2.543 (P9, IH-109): uzlaştırma dönemi / SMF çözünürlüğü — saatlik; 15 dk geçişi belirsiz etiketli */ cozunurluk?: { deger: string; kesinlik: string; gecis_hukuki: string; etiket: string };
-  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null;
+  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null; santral_turu?: string; veri_turu?: string;
     /** v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri (hazırlık) */ depolama?: Depolama;
     /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean;
     /** v2.541: aynı kodlu santraller DSG'de tek üye (DK-252); lisanstaki yıllık üretim (LDYEÜM, Karar 14626; DK-804) */ piyasa_katilimcisi?: string | null; lisans_yillik_uretim_mwh?: number | null;
@@ -408,6 +409,8 @@ export interface KalibrasyonOzeti {
   mape_once: number | null; mape_sonra: number | null;
   wmape_once: number | null; wmape_sonra: number | null;
   sapma_once: number | null; sapma_sonra: number | null;
+  /** Faz 0 P0-04 (C4-1, 21.11): kronolojik holdout (son %20) — eski kayıtlarda yok */
+  degerlendirme?: string | null; mape_holdout?: number | null; wmape_holdout?: number | null; holdout_saat?: number | null; holdout_bas?: string | null; holdout_bit?: string | null; holdout_not?: string | null;
   uyarilar: string[];
 }
 
@@ -922,10 +925,14 @@ export interface PortfoyFinansT { durum: string; not?: string; meta?: { surum?: 
 /** v2.608 (Faz 5 F5-B): Genel bakış — dört kart; `durum` kodları lib/durum.ts HIZMET_DURUMU sözlüğünden. Değer yoksa null (sıfır uydurulmaz). */
 export interface GbDurum { durum: string; etiket: string; neden: string }
 export interface GbAdim extends GbDurum { surum?: number | null; en_yeni_kayit?: string | null }
+/** Faz 0 P0-01 (21.11, C1): santral türü / veri türü beyanı (PUT /santral-sinifi yanıtı). */
+export interface SantralSinifi { santral_turu: string; veri_turu: string; santral_turu_etiketi: string; veri_turu_etiketi: string; tazelik_izlenir: boolean }
 export interface GbRisk { kod: string; durum: string; baslik: string; ayrinti?: string | null; zaman?: string | null; baglanti: string }
 export interface GenelBakis {
   zaman: string; bugun_gun: string; yarin_gun: string;
-  santral: { id: string; ad: string; tz: string; kapasite_kwp: number; segment: string | null; kgup_yukumlu: boolean | null };
+  santral: { id: string; ad: string; tz: string; kapasite_kwp: number; segment: string | null; kgup_yukumlu: boolean | null;
+    /** Faz 0 (21.11, C1): santral türü / veri türü beyanı ve koordinat–dilim uyarısı */
+    santral_turu?: string; veri_turu?: string; santral_turu_etiketi?: string; veri_turu_etiketi?: string; tazelik_izlenir?: boolean; tz_uyari?: { tz: string; tz_ofset_saat: number; boylam_ofset_saat: number; fark_saat: number; metin: string } | null };
   bugun: GbDurum & { beklenen_kwh: number | null; beklenen_saat: number; gerceklesen_kwh: number | null; gerceklesen_saat: number; ortak_saat: number;
     sapma_pct: number | null; sapma_not: string | null; tahmin: { yayin: string | null; etiket: string | null; yas_saat: number | null; durum: string };
     olcum: { son: string | null; son_alim: string | null; yas_saat: number | null; durum: string; etiket: string }; donem: string; kapsam: string; eylem: string | null; baglanti: string };

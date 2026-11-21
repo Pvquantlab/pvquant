@@ -6,13 +6,15 @@ platform_service üzerinden `platform_baglami(aktör)` ile — RLS dışı ama a
 Mevcut müşteri uçları ve sözleşmeleri DEĞİŞMEZ; bu dosya yalnız EKLER."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from apps.api.deps import platform_yetkisi
-from apps.api.hiz import limiter, paylasimli_sinir
+from apps.api.hiz import hesap_basarili, hesap_siniri, limiter, paylasimli_sinir
 import uuid as _uuid_mod
 from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service, sistem_service as ss, kullanim_service as ks
+
+HESAP_SINIR_AD = "ygiris-hesap"   # R2 (21.11): hesap penceresi adı; CLI --kilit-ac aynı anahtarı kullanır (platform_service.HESAP_SINIR_AD ile eş)
 
 yonetim = APIRouter(prefix="/v1/yonetim", tags=["Platform yönetimi"])
 
@@ -46,18 +48,26 @@ class YGiris(BaseModel):
 @limiter.limit("5/minute")
 def giris(request: Request, g: YGiris):
     paylasimli_sinir(request, "ygiris", 5, 60)   # 26.10 denetim-3: işçiler arası 5/dk/IP
+    hesap_siniri(HESAP_SINIR_AD, g.email, 10, 900)   # A3/R2: hesap başına 10 BAŞARISIZ/15 dk; deneme atomik rezerve edilir (QA itiraz 1)
     r = ps.giris(g.email, g.sifre, g.kod)
+    if r is not None:
+        hesap_basarili(HESAP_SINIR_AD, g.email, 900)   # R2: jeton ya da «kod bekleniyor» → rezerv geri alınır; yalnız başarısızlık kalır
     if r is None:
-        dz.kaydet("platform", "giris_basarisiz", aktor_eposta=(g.email or "").lower()[:255], ip=_ip(request))
+        dz.kaydet("platform", "giris_basarisiz", aktor_eposta=(g.email or "").lower()[:255], ip=_ip(request),
+                  ayrinti={"ikinci_adim_denendi": bool(g.kod)})   # kod/parola ASLA yazılmaz
         raise HTTPException(401, "hatali")
     if r.get("token"):
-        dz.kaydet("platform", "giris", aktor_eposta=r["email"], ip=_ip(request))
+        ayrinti = {"ikinci_adim": r.get("ikinci_adim")}
+        if r.get("ikinci_adim") == "kurtarma":
+            ayrinti["kurtarma_kalan"] = r.get("kurtarma_kalan")
+        dz.kaydet("platform", "giris", aktor_eposta=r["email"], ip=_ip(request), ayrinti=ayrinti)
     return r
 
 
 @yonetim.post("/oturum/yenile")
 def oturum_yenile(c=Depends(platform_yetkisi())):
-    y = ps.oturum_yenile(c["sub"], ilk=c.get("ilk"))   # 25.10 O8: ilk giriş zamanı yenilemede taşınır (mutlak üst sınır)
+    ek = {"yontem": c["yontem"]} if c.get("yontem") else {}   # A3: kurtarma oturumu iddiası yenilemede taşınır (eski imza korunur)
+    y = ps.oturum_yenile(c["sub"], ilk=c.get("ilk"), **ek)   # 25.10 O8: ilk giriş zamanı yenilemede taşınır (mutlak üst sınır)
     if y is None:
         raise HTTPException(401, "hesap etkin değil")
     return y
@@ -91,21 +101,59 @@ class Kod(BaseModel):
 
 
 @yonetim.post("/iki-adim/baslat")
-def iki_adim_baslat(c=Depends(platform_yetkisi())):
+def iki_adim_baslat(response: Response, c=Depends(platform_yetkisi())):
     try:
+        response.headers["Cache-Control"] = "no-store"   # kurulum sırrı döner (QA A3 İ-4)
         return ps.iki_adim_baslat(c["sub"])
     except ValueError as e:
         raise _hata(e)
 
 
 @yonetim.post("/iki-adim/dogrula")
-def iki_adim_dogrula(k: Kod, request: Request, c=Depends(platform_yetkisi())):
+def iki_adim_dogrula(k: Kod, request: Request, response: Response, c=Depends(platform_yetkisi())):
+    """A3: etkinleştirme 10 kurtarma kodu döner (yalnız bu yanıtta; günlüğe/ize yazılmaz)."""
     try:
-        ps.iki_adim_dogrula(c["sub"], k.kod)
+        y = ps.iki_adim_dogrula(c["sub"], k.kod)
     except ValueError as e:
         raise _hata(e)
-    dz.kaydet("platform", "iki_adim_ac", aktor_id=c["sub"], aktor_eposta=c["email"], ip=_ip(request))
-    return {"tamam": True}
+    kodlar = (y or {}).get("kurtarma_kodlari") or []
+    dz.kaydet("platform", "iki_adim_ac", aktor_id=c["sub"], aktor_eposta=c["email"], ip=_ip(request), ayrinti={"kurtarma_kodu": len(kodlar)})
+    response.headers["Cache-Control"] = "no-store"   # QA A3 İ-4: kod döndüren yanıt önbelleğe alınmaz
+    return {"tamam": True, "kurtarma_kodlari": kodlar}
+
+
+@yonetim.post("/iki-adim/kurtarma-yenile")
+def iki_adim_kurtarma_yenile(k: Kod, request: Request, response: Response, c=Depends(platform_yetkisi())):
+    """A3: kurtarma kodu rotasyonu — geçerli TOTP kodu şart; kurtarma oturumunda 403 (kod ele geçirilmişse yeni kod üretemesin)."""
+    if c.get("yontem") == "kurtarma":
+        raise HTTPException(403, "kurtarma koduyla açılan oturumda kod yenilenemez; TOTP ile giriş yapın")
+    try:
+        kodlar = ps.kurtarma_yenile(c["sub"], k.kod)
+    except ValueError as e:
+        raise _hata(e)
+    dz.kaydet("platform", "iki_adim_kurtarma_yenile", aktor_id=c["sub"], aktor_eposta=c["email"], ip=_ip(request), ayrinti={"kurtarma_kodu": len(kodlar)})
+    response.headers["Cache-Control"] = "no-store"
+    return {"kurtarma_kodlari": kodlar}
+
+
+class YenidenKur(BaseModel):
+    sifre: str | None = None   # kurtarma oturumu DIŞINDA: aktörün parolası + TOTP kodu (yeniden doğrulama)
+    kod: str | None = None
+
+
+@yonetim.post("/iki-adim/yeniden-kur")
+def iki_adim_yeniden_kur(p: YenidenKur, request: Request, response: Response, c=Depends(platform_yetkisi())):
+    """A3 kilitlenme çıkışı: kurtarma koduyla girmiş sahip doğrulayıcıyı yeniden kurar (eski sır + kodlar silinir, oturumlar düşer, yeni kurulum
+    başlar). TOTP oturumunda ise parola + güncel TOTP ile yeniden doğrulama şart."""
+    if c.get("yontem") != "kurtarma":
+        _yeniden_dogrula(c, p.sifre, p.kod)
+    try:
+        y = ps.iki_adim_yeniden_kur(c["sub"])
+    except ValueError as e:
+        raise _hata(e)
+    dz.kaydet("platform", "iki_adim_yeniden_kur", aktor_id=c["sub"], aktor_eposta=c["email"], ip=_ip(request), ayrinti={"oturum": c.get("yontem") or "totp"})
+    response.headers["Cache-Control"] = "no-store"   # yeni sır döner
+    return y
 
 
 # ---------------- operatörler (sahip) ----------------
@@ -128,7 +176,10 @@ YENIDEN_DOGRULAMA_MESAJI = "yeniden doğrulama gerekli: parolanız ve iki adıml
 
 
 def _yeniden_dogrula(c: dict, sifre: str | None, kod: str | None) -> None:
-    """Hassas sahip işlemleri çalınmış jetonla yapılamasın (bağımsız kontrol 1.1: ikinci sahip açıp kurbanın 2FA'sını sıfırlama)."""
+    """Hassas sahip işlemleri çalınmış jetonla yapılamasın (bağımsız kontrol 1.1: ikinci sahip açıp kurbanın 2FA'sını sıfırlama).
+    A3: kurtarma koduyla açılan oturumda hassas işlem YOK (kod ele geçirilmişse ikinci sahip yaratılamasın); yalnız TOTP kabul edilir."""
+    if c.get("yontem") == "kurtarma":
+        raise HTTPException(403, "kurtarma koduyla açılan oturumda bu işlem yapılamaz; doğrulayıcıyı yeniden kurup TOTP ile giriş yapın")
     if not ps.yeniden_dogrula(c["sub"], sifre, kod):
         raise HTTPException(403, YENIDEN_DOGRULAMA_MESAJI)
 

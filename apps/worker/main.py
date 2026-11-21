@@ -274,7 +274,9 @@ def gece_abonelik(_plant=None):
     from pvquant.db import platform_baglami
     from pvquant.services import abonelik_service
     with platform_baglami("gece_abonelik") as s:
-        return abonelik_service.gece_turet(s)
+        sonuc = abonelik_service.gece_turet(s)
+        sonuc["kota_asimi"] = abonelik_service.kota_asimi_izi(s)   # Faz 0 P0-07 (20.11): durağan kota aşımı gün başına bir denetim izi
+        return sonuc
 
 
 def gece_meteo(_plant=None):

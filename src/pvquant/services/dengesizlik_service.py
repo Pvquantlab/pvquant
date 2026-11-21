@@ -22,6 +22,9 @@ from pvquant.ext.turkiye import dengesizlik as d
 from pvquant.ext.turkiye import kurallar as kr
 from pvquant.ext.turkiye import segment as sg
 from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.durum_sozlugu import (
+    santral_sinifi as _ds_santral_sinifi,  # Faz 0 P0-01 (saf modül; döngü yok)
+)
 from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql  # v2.597 (F4-B)
 from pvquant.zaman import PIYASA_TZ
 
@@ -601,7 +604,8 @@ def segment_bilgisi(params_json) -> dict:
                 "yek_g_kayitli": bool(pj.get("yek_g_kayitli")), "piyasa_katilimcisi": (str(pj.get("piyasa_katilimcisi")).strip() or None) if pj.get("piyasa_katilimcisi") else None,
                 "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),
                 "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
-                "depolama": _depolama_ozet(pj)}   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
+                "depolama": _depolama_ozet(pj),   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
+                **_ds_santral_sinifi(pj)}   # Faz 0 P0-01 (C1): santral_turu / veri_turu + etiketler
     k = sg.KURALLAR.loc[seg]
     st = sg.Santral("x", seg, 1.0)
     return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi(),
@@ -611,7 +615,8 @@ def segment_bilgisi(params_json) -> dict:
             "piyasa_katilimcisi": (str(pj.get("piyasa_katilimcisi")).strip() or None) if pj.get("piyasa_katilimcisi") else None,   # v2.541 (DK-252): aynı katılımcının santralleri DSG'de birlikte
             "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),   # v2.541 (DK-804): lisansa dercedilen yıllık üretim (LDYEÜM), Karar 14626
             "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
-                "depolama": _depolama_ozet(pj)}   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri   # v2.541 (EK-2 DK-267): UEVÇB kodu yoksa ada göre gruplama
+                "depolama": _depolama_ozet(pj),   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
+                **_ds_santral_sinifi(pj)}   # Faz 0 P0-01 (C1): santral_turu / veri_turu + etiketler   # v2.541 (EK-2 DK-267): UEVÇB kodu yoksa ada göre gruplama
 
 
 def katsayilar(params_json) -> d.Katsayilar:

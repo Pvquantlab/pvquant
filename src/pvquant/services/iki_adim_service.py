@@ -74,6 +74,8 @@ def dogrula_ve_ac(user_id, kod: str) -> dict:
             raise ValueError("kod doğrulanamadı — uygulamadaki 6 haneyi girin (aynı kod ikinci kez kullanılamaz)")
         s.execute(text("UPDATE users SET totp_aktif=true WHERE id=:i"), {"i": user_id})
         kodlar = _kurtarma_uret(s, user_id)
+    from pvquant.services.auth_service import oturum_onbellegi_dusur
+    oturum_onbellegi_dusur(user_id)   # Faz 0 P0-08 (20.11): kurulumu bitiren yönetici aynı işçide 60 sn «iki_adim_kurulmali» 403 almasın
     return {"kurtarma_kodlari": kodlar}
 
 
@@ -86,6 +88,8 @@ def kapat(user_id, kod: str) -> None:
         s.execute(text("UPDATE users SET totp_secret=NULL, totp_zarf=NULL, totp_son_adim=NULL, totp_aktif=false WHERE id=:i"),
                   {"i": user_id})
         s.execute(text("DELETE FROM kurtarma_kodlari WHERE user_id=:i"), {"i": user_id})
+    from pvquant.services.auth_service import oturum_onbellegi_dusur
+    oturum_onbellegi_dusur(user_id)   # Faz 0 P0-08 (20.11): kapatma da önbelleği düşürür (zorunlu politika varsa kapı hemen görsün)
 
 
 def kurtarma_yenile(user_id, kod: str) -> dict:
@@ -101,16 +105,28 @@ def kurtarma_yenile(user_id, kod: str) -> dict:
 def giris_dogrula(user_id, kod: str) -> bool:
     """Girişte çağrılır: TOTP kodu doğruysa True; değilse kurtarma kodlarını
     dener ve eşleşeni TÜKETİR. 2FA kapalıysa True (kapı yok)."""
+    return giris_dogrula_yontem(user_id, kod) is not None
+
+
+def kurtarma_kalan(user_id) -> int:
+    """Faz 0 P0-08 (20.11): kullanılmamış kurtarma kodu sayısı (uyarı ve denetim izi için)."""
+    with sistem_baglami() as s:
+        return int(s.execute(text("SELECT count(*) FROM kurtarma_kodlari WHERE user_id=:i AND kullanildi_at IS NULL"), {"i": user_id}).scalar() or 0)
+
+
+def giris_dogrula_yontem(user_id, kod: str) -> str | None:
+    """Faz 0 P0-08 (20.11): `giris_dogrula`nın yöntem döndüren çekirdeği — "yok" (2FA kapalı), "totp", "kurtarma" ya da None (başarısız).
+    Kurtarma koduyla giriş denetim izinde ayrışsın diye (eskiden bool: ikisi de «giris»)."""
     kod = _temiz(kod)
     with sistem_baglami() as s:
         row = s.execute(text("SELECT totp_secret, totp_zarf, totp_aktif, totp_son_adim FROM users WHERE id=:i"),
                         {"i": user_id}).first()
         sirr = _sir.oku(getattr(row, "totp_zarf", None), getattr(row, "totp_secret", None), f"users:{user_id}:totp") if row is not None else None
         if row is None or not row.totp_aktif or not sirr:
-            return True
+            return "yok"
         ok, adim = _sir.totp_dogrula(sirr, kod, getattr(row, "totp_son_adim", None))   # v2.570: aynı kod ikinci kez geçmez
         if ok and _adim_yaz(s, "users", user_id, adim):
-            return True
+            return "totp"
         # kurtarma kodu mu? (kısa devre yok — kullanılmamış her kodu dener)
         adaylar = s.execute(text(
             "SELECT id, kod_hash FROM kurtarma_kodlari "
@@ -120,8 +136,8 @@ def giris_dogrula(user_id, kod: str) -> bool:
             if ham and bcrypt.verify(ham, aday.kod_hash):
                 s.execute(text("UPDATE kurtarma_kodlari SET kullanildi_at=now() WHERE id=:k"),
                           {"k": aday.id})
-                return True
-    return False
+                return "kurtarma"
+    return None
 
 
 def yonetici_sifirla(tenant_id, user_id) -> bool:

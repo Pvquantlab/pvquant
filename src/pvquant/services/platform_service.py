@@ -12,11 +12,14 @@ parola, KİMSEYE gösterilmez) + 72 saatlik davet bağlantısı (parola_sifirlam
 Posta yapılandırılmamışsa bağlantı yanıtta döner ki operatör elden iletsin (bir kez görünür; denetim izine YAZILMAZ)."""
 from __future__ import annotations
 
+import base64
 import datetime as dt
+import hashlib
 import json as _json
 import os
 import secrets
 import time
+import uuid as _uuid
 
 import jwt
 import pyotp
@@ -45,11 +48,14 @@ class PlatformHata(ValueError):
 
 
 # ---------------- kimlik ----------------
-def _jeton(row, ilk: int | None = None) -> str:
-    """ilk: oturumun İLK giriş anı (epoch sn) — yenilemelerde taşınır; deps.platform_yetkisi MUTLAK_SAAT sonra 401 (25.10 O8)."""
-    return jwt.encode({"sub": str(row.id), "kapsam": "platform", "rol": row.rol, "sv": int(row.oturum_surumu),
-                       "ilk": int(ilk or time.time()),
-                       "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, auth_service._sir(), algorithm="HS256")
+def _jeton(row, ilk: int | None = None, yontem: str | None = None) -> str:
+    """ilk: oturumun İLK giriş anı (epoch sn) — yenilemelerde taşınır; deps.platform_yetkisi MUTLAK_SAAT sonra 401 (25.10 O8).
+    yontem (A3): "kurtarma" ise oturum kurtarma koduyla açıldı — hassas sahip işlemleri (yeniden_dogrula) bu oturumda 403; yenilemede taşınır."""
+    iddia = {"sub": str(row.id), "kapsam": "platform", "rol": row.rol, "sv": int(row.oturum_surumu),
+             "ilk": int(ilk or time.time()), "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}
+    if yontem:
+        iddia["yontem"] = yontem
+    return jwt.encode(iddia, auth_service._sir(), algorithm="HS256")
 
 
 _KUKLA_HASH = bcrypt.hash("kukla-" + "x" * 16)   # yalnız zamanlama eşitlemek için; hiçbir parolayla eşleşmez
@@ -68,19 +74,32 @@ def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
         dogru = bcrypt.verify(sifre or "", row.pw_hash)   # pasif hesapta da koşar (kısa devre 6 ms ↔ 280 ms varlığı ele veriyordu)
         if not row.aktif or not dogru:
             return None
+    yontem = None
+    kalan = None
     if row.totp_aktif:
         if not kod:
             return {"iki_adim_gerekli": True}
         sirr = _sir.oku(getattr(row, "totp_zarf", None), row.totp_secret, f"platform:{row.id}:totp")
         ok, adim = _sir.totp_dogrula(sirr, kod, getattr(row, "totp_son_adim", None))   # v2.570: tekrar koruması
-        if not ok:
-            return None
-        with sistem_baglami() as s:
-            if not _adim_yaz(s, row.id, adim):
+        if ok:
+            with sistem_baglami() as s:
+                if not _adim_yaz(s, row.id, adim):
+                    return None
+            yontem = "totp"
+        else:
+            # A3 (§22-R): parola DOĞRULANDIKTAN sonra kurtarma kodu — tek kullanım, atomik; başarısızsa 'hatalı' (hangi faktörün yanlış olduğu sızmaz)
+            kalan = kurtarma_tuket(str(row.id), kod)
+            if kalan is None:
                 return None
+            yontem = "kurtarma"
     with sistem_baglami() as s:
         s.execute(text("UPDATE platform_kullanicilar SET last_login=now() WHERE id=:i"), {"i": row.id})
-    return {"token": _jeton(row), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
+    y = {"token": _jeton(row, yontem=yontem), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif, "ikinci_adim": yontem}
+    if yontem == "kurtarma":
+        y["kurtarma_kalan"] = kalan
+        y["kurtarma_uyari"] = (f"Kurtarma koduyla girdiniz; {kalan} kod kaldı. Doğrulayıcıyı yeniden kurun ya da kodları yenileyin."
+                               if kalan <= KURTARMA_UYARI_ESIK else None)
+    return y
 
 
 def yeniden_dogrula(pid: str, sifre: str | None, kod: str | None) -> bool:
@@ -129,13 +148,13 @@ def _surum_artir(s, pid) -> None:
     oturum_onbellegi_dusur(pid)
 
 
-def oturum_yenile(pid: str, ilk: int | None = None) -> dict | None:
+def oturum_yenile(pid: str, ilk: int | None = None, yontem: str | None = None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text("SELECT id, email, rol, aktif, totp_aktif, oturum_surumu FROM platform_kullanicilar WHERE id=:i"),
                         {"i": str(pid)}).first()
     if row is None or not row.aktif:
         return None
-    return {"token": _jeton(row, ilk), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
+    return {"token": _jeton(row, ilk, yontem), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
 
 
 def ben(pid: str) -> dict | None:
@@ -144,7 +163,8 @@ def ben(pid: str) -> dict | None:
                       {"i": str(pid)}).first()
     return None if r is None else {"id": str(r.id), "email": r.email, "rol": r.rol, "totp_aktif": bool(r.totp_aktif),
                                    "son_giris": r.last_login.isoformat() if r.last_login else None,
-                                   "olusturma": r.created_at.isoformat()}
+                                   "olusturma": r.created_at.isoformat(),
+                                   "kalan_kurtarma": (kurtarma_kalan(str(r.id)) if r.totp_aktif else None)}   # A3
 
 
 def parola_degistir(pid: str, eski: str, yeni: str) -> None:
@@ -191,7 +211,9 @@ def iki_adim_dogrula(pid: str, kod: str) -> None:
         if not ok or not _adim_yaz(s, pid, adim):
             raise PlatformHata("kod doğrulanamadı (aynı kod ikinci kez kullanılamaz)")
         s.execute(text("UPDATE platform_kullanicilar SET totp_aktif=true WHERE id=:i"), {"i": str(pid)})
+        kodlar = _kurtarma_uret(s, str(pid))   # A3: kurulumla birlikte 10 kurtarma kodu (bir kez gösterilir)
     oturum_onbellegi_dusur(pid)   # kapı 60 sn beklemeden tam kapsamı açsın
+    return {"kurtarma_kodlari": kodlar}
 
 
 def parola_sifirla_cli(email: str, sifre: str) -> str:
@@ -205,6 +227,30 @@ def parola_sifirla_cli(email: str, sifre: str) -> str:
         raise PlatformHata("etkin hesap bulunamadı")
     oturum_onbellegi_dusur(str(pid))
     return str(pid)
+
+
+HESAP_SINIR_AD = "ygiris-hesap"   # R2: apps/api/yonetim.HESAP_SINIR_AD ile aynı dizgi (test pinler)
+
+
+def iki_adim_sifirla_cli(email: str) -> str:
+    """R2 (Faz 0 §24, 21.11) — kilitlenme çıkışı (sunucuda, denetimli): doğrulayıcı VE kurtarma kodları birlikte kaybolduğunda tek sahibin
+    2FA'sı sıfırlanır (sır, son adım, kodlar silinir), açık oturumlar düşer; parola AYNI kalır → sonraki girişte kurulum zorunlu.
+    Yalnız ETKİN hesap. Döner id. Hiçbir sır okunmaz/yazılmaz."""
+    with sistem_baglami() as s:
+        pid = s.execute(text("UPDATE platform_kullanicilar SET totp_secret=NULL, totp_zarf=NULL, totp_son_adim=NULL, totp_aktif=false, "
+                             "oturum_surumu = oturum_surumu + 1 WHERE email=:e AND aktif RETURNING id"), {"e": (email or "").strip().lower()}).scalar()
+        if pid is None:
+            raise PlatformHata("etkin hesap bulunamadı")
+        _kurtarma_sil(s, str(pid))
+    oturum_onbellegi_dusur(str(pid))
+    return str(pid)
+
+
+def kilit_ac_cli(email: str) -> int:
+    """R2 — hesap başına hız penceresini (10 başarısız/15 dk) sunucudan açar; silinen pencere satırı sayısını döner (0 = kilit yoktu).
+    Hesap varlığına bakmaz (var olmayan e-posta da sayılıyor olabilir)."""
+    from pvquant.services import kullanim_service
+    return kullanim_service.pencere_sil(kullanim_service.hesap_anahtari(HESAP_SINIR_AD, email))
 
 
 def _plan_dogrula(plan: str | None) -> None:
@@ -263,6 +309,8 @@ def operator_guncelle(pid: str, *, rol: str | None = None, aktif: bool | None = 
         s.execute(text("UPDATE platform_kullanicilar SET rol=COALESCE(:r, rol), aktif=COALESCE(:a, aktif)"
                        + (", totp_secret=NULL, totp_zarf=NULL, totp_son_adim=NULL, totp_aktif=false" if iki_adim_sifirla else "") + " WHERE id=:i"),
                   {"r": rol, "a": aktif, "i": str(pid)})
+        if iki_adim_sifirla:
+            _kurtarma_sil(s, str(pid))   # A3: sıfırlama kurtarma kodlarını da geçersiz kılar
         _surum_artir(s, pid)
     return True
 
@@ -535,3 +583,100 @@ def temsil_jetonu(aktor_id: str, tid: str) -> dict | None:
 def kiraci_durumu(tid: str) -> str | None:
     with sistem_baglami() as s:
         return s.execute(text("SELECT status FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": str(tid)}).scalar()
+
+
+# ---------------- A3 (Faz 0 C3-a, 21.11.2026; rapor §22-R): platform 2FA KURTARMA KODLARI ----------------
+KURTARMA_ADET = 10
+KURTARMA_UYARI_ESIK = 2
+_KURTARMA_ALFABE = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
+
+
+def kurtarma_normalize(kod: str | None) -> str | None:
+    """Tire/boşluk atılır, büyük harf; base32 alfabesi dışı ya da uzunluk ≠ 26 → None (TOTP 6 hanesi buraya hiç uymaz)."""
+    ham = "".join(ch for ch in (kod or "").upper() if ch not in "- \t")
+    return ham if len(ham) == 26 and set(ham) <= _KURTARMA_ALFABE else None
+
+
+def _kurtarma_ozet(ham: str) -> str:
+    return hashlib.sha256(ham.encode("ascii")).hexdigest()   # 128 bit rastgele sır → SHA-256 yeterli; tek indeksli sorgu (bcrypt: 10 aday × ~100 ms + DoS yüzeyi)
+
+
+def _kurtarma_tablo_var(s) -> bool:
+    """Göç v2642 uygulanmamış/geri alınmışsa tablo yoktur. Aynı işlemde to_regclass ile bakılır (istisna fırlatmaz → işlem iptal olmaz;
+    QA A3 göç geri dönüşü denemesi 21.11: ProgrammingError kurulumun totp_aktif yazımını da geri alıyordu)."""
+    return s.execute(text("SELECT to_regclass('platform_kurtarma_kodlari')")).scalar() is not None
+
+
+def _kurtarma_uret(s, pid: str) -> list[str]:
+    """10 × 128 bit (`secrets.token_bytes(16)`) → base32 26 karakter, 5'li gruplar (gösterim). Eski grup silinir. Düz kod yalnız dönüş değerinde.
+    Tablo yokken (göç geri alınmış) [] döner: TOTP kurulumu tamamlanır, kurtarma dalı dürüstçe kapalı kalır."""
+    if not _kurtarma_tablo_var(s):
+        return []
+    s.execute(text("DELETE FROM platform_kurtarma_kodlari WHERE platform_user_id = CAST(:p AS uuid)"), {"p": pid})
+    grup = str(_uuid.uuid4())
+    kodlar = []
+    for _ in range(KURTARMA_ADET):
+        ham = base64.b32encode(secrets.token_bytes(16)).decode("ascii").rstrip("=")   # 26 karakter
+        s.execute(text("INSERT INTO platform_kurtarma_kodlari(platform_user_id, kod_hash, grup_id) VALUES(CAST(:p AS uuid), :h, CAST(:g AS uuid))"),
+                  {"p": pid, "h": _kurtarma_ozet(ham), "g": grup})
+        kodlar.append("-".join(ham[i:i + 5] for i in range(0, 26, 5)))
+    return kodlar
+
+
+def _kurtarma_sil(s, pid: str) -> None:
+    if not _kurtarma_tablo_var(s):   # tablo yok → silinecek kod da yok
+        return
+    s.execute(text("DELETE FROM platform_kurtarma_kodlari WHERE platform_user_id = CAST(:p AS uuid)"), {"p": pid})
+
+
+def kurtarma_kalan(pid: str) -> int:
+    try:
+        with sistem_baglami() as s:
+            return int(s.execute(text("SELECT count(*) FROM platform_kurtarma_kodlari WHERE platform_user_id = CAST(:p AS uuid) AND kullanildi_at IS NULL"),
+                                 {"p": pid}).scalar() or 0)
+    except Exception:   # tablo yoksa (göç geri alınmış) 0 — TOTP yolu etkilenmez
+        return 0
+
+
+def kurtarma_tuket(pid: str, kod: str | None) -> int | None:
+    """Parola doğrulandıktan SONRA çağrılır. Kod normalize edilip SHA-256 ile aranır; atomik UPDATE (kullanildi_at IS NULL) → yarışta yalnız biri
+    geçer (tekrar koruması). Başarı: kalan kullanılmamış kod sayısı; başarısızlık/tablo yok: None. Düz kod hiçbir yere yazılmaz."""
+    ham = kurtarma_normalize(kod)
+    if ham is None:
+        return None
+    try:
+        with sistem_baglami() as s:
+            r = s.execute(text("UPDATE platform_kurtarma_kodlari SET kullanildi_at = now() WHERE platform_user_id = CAST(:p AS uuid) AND kod_hash = :h "
+                               "AND kullanildi_at IS NULL RETURNING id"), {"p": pid, "h": _kurtarma_ozet(ham)}).first()
+            if r is None:
+                return None
+            kalan = int(s.execute(text("SELECT count(*) FROM platform_kurtarma_kodlari WHERE platform_user_id = CAST(:p AS uuid) AND kullanildi_at IS NULL"),
+                                  {"p": pid}).scalar() or 0)
+            _surum_artir_yok = None  # oturum sürümü değişmez; kurtarma girişi diğer oturumları düşürmez (kullanıcı kararı: yeniden kurulumda düşer)
+            return kalan
+    except Exception:   # tablo yok (göç geri alınmış): kurtarma yolu dürüstçe kapalı
+        return None
+
+
+def kurtarma_yenile(pid: str, kod: str) -> list[str]:
+    """Rotasyon: geçerli TOTP kodu ŞART (kurtarma koduyla yenileme yok); eski grup silinir, 10 yeni kod döner."""
+    with sistem_baglami() as s:
+        r = s.execute(text("SELECT totp_secret, totp_zarf, totp_son_adim, totp_aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
+        if r is None or not r.totp_aktif:
+            raise PlatformHata("iki adımlı doğrulama açık değil")
+        sirr = _sir.oku(getattr(r, "totp_zarf", None), getattr(r, "totp_secret", None), f"platform:{pid}:totp")
+        ok, adim = _sir.totp_dogrula(sirr, kod, getattr(r, "totp_son_adim", None))
+        if not ok or not _adim_yaz(s, pid, adim):
+            raise PlatformHata("kod doğrulanamadı (aynı kod ikinci kez kullanılamaz)")
+        return _kurtarma_uret(s, str(pid))
+
+
+def iki_adim_yeniden_kur(pid: str) -> dict:
+    """Kilitlenme çıkışı (A3): kurtarma oturumunda (ya da TOTP ile yeniden doğrulanmış sahipte) eski sır ve kodlar silinir, yeni kurulum
+    başlar (`iki_adim_baslat` payload'ı). Açık oturumlar düşer (sürüm artar) — ele geçirilmiş oturum yeni sırrı kuramasın."""
+    with sistem_baglami() as s:
+        s.execute(text("UPDATE platform_kullanicilar SET totp_secret=NULL, totp_zarf=NULL, totp_son_adim=NULL, totp_aktif=false WHERE id=:i"), {"i": str(pid)})
+        _kurtarma_sil(s, str(pid))
+        _surum_artir(s, pid)
+    oturum_onbellegi_dusur(pid)
+    return iki_adim_baslat(pid)

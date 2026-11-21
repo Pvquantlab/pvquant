@@ -136,8 +136,10 @@ def _santral_sinifla(r, sg: dict, simdi: dt.datetime, pencere: dict, takvim: dic
     bil = sg["bildirim"].get(pid)
     al = sg["alarm"].get(pid) or {}
     ht = sg["hata"].get(pid)
+    vsinif = ds.santral_sinifi(pj)   # Faz 0 P0-01 (C1): santral türü / veri türü; tazelik yalnız operasyonelde
     boyut = {
-        "veri": ds.veri_durumu(v.get("son_olcum"), v.get("son_alim"), simdi, kapsama_saat_7g=(int(v["n7"]) if v else 0)),
+        "veri": (ds.veri_durumu(v.get("son_olcum"), v.get("son_alim"), simdi, kapsama_saat_7g=(int(v["n7"]) if v else 0)) if vsinif["tazelik_izlenir"]
+                 else ds.veri_durumu_uygulanmiyor(vsinif, v.get("son_olcum"), v.get("son_alim"), simdi, kapsama_saat_7g=(int(v["n7"]) if v else 0))),   # Faz 0 P0-01
         "tahmin": ds.tahmin_durumu(k["run_at"] if k else None, _yarini_kapsar(sg["kapsam"].get(k["run_id"]) if k else None, r["tz"], simdi), simdi,
                                    son_olcum=v.get("son_olcum"), veri_kalitesi=(k["veri_kalitesi_json"] if k else None), son_dogrulama=sg["dogrulama"].get(pid)),
         "kgup": ds.kgup_durumu(seg["kgup_yukumlu"], sg["kesim"].get(pid), (sur.get("pvquant") or {}).get("surum"), (sur.get("musteri") or {}).get("son"), pencere,

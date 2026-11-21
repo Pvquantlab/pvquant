@@ -49,8 +49,9 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
   const git_ = (s: string) => git(s as SayfaId);
   return (
     <Sayfa baslik="Genel bakış" alt={`${o.santral.ad}: bugünkü üretim, yarının programı, açık riskler ve finansal durum. Her kart ayrıntı sayfasına götürür.`}
-      sag={<span className="dugme-sira"><Rozet durum={o.genel.durum} etiket={o.genel.etiket} />
+      sag={<span className="dugme-sira">{o.santral.santral_turu === "sanal_test" && <span className="rozet rozet-notr" title="Sanal test santralı: ölçüm tazeliği izlenmez; tahmin ve karne hesapları değişmez">{o.santral.santral_turu_etiketi}</span>}{o.santral.veri_turu && o.santral.veri_turu !== "canli" && <span className="rozet rozet-kucuk rozet-notr" title="Veri türü beyanı (yalnız etiket)">{o.santral.veri_turu_etiketi}</span>}<Rozet durum={o.genel.durum} etiket={o.genel.etiket} />
         <span className="cip"><Meta items={[`son kontrol ${saatTr(o.zaman)}`, `${gucTr(o.santral.kapasite_kwp)} kWp`]} /></span></span>}>
+      {o.santral.tz_uyari && <p className="t-ikincil" style={{ color: "var(--uyari-metin)", margin: "0 0 12px" }}>{o.santral.tz_uyari.metin}</p>}   {/* Faz 0 P0-02 (20.11): koordinat–dilim uyumsuzluğu */}
       <div className="ızgara-genel">
         {/* 1 — bugün */}
         <Kart baslik={KART_BASLIKLARI[0]} alt={gunTr(b.donem)} sag={<Rozet durum={b.durum} etiket={b.etiket} />}>

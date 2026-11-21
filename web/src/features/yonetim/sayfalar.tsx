@@ -1,7 +1,7 @@
 import { SEGMENTLER } from "../../api/types";
 import { useEffect, useState } from "react";
 import { hesapDurumu, tazelik, eylemAdi, SOZLUK, segmentKisa } from "../../lib/sozluk";
-import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type HizmetSagligi, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben, type AlarmOzet } from "../../api/yonetim";
+import { yonetim, oturumYontemi, zamanTr, yasTr, type Plan, type SistemOzet, type HizmetSagligi, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben, type AlarmOzet } from "../../api/yonetim";
 import { HizmetDurumu, Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
@@ -21,12 +21,12 @@ function DurumRozet({ durum }: { durum: string }) {
 const ROL_AD: Record<string, string> = { admin: "Yönetici", editor: "Editör", viewer: "İzleyici", sahip: "Sahip", operator: "Operatör" };
 
 /** Bir kez gösterilen sır (geçici parola, davet bağlantısı): kapatınca bir daha getirilemez. */
-function TekSeferlik({ baslik, deger, not }: { baslik: string; deger: string; not?: string }) {
+function TekSeferlik({ baslik, deger, not, liste }: { baslik: string; deger: string; not?: string; liste?: boolean }) {
   const [kopya, setKopya] = useState("");
   return (
     <div className="plat-tek-seferlik" role="status">
       <div className="etiket-ust">{baslik}</div>
-      <code className="plat-anahtar plat-anahtar--kucuk">{deger}</code>
+      <code className={`plat-anahtar plat-anahtar--kucuk${liste ? " plat-anahtar--liste" : ""}`}>{deger}</code>
       <div className="dugme-sira" style={{ marginTop: 8 }}>
         <button className="dugme kucuk" onClick={() => { navigator.clipboard?.writeText(deger).then(() => setKopya("kopyalandı"), () => setKopya("kopyalanamadı")); }}>Kopyala</button>
         {kopya && <span className="cip">{kopya}</span>}
@@ -400,7 +400,7 @@ export function Operatorler({ ben }: { ben: Ben | null }) {
 }
 
 // ---------------- Hesabım ----------------
-export function Hesap({ ben }: { ben: Ben | null }) {
+export function Hesap({ ben, onBen, onCikis }: { ben: Ben | null; onBen?: () => void; onCikis?: () => void }) {
   const [eski, setEski] = useState(""); const [yeni, setYeni] = useState(""); const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
   return (
     <Sayfa baslik="Hesabım" alt={ben ? `${ben.email}, ${ben.rol === "sahip" ? "sahip" : "operatör"}; 2FA ${ben.totp_aktif ? "açık" : "kapalı"}` : undefined}>
@@ -413,9 +413,74 @@ export function Hesap({ ben }: { ben: Ben | null }) {
         </form>
         <Hata m={hata} />{mesaj && <p className="giris-bilgi">{mesaj}</p>}
       </Kart>
-      <Kart baslik="İki adımlı doğrulama" alt="Platformda zorunludur">
-        <p className="soluk" style={{ margin: 0 }}>{ben?.totp_aktif ? "Açık. Telefonunuzu kaybederseniz başka bir sahip sıfırlar; sonra yeniden kurarsınız." : "Kapalı: bu durumda panel açılmamalıydı; çıkıp yeniden girin."}</p>
-      </Kart>
+      <IkiAdimKarti ben={ben} onBen={onBen} onCikis={onCikis} />
     </Sayfa>
+  );
+}
+
+/** Faz 0 §24 #2 (21.11.2026) — platform sahibi/operatörü kurtarma kodu yönetimi; A3 uçları yeniden kullanılır:
+ *  kalan kod sayısı `ben.kalan_kurtarma` (uçtan, arayüz saymaz), rotasyon `POST /iki-adim/kurtarma-yenile` (TOTP kodu ŞART, sunucu doğrular),
+ *  yeniden kurulum `POST /iki-adim/yeniden-kur` (TOTP oturumunda parola + TOTP; kurtarma oturumunda serbest) → sunucu açık oturumları düşürür,
+ *  arayüz çıkış yapar, yeniden girişte mevcut IkiAdimKurulum ekranı yeni anahtarı ve kodları BİR KEZ gösterir.
+ *  Kodlar yalnız React state'inde; depolama/günlük yok (TekSeferlik notu). Kurtarma oturumu ipucu jetonun `yontem` iddiasından. */
+function IkiAdimKarti({ ben, onBen, onCikis }: { ben: Ben | null; onBen?: () => void; onCikis?: () => void }) {
+  const [kip, setKip] = useState<"bos" | "yenile" | "yeniden">("bos");
+  const [kod, setKod] = useState(""); const [sifre, setSifre] = useState("");
+  const [kodlar, setKodlar] = useState<string[] | null>(null);
+  const [hata, setHata] = useState<string | null>(null); const [bekliyor, setBekliyor] = useState(false);
+  const kurtarmaOturumu = oturumYontemi() === "kurtarma";
+  const kalan = ben?.kalan_kurtarma ?? null;
+  const kapat = () => { setKip("bos"); setKod(""); setSifre(""); setHata(null); };
+  const yenile = async () => {
+    setHata(null); setBekliyor(true);
+    try { const r = await yonetim.ikiAdimKurtarmaYenile(kod); setKodlar(r.kurtarma_kodlari); kapat(); } catch (e) { setHata(mesajCikar(e)); }
+    setBekliyor(false);
+  };
+  const yenidenKur = async () => {
+    setHata(null); setBekliyor(true);
+    try { await yonetim.ikiAdimYenidenKur(kurtarmaOturumu ? {} : { sifre, kod }); onCikis?.(); return; } catch (e) { setHata(mesajCikar(e)); }
+    setBekliyor(false);
+  };
+  if (!ben?.totp_aktif) {
+    return <Kart baslik="İki adımlı doğrulama" alt="Platformda zorunludur"><p className="soluk" style={{ margin: 0 }}>Kapalı: bu durumda panel açılmamalıydı; çıkıp yeniden girin.</p></Kart>;
+  }
+  const kalanRozet = kalan === null ? null
+    : kalan === 0 ? <span className="rozet rozet-uyari">kurtarma kodu kalmadı</span>
+    : kalan <= 2 ? <span className="rozet rozet-uyari">{kalan} kurtarma kodu kaldı</span>
+    : <span className="rozet rozet-ok">{kalan} kurtarma kodu</span>;
+  return (
+    <Kart baslik="İki adımlı doğrulama" alt="Açık; kurtarma kodları doğrulayıcıya erişemediğinizde girişi açar" sag={kalanRozet}>
+      {kurtarmaOturumu && <p className="giris-yardim"><b>Bu oturumu kurtarma koduyla açtınız.</b> Doğrulayıcıyı yeniden kurmanız önerilir; bu oturumda kod yenileme ve sahip açma gibi hassas işlemler kapalıdır.</p>}
+      {kodlar ? (
+        <TekSeferlik liste baslik="Yeni kurtarma kodlarınız" deger={kodlar.join("\n")}
+          not="Eski kodlar geçersiz. Her biri bir kez giriş sağlar; parola yöneticisine kaydedin. Yalnız bu ekranda görünür; denetim izine ve tarayıcı depolamasına yazılmaz." />
+      ) : null}
+      {kodlar ? (
+        <div className="dugme-sira"><button className="dugme kucuk" onClick={() => { setKodlar(null); onBen?.(); }}>Kodları kaydettim, kapat</button></div>
+      ) : kip === "bos" ? (
+        <div className="dugme-sira">
+          {!kurtarmaOturumu && <button className="dugme kucuk" onClick={() => setKip("yenile")}>Kurtarma kodlarını yenile</button>}
+          <button className="dugme kucuk" onClick={() => setKip("yeniden")}>Doğrulayıcıyı yeniden kur</button>
+        </div>
+      ) : kip === "yenile" ? (
+        <form className="form-izgara" style={{ maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); void yenile(); }}>
+          <label className="girdi-etiket">Uygulamadaki 6 haneli kod<input className="girdi" inputMode="numeric" autoComplete="one-time-code" value={kod} onChange={(e) => setKod(e.target.value)} required autoFocus /></label>
+          <button className="dugme" type="submit" disabled={bekliyor}>{bekliyor ? "Üretiliyor…" : "Yeni kodları üret"}</button>
+          <button className="dugme" type="button" onClick={kapat} disabled={bekliyor}>Vazgeç</button>
+          <p className="uc-not">Mevcut kodların tümü geçersiz olur; yeni 10 kod bir kez gösterilir.</p>
+        </form>
+      ) : (
+        <form className="form-izgara" style={{ maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); void yenidenKur(); }}>
+          {!kurtarmaOturumu && (<>
+            <label className="girdi-etiket">Parolanız<input className="girdi" type="password" autoComplete="current-password" value={sifre} onChange={(e) => setSifre(e.target.value)} required autoFocus /></label>
+            <label className="girdi-etiket">Uygulamadaki 6 haneli kod<input className="girdi" inputMode="numeric" autoComplete="one-time-code" value={kod} onChange={(e) => setKod(e.target.value)} required /></label>
+          </>)}
+          <button className="dugme dugme-tehlike" type="submit" disabled={bekliyor}>{bekliyor ? "Sıfırlanıyor…" : "Doğrulayıcıyı yeniden kur"}</button>
+          <button className="dugme" type="button" onClick={kapat} disabled={bekliyor}>Vazgeç</button>
+          <p className="uc-not">Mevcut doğrulayıcı ve tüm kurtarma kodları silinir, açık oturumlar kapanır. Parolanızla yeniden girince yeni anahtar ve kodlar bir kez gösterilir.</p>
+        </form>
+      )}
+      <Hata m={hata} />
+    </Kart>
   );
 }

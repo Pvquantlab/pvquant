@@ -13,12 +13,16 @@ from sqlalchemy import text
 from pvquant.db import sistem_baglami
 
 KAPSAMLAR = ("platform", "musteri", "dis_api")   # v2.602 (F4-H, M1): dış API anahtarıyla yapılan yazmalar üçüncü kapsam (göç v2602 CHECK)
-EYLEMLER_PLATFORM = ("giris", "giris_basarisiz", "kiraci_olustur", "kiraci_guncelle", "kullanici_guncelle",
+EYLEMLER_PLATFORM = ("giris", "giris_basarisiz", "abonelik_kota_asimi",   # Faz 0 P0-07 (20.11)
+                     "kiraci_olustur", "kiraci_guncelle", "kullanici_guncelle",
                      "parola_sifirlama_gonder", "iki_adim_sifirla", "basvuru_okundu", "operator_ekle", "operator_guncelle",
-                     "iki_adim_ac", "yekdem_fiyat", "kur_doldur",   # v2.520 (P5a): aylık YEKDEM ilanı girişi, kur arşivi doldurma
+                     "iki_adim_ac", "iki_adim_kurtarma_yenile", "iki_adim_yeniden_kur",   # A3 (21.11): kurtarma kodu rotasyonu / yeniden kurulum
+                     "parola_sifirla_cli", "iki_adim_sifirla_cli", "kilit_ac_cli", "cli_hata",   # sunucu CLI çıkışları (R2, 21.11): belgelenmiş eylem adları; başarısız girişim izi
+                     "yekdem_fiyat", "kur_doldur",   # v2.520 (P5a): aylık YEKDEM ilanı girişi, kur arşivi doldurma
                      "parola_degistir", "denetim_temizlik")   # v2.602 (F4-H): personel parolası; saklama temizliği kendi izini bırakır
 EYLEMLER_DIS_API = ("uretim_dosyasi_itme",)   # v2.602 (F4-H): anahtarla itme; aktor_id = anahtar kimliği
-EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sifirla", "anahtar_uret", "anahtar_iptal",
+EYLEMLER_MUSTERI = ("giris", "giris_basarisiz", "santral_sinifi",   # Faz 0 (20.11): başarısız giriş izi (F9-E03), veri sınıfı ayarı
+                    "takim_ekle", "takim_guncelle", "takim_iki_adim_sifirla", "anahtar_uret", "anahtar_iptal",
                     "webhook_ekle", "webhook_sil", "santral_arsivle", "santral_geri_al", "scada_sil", "parola_degistir",
                     "kgup_indir", "eak_indir", "kgup_bildirilen_yukle", "kgup_sablon_ogren", "kgup_sablon_sifirla",
                     "santral_segment", "eak_ayar", "sensor_ayar", "veri_yolu_ayar", "veri_yolu_sinama", "santral_tarihler",   # v2.518 (P3a): künye tarihleri; v2.542 sensör envanteri

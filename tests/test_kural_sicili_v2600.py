@@ -48,7 +48,14 @@ def test_sicil_kayitlari_tutarli_ve_kunyeli():
 def test_motor_sicil_ile_birebir_gun_gun():
     """kurallar.py motoru değer ve dayanağı sicilden okur: 2015–2027 her gün, her segment×koşul için aynı."""
     g = date(2015, 7, 1); son = date(2027, 6, 30)
-    while g <= son:
+    # Faz 0 P0-05 (20.11): 37 günlük adım kısa AFL halkalarını (< 37 gün) atlayabiliyordu; her kaydın yürürlük başı ve bitiş−1 günü de sınanır
+    sinir_gunleri = sorted({d for k in ks.kayitlar() for d in (k.yururluk_bas, (k.yururluk_bit - timedelta(days=1)) if k.yururluk_bit else None) if d and date(2015, 7, 1) <= d <= son})
+    adimlar = []
+    while g <= son:   # 37 günlük adımlar + sicil sınır günleri (Faz 0 P0-05; QA H-1: iteratörlü sürüm sınır günlerine uğramıyordu)
+        adimlar.append(g); g += timedelta(days=37)
+    gunler_hepsi = sorted(set(adimlar) | set(sinir_gunleri))
+    assert all(d in gunler_hepsi for d in sinir_gunleri) and len(gunler_hepsi) > len(adimlar)
+    for g in gunler_hepsi:
         afl_k = ks.ara("afl", g); assert kr.afl(g) == afl_k.deger and kr.afl_dayanak(g) == afl_k.gerekce
         e = kr.edt_kurali(g); r = ks.ara("edt.rejim", g); t = ks.ara("edt.toplama", g)
         assert e.rejim == r.rejim and e.k == r.deger["k"] and e.l == r.deger["l"] and e.toplama == t.deger and e.surum.startswith(r.surum)
@@ -64,7 +71,6 @@ def test_motor_sicil_ile_birebir_gun_gun():
                     if seg == "lisanssiz_iletim" and luy and ks.ara("kupst", g, seg, "luy_istisna"): kosul = "luy_istisna"
                     k = ks.ara("kupst", g, seg, kosul) or [x for x in ks.kayitlar("kupst") if x.segmentler and seg in x.segmentler and x.kosul is None][0]
                     assert (kp.m, kp.n, kp.n_ariza, kp.ariza_esigi, kp.surum, kp.dayanak) == (k.deger["m"], k.deger["n"], k.deger["n_ariza"], k.deger["ariza_esigi"], k.surum, k.gerekce), (g, seg, portfoy, luy)
-        g += timedelta(days=37)   # 2015–2027 arası ~120 gün + sınır günleri aşağıda
     for g in (date(2019, 12, 31), date(2020, 1, 1), date(2020, 7, 31), date(2020, 8, 1), date(2023, 1, 31), date(2023, 2, 1), date(2024, 12, 31), date(2025, 1, 1),
               date(2025, 12, 31), date(2026, 1, 1), date(2026, 10, 18), date(2026, 10, 19), date(2026, 10, 31), date(2026, 11, 1), date(2026, 12, 31), date(2027, 1, 1)):
         k = kr.kural(g, "lisansli_serbest")

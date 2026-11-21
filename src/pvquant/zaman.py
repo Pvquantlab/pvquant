@@ -11,6 +11,7 @@ SAF: DB yok, ağ yok. Çekirdek (pipeline/models/ext/tahmin) bu modülü içe ak
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -82,3 +83,29 @@ def saat_damgasi_araliga(index: pd.DatetimeIndex, damga_tipi: str, adim_dk: int)
 def simdi_utc() -> datetime:
     """Tek «şimdi» kaynağı (testlerde yamalanır)."""
     return datetime.now(timezone.utc)
+
+
+def tz_koordinat_uyumu(lon, tz: str, gun: date | None = None, esik_saat: float = 3.0) -> dict | None:
+    """Faz 0 P0-02 (20.11.2026). SAF. Kayıtlı dilimin STANDART saat ofseti (ocak/temmuz ofsetlerinin küçüğü; yaz saati etkisiz) ile boylamdan beklenen güneş saati
+    ofseti (lon/15) `esik_saat`ten çok ayrışıyorsa uyarı sözlüğü, yoksa None. Yalnız beyan uyarısıdır: tahmin geometrisi UTC'de koşar ve
+    piyasa kesimi İstanbul'dur (ikisi de etkilenmez); yanlış dilim günlük toplamları ve «bugün» kartlarını yerel güneş gününü bölerek bozar.
+    Hiçbir ölçüm kaydırılmaz."""
+    try:
+        zi = ZoneInfo(tz)
+        lon_f = float(lon)
+    except Exception:   # bilinmeyen dilim/boylam: uyarı üretilmez (sayı uydurulmaz)
+        return None
+    import math
+    if not math.isfinite(lon_f) or abs(lon_f) > 180:   # inceleme: NaN/sonsuz/aralık dışı boylam JSON'a sızmasın
+        return None
+    g = gun or date.today()
+    ocak, temmuz = (datetime(g.year, ay, 15, 12, tzinfo=zi).utcoffset().total_seconds() / 3600.0 for ay in (1, 7))
+    ofset = min(ocak, temmuz)   # standart saat = işaretli küçük ofset: yaz saati her yerde UTC'ye göre +1 (Denver −7/−6 → −7, Sydney +10/+11 → +10; QA Z-1)
+    beklenen = lon_f / 15.0
+    fark = ((ofset - beklenen + 12.0) % 24.0) - 12.0   # dairesel fark: tarih çizgisi dilimleri (UTC+14 / −10) yanlış pozitif vermesin
+    if abs(fark) <= esik_saat:
+        return None
+    return {"tz": tz, "tz_ofset_saat": round(ofset, 1), "boylam_ofset_saat": round(beklenen, 1), "fark_saat": round(fark, 1),
+            "metin": (f"Kayıtlı saat dilimi {tz} (UTC{ofset:+.0f}) santralın boylamıyla ({lon_f:.1f}°, yaklaşık UTC{beklenen:+.0f}) uyuşmuyor: "
+                      f"günlük toplamlar ve «bugün» kartları yerel güneş gününü bölebilir. Tahmin geometrisi ve piyasa kesimi etkilenmez; "
+                      f"dilimi düzeltmek ölçümleri kaydırmaz.")}

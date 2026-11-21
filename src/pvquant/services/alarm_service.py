@@ -355,7 +355,8 @@ def tara(plant: dict) -> None:
         son = s.execute(text(
             "SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p"),
             {"p": pid}).scalar()
-        if son is not None:
+        from pvquant.services.durum_sozlugu import santral_sinifi as _santral_sinifi
+        if son is not None and _santral_sinifi(plant.get("params_json"))["tazelik_izlenir"]:   # Faz 0 P0-01/P0-06 (21.11): tarihsel/demo santralda veri gecikmesi üretim arızası değildir
             esik = s.execute(text("SELECT now()-interval '48 hours'")).scalar()
             if son < esik:
                 _kaydet_ve_gonder(s, tid, pid, "veri_gelmedi",

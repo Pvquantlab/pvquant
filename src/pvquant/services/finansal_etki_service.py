@@ -465,7 +465,9 @@ def uzlastirma_bilesenleri_saf(donem: dict, izgara: pd.DatetimeIndex, pv: pd.Dat
     if tasir is False:
         edt.toplanir = False
         edt.notlar.append(f"Bu segmentte enerji dengesizlik tutarını {seg.get('dengesizlik_sahibi') or 'toplayıcı/GTŞ'} taşır; santral hesabına girmez, bilgi amaçlıdır.")
-    elif segment is None:
+    elif segment is None:   # Faz 0 P0-03 (20.11): lisanslı VARSAYIMIYLA hesaplanan tutar «hesaplanan» değil SENARYO (toplam en_zayif ile senaryo olur)
+        if not bos:   # inceleme: veri yokken bileşen «eksik» kalır, senaryo yazılmaz
+            edt.nitelik = fn.Nitelik.SENARYO
         edt.notlar.append(NOT_SEGMENT_YOK)
     # --- KÜPST
     if not segment:   # v2.641 (Santralim denetimi Parti 2): dengesizlik sayfası «segment seçilmedi, hesaplanmadı» derken burada lisanslı varsayılıp hesaplanıyordu (None ve boş dize)

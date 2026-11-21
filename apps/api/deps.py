@@ -51,7 +51,7 @@ def gecerli_kullanici(request: Request, authorization: str = Header(...)):
 
 # 2FA kurulmadan açık kalan platform uçları: kim olduğunu görme, kurulum, parola, oturum tazeleme
 PLATFORM_KURULUM_YOLLARI = frozenset({"/v1/yonetim/ben", "/v1/yonetim/iki-adim/baslat", "/v1/yonetim/iki-adim/dogrula",
-                                      "/v1/yonetim/parola", "/v1/yonetim/oturum/yenile"})
+                                      "/v1/yonetim/parola", "/v1/yonetim/oturum/yenile", "/v1/yonetim/iki-adim/yeniden-kur"})   # A3: yeniden kurulum
 
 
 PLATFORM_MUTLAK_SAAT = 12   # 25.10 O8: ilk girişten itibaren mutlak oturum sınırı (yenileme bunu uzatamaz)
@@ -69,6 +69,8 @@ def platform_yetkisi(rol: str | None = None):
             raise HTTPException(401, "Gecersiz/suresi dolmus token")
         if c.get("kapsam") != "platform":
             raise HTTPException(403, "platform jetonu gerekli")
+        if request.url.path in PLATFORM_KURULUM_YOLLARI:   # R2 QA itiraz 2 (21.11): kurulum/sıfırlama uçlarında 60 sn önbellek atlanır —
+            platform_service.oturum_onbellegi_dusur(c["sub"])   # CLI (ayrı süreç) sürümü artırmışsa eski jeton anında düşer
         d = platform_service.oturum_durumu(c["sub"])
         if d is None or not d["aktif"]:
             raise HTTPException(401, "hesap etkin değil")

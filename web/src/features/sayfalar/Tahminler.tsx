@@ -222,7 +222,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
       <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
         sag={<span className="cip">{nc === undefined ? "hesaplanıyor" : nc?.durum === "ok" ? <Meta items={[`düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)}`, `son ${sayiTr(nc.n_saat)} saat`]} /> : nc?.durum === "gece" ? "gece: beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>
         {nc === undefined ? <YerTutucu yukseklik={322} />
-         : !nc || nc.durum === "scada_bayat" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
+         : !nc || nc.durum === "scada_bayat" || nc.durum === "sanal_test" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
           /* 23.10 altıncı tur: boş durum iki kademe — API'nin nedeni başlık, ne yaptığı açıklama */
           <div className="bos-durum">
             <div className="bos-bas">

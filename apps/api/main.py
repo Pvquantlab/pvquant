@@ -377,14 +377,25 @@ def login(request: Request, g: GirisIstek):
     try:
         r = auth_service.giris(g.email, g.sifre, g.kod)
     except auth_service.KiraciAskida:
+        _denetim.kaydet("musteri", "giris_basarisiz", aktor_eposta=g.email.lower(), tenant_id=auth_service.eposta_kiracisi(g.email),
+                        ip=request.client.host if request.client else None, ayrinti={"neden": "kiraci_askida"})   # Faz 0 (21.11, QA notu): askıdaki kiracı denemesi de izde
         raise HTTPException(403, "hesap askıda")   # 24.10 Faz 0: kiracı status != active
     if r is None:
+        # Faz 0 P0-08 (20.11, F9-E03): müşteri başarısız girişi de izlenir (parola/kod yazılmaz; yanıt değişmez: «hatali» 401)
+        _denetim.kaydet("musteri", "giris_basarisiz", aktor_eposta=g.email.lower(), tenant_id=auth_service.eposta_kiracisi(g.email),
+                        ip=request.client.host if request.client else None, ayrinti={"ikinci_adim_denendi": bool(g.kod)})
         raise HTTPException(401, "hatali")
     # v2.338: parola doğru ama 2FA kodu gerekiyor — token YOK, istemci kod ister.
     # 200 döner (401 değil): "yanlış parola" ile "kod gerekli" ayrışsın.
     if r.get("token"):   # 24.10 Faz 1: başarılı giriş denetim izine (parola/jeton yazılmaz)
+        ayrinti = None
+        if r.get("ikinci_adim") == "kurtarma":   # Faz 0 P0-08: kurtarma koduyla giriş izde ayrışır + kalan sayısı
+            from pvquant.services import iki_adim_service as _ia
+            ayrinti = {"ikinci_adim": "kurtarma", "kurtarma_kalan": _ia.kurtarma_kalan(r["user_id"])}
+        elif r.get("ikinci_adim") == "totp":
+            ayrinti = {"ikinci_adim": "totp"}
         _denetim.kaydet("musteri", "giris", aktor_id=r.get("user_id"), aktor_eposta=g.email.lower(),
-                        tenant_id=r.get("tenant_id"), ip=request.client.host if request.client else None)
+                        tenant_id=r.get("tenant_id"), ip=request.client.host if request.client else None, ayrinti=ayrinti)
     return r
 
 
@@ -1906,6 +1917,36 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
     _ayar_izi("santral_segment", claims, plant_id, eski_pj, pj, ek={"istek": dict(anahtarlar)})   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi", "depolama_gucu_mw", "depolama_kapasite_mwh", "depolama_konfigurasyon", "depolama_uevcb", "depolama_kabul_tarihi", "depolama_butunlesik")}, **dengesizlik_service.segment_bilgisi(pj),
             "depolama": dengesizlik_service.segment_bilgisi(pj)["depolama"]}   # v2.543 (P9)
+
+
+class SantralSinifiIstek(BaseModel):
+    santral_turu: str | None = None   # operasyonel | sanal_test
+    veri_turu: str | None = None      # canli | tarihsel_arsiv | sentetik | yok
+
+
+@app.put("/v1/plants/{plant_id}/santral-sinifi")
+def santral_sinifi_ayarla(plant_id: str, p: SantralSinifiIstek, claims=Depends(yazma_yetkisi())):
+    """Faz 0 P0-01 (21.11.2026, karar C1): santral TÜRÜ (operasyonel | sanal test) ve VERİ TÜRÜ (canlı | tarihsel arşiv | sentetik | yok) beyanı.
+    Sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; veri türü yalnız etiket. Tahmin, karne, uzlaştırma ve kota DEĞİŞMEZ.
+    Kısmi istek: yalnız verilen alan yazılır."""
+    from pvquant.services import durum_sozlugu as _ds, plant_service
+    if p.santral_turu is None and p.veri_turu is None:
+        raise HTTPException(422, "santral_turu ya da veri_turu gerekir")
+    if p.santral_turu is not None and p.santral_turu not in _ds.SANTRAL_TURLERI:
+        raise HTTPException(422, f"santral_turu: {list(_ds.SANTRAL_TURLERI)}")
+    if p.veri_turu is not None and p.veri_turu not in _ds.VERI_TURLERI:
+        raise HTTPException(422, f"veri_turu: {list(_ds.VERI_TURLERI)}")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    eski_pj = dict(row.get("params_json") or {})
+    anahtarlar = {k: v for k, v in (("santral_turu", p.santral_turu), ("veri_turu", p.veri_turu)) if v is not None}
+    if "veri_sinifi" in eski_pj:   # QA C1-4: eski tek alanlı beyan yazımda düşürülür (eşleme yalnız okuma yolunda; iki kaynak kalmasın)
+        sinif_eski = _ds.santral_sinifi(eski_pj)
+        anahtarlar = {"santral_turu": sinif_eski["santral_turu"], "veri_turu": sinif_eski["veri_turu"], **anahtarlar, "veri_sinifi": None}
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
+    _ayar_izi("santral_sinifi", claims, plant_id, eski_pj, pj, ek={"istek": anahtarlar})
+    return _ds.santral_sinifi(pj)
 
 
 class KunyeTarihIstek(BaseModel):
