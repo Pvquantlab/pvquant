@@ -758,9 +758,13 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
             height={340}
           />
         )}
-        <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "10px 0 0" }}>
-          Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
-        </p>
+        {/* G2 Y-2 (UAT video, 21.11): metin koşulsuzdu — bugün ölçüm varken de «yükleyin» diyordu. Bugünün (santral saat diliminde) ölçümü
+            varsa yazılmaz. Gerçekleşen seri grafiğe henüz bağlı değil (client.ts:290 gercek_kw null; API alanı G4) — o yüzden ölçüm varken
+            «grafikte amber çizgi» vaat edilmez, yalnız yanlış çağrı susar. */}
+        {!(o.saglik?.son_scada_iso && gunAnahtari(Date.parse(o.saglik.son_scada_iso), o.tz) === gunAnahtari(Date.now(), o.tz)) && (   /* QA İ-1: son_scada Türkçe metin (trTarih) → ham ISO + gunAnahtari (aynı tz, gün sınırında doğru) */
+          <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "10px 0 0" }}>
+            Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
+          </p>)}
       </Kart>
       </section>
 

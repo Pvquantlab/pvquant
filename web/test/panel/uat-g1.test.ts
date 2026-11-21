@@ -50,7 +50,7 @@ test("G1-B: .kart-bas > .kart-arac daralabilir, %60 sınırı, ≤900 kuralı ko
 // Aylık beklenti yalnız 404'te «birikiyor»; Santralim veri kaynakları kartı yüklenirken yer tutucu gösterir (B5-2).
 test("G1-C: istemci hatası durum kodu ve gerekçe taşır; mesaj metni eski biçimde", () => {
   const c = oku("../../src/api/client.ts");
-  assert.match(c, /throw Object\.assign\(new Error\(`\$\{y\.status\} \$\{yol\}`\), \{ durum: y\.status, detay \}\);/, "getir: durum + detay");
+  assert.match(c, /const hata = Object\.assign\(new Error\(`\$\{y\.status\} \$\{yol\}`\), \{ durum: y\.status, detay \}\);/, "getir: durum + detay");
   assert.match(c, /throw Object\.assign\(new Error\(mesaj\), \{ durum: y\.status \}\);/, "gonder: durum");
   assert.match(c, /export function hataDurumu\(e: unknown\): number \| undefined/);
   assert.match(c, /export function hataDetayi\(e: unknown\): string \| undefined/);
@@ -78,4 +78,44 @@ test("G1-C: KGÜP 422 gerekçesi ve diğer hatalar boş durumdan ayrı; Aylık 4
   assert.match(s, /setVy\(null\); setVyDurum\("bekliyor"\); api\.veriYolu\(plantId\)\.then\(\(v\) => \{ if \(plantRef\.current !== plantId\) return; vyDoldur\(v\); vybDoldur\(v\); setVyDurum\(v \? "tamam" : "hata"\); \}\)\.catch\(\(\) => \{ if \(plantRef\.current === plantId\) setVyDurum\("hata"\); \}\)/);
   assert.match(s, /\{!vy && \(vyDurum === "bekliyor" \? <YerTutucu yukseklik=\{120\} \/> : <p className="soluk" style=\{\{ margin: 0 \}\} role="status">Veri kaynağı bilgisi şu anda alınamadı\.<\/p>\)\}/);
   assert.equal((s.match(/Veri kaynağı bilgisi şu anda alınamadı/g) ?? []).length, 1, "metin yalnız hata dalında");
+});
+
+// ---------------------------------------------------------------- G2 (UAT video 21.11: Y-2, Y-4, Y-6, O-1, O-2, O-3, O-8, O-10) ----------
+test("G2: SCADA metni koşullu, Portföy «tahmin hazır», dar sütun tabloları tam satır, kpi-alt yok, çip tek satır", () => {
+  const s = oku("../../src/features/santralim/Santralim.tsx");
+  assert.match(s, /\{!\(o\.saglik\?\.son_scada_iso && gunAnahtari\(Date\.parse\(o\.saglik\.son_scada_iso\), o\.tz\) === gunAnahtari\(Date\.now\(\), o\.tz\)\) && \([^\n]*\n\s*<p className="t-ikincil"[^>]*>\s*Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin\./, "Y-2: bugün ölçüm varken metin yok (ham ISO + gunAnahtari)");
+  assert.match(oku("../../src/api/client.ts"), /son_scada: trTarih\(sonScada\), son_scada_iso: sonScada \?\? null,/, "Y-2: uyarlaOzet ham ISO taşır");
+  assert.match(oku("../../src/api/types.ts"), /son_scada_iso\?: string \| null;/);
+  const p = oku("../../src/features/sayfalar/Portfoy.tsx");
+  assert.match(p, /\$\{sayiTr\(t\.program_yukumlu\)\} tahmin hazır`/, "Y-4: sayaç «tahmin hazır»");
+  assert.match(p, /pr\.hazir === true \? \["rozet-ok", "tahmin hazır"\]/, "Y-4: satır rozeti «tahmin hazır»");
+  assert.doesNotMatch(p, /\["rozet-ok", "hazır"\]/);
+  const t = oku("../../src/features/sayfalar/Tahminler.tsx");
+  assert.doesNotMatch(t, /minmax\(0,1\.9fr\) minmax\(0,1fr\)/, "Y-6: Günlük toplamlar dar sütunda değil");
+  assert.match(t, /<Kart baslik="Günlük toplamlar">/);
+  const o = oku("../../src/features/sayfalar/Olaylar.tsx");
+  assert.doesNotMatch(o, /className="ızgara-cift"/, "Y-6 + QA İ-2: çift ızgara kalktı; üç kart .kart-sutunu içinde (14 px aralık)");
+  assert.match(o, /<div className="kart-sutunu">[^\n]*\n\s*<Kart baslik="Yeni olay"/);
+  assert.match(t, /<div className="kart-sutunu">[^\n]*\n\s*<Kart\s*\n\s*baslik=\{\s*GUNLUK_MOD\[ufuk\]/, "Y-6: Tahminler grafik + günlük toplamlar .kart-sutunu (14 px aralık)");
+  for (const f of ["../../src/features/sayfalar/Dogruluk.tsx", "../../src/features/sayfalar/Digerleri.tsx"]) assert.doesNotMatch(oku(f), /kpi-alt/, `O-8: ${f} kpi-alt yok`);
+  assert.doesNotMatch(oku("../../src/index.css"), /\.kpi-alt/, "kpi-alt CSS'te de tanımsız kalır (kullanım yok)");
+  assert.match(oku("../../src/index.css"), /@media \(min-width: 901px\) \{ \.kart-bas \.cip, \.kart-bas \.cip \.meta > \* \{ white-space: nowrap; \} \}/, "O-10: çip ≥901 px tek satır");
+});
+
+test("G2: iskelet yükseklikleri gerçek içerikle, kaydırma yeni içerikle aynı karede, 404/409/422 olumsuz bellek", () => {
+  assert.match(oku("../../src/features/sayfalar/FinansalEtki.tsx"), /\{\[0, 1, 2, 3, 4\]\.map\(\(i\) => <IskeletSatir key=\{i\} sutunlar=\{BILESEN_SUTUN\} notlu \/>\)\}/, "O-1: 5 «toplama girmeyen» iskelet satırı (QA: gerçek 4–6)");
+  assert.match(oku("../../src/features/sayfalar/Tahminler.tsx"), /nc === undefined \? <YerTutucu yukseklik=\{70\} \/>/, "O-1: 6 saat kartı iskeleti 70 px");
+  assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /<Kart baslik="Zamanlanmış gönderim"><YerTutucu yukseklik=\{250\} \/><\/Kart>/, "O-1: zamanlanmış gönderim iskeleti 250 px");
+  const a = oku("../../src/App.tsx");
+  assert.match(a, /useLayoutEffect\(\(\) => \{ window\.scrollTo\(0, 0\); \}, \[sayfa, bekleyen\]\);/, "O-2: kaydırma yeni içerik/iskeletle aynı karede");
+  const sec = a.slice(a.indexOf("const sayfaSec = useCallback"), a.indexOf("}, []);", a.indexOf("const sayfaSec = useCallback")));
+  assert.match(sec, /if \(s === seciliRef\.current\) window\.scrollTo\(0, 0\);/, "QA İ-5: açık sayfaya yeniden tıklama başa sarar");
+  assert.equal((sec.match(/window\.scrollTo\(/g) ?? []).length, 1, "O-2: sayfaSec'te yalnız aynı-sayfa dalında scrollTo");
+  const c = oku("../../src/api/client.ts");
+  assert.match(c, /const olumsuz = new Map<string, \{ hata: Error; zaman: number \}>\(\);\s*const OLUMSUZ_MS = 30_000;/, "O-3: olumsuz bellek 30 s");
+  assert.match(c, /if \(olumsuzKayit && Date\.now\(\) - olumsuzKayit\.zaman < OLUMSUZ_MS\) return Promise\.reject\(olumsuzKayit\.hata\);/);
+  assert.match(c, /if \(\(y\.status === 404 \|\| y\.status === 409 \|\| y\.status === 422\) && nesil === bellekNesli\) olumsuz\.set\(yol, \{ hata, zaman: Date\.now\(\) \}\);/, "O-3: yalnız «veri yok» kodları, eski uçuş yazmaz (QA İ-6)");
+  assert.match(c, /function bellekBosalt\(\): void \{ bellekte\.clear\(\); olumsuz\.clear\(\); bellekNesli\+\+; \}/);
+  assert.equal((c.match(/bellekte\.clear\(\)/g) ?? []).length, 1, "O-3: her yazma bellekBosalt ile iki belleği de boşaltır");
+  assert.match(c, /for \(const \[k, v\] of bellekte\) bellekte\.set\(k, \{ veri: v\.veri, zaman: 0 \}\);\s*olumsuz\.clear\(\); bellekNesli\+\+;/, "O-3: damga eskitmesi olumsuz belleği de düşürür");
 });

@@ -326,7 +326,7 @@ function cerceve(kod: string, gecmisDetay: React.ReactNode) {
                 {[0, 1, 2].map((i) => <IskeletSatir key={i} sutunlar={BILESEN_SUTUN} notlu />)}
                 <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam</td>{BILESEN_SUTUN.slice(1).map((k) => <td key={k.ad} style={k.sol ? sol : undefined}><IskeletHucre tur={k.tur} /></td>)}</tr>
                 <tr><td colSpan={7} className="etiket-ust" style={{ ...sol, paddingTop: 14 }}>Toplama girmeyen satırlar</td></tr>
-                {[0, 1, 2, 3].map((i) => <IskeletSatir key={i} sutunlar={BILESEN_SUTUN} notlu />)}
+                {[0, 1, 2, 3, 4].map((i) => <IskeletSatir key={i} sutunlar={BILESEN_SUTUN} notlu />)}   {/* G2 O-1 (UAT video P-2, 21.11): «toplama girmeyen» gerçekte 4–6 satır (QA ölçümü) → 5; 4 satırlık iskelet CLS 0,09 veriyordu */}
               </tbody>
             </table></div>
             <details className="aciklama"><summary>Satırların notları ve neden farklı oldukları</summary><MetinIskeleti satir={3} /></details>

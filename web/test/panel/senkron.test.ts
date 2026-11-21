@@ -55,12 +55,12 @@ test("dosyalı yazma GET belleğini düşürür: yükleme sonrası sayfa kendi s
   // sayfanın kendi yenilemesi 60 sn bellekten dönüyordu (birim kıyası kartı eski kanıtı göstermeye devam etti).
   const cl = oku("api/client.ts");
   const dg = cl.slice(cl.indexOf("async function dosyaGonder<T>"), cl.indexOf("/** /summary yaniti"));
-  assert.match(dg, /if \(!yol\.endsWith\("\/preview"\)\) bellekte\.clear\(\);\n  return \(await y\.json\(\)\) as T;/);
+  assert.match(dg, /if \(!yol\.endsWith\("\/preview"\)\) bellekBosalt\(\);\n  return \(await y\.json\(\)\) as T;/);   // G2 O-3 (21.11): bellekBosalt = GET belleği + olumsuz bellek
   const parcalar = cl.split('const fd = new FormData(); fd.append("dosya", dosya);').slice(1);
   assert.ok(parcalar.length >= 7, `elle kurulan dosya ucu ${parcalar.length} < 7`);
   for (const p of parcalar) {
     const govde = p.slice(0, p.search(/\n {4}return (\(await )?y\.json\(\)/) + 1);
     assert.match(govde, /method: "POST", body: fd/);
-    assert.match(govde, /\n {4}bellekte\.clear\(\);/, govde.slice(0, 120));
+    assert.match(govde, /\n {4}bellekBosalt\(\);/, govde.slice(0, 120));
   }
 });

@@ -865,13 +865,13 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             <div className="ızgara satir-3" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et">AC sınırında kırpılan</div>
                 <div className="kpi-dg">{sayiTr(hj.kirpma_saat)} <small>saat</small></div>
-                <div className="kpi-alt">{sayiTr(hj.kirpma_gun)} gün; değerlendirmede sayılır, kalibrasyona girmez</div></div>
+                <div className="kpi-br">{sayiTr(hj.kirpma_gun)} gün; değerlendirmede sayılır, kalibrasyona girmez</div></div>
               <div className="kpi"><div className="kpi-et">Şebeke kısıtı</div>
                 <div className="kpi-dg">{hj.kisinti_aranabildi ? <>{sayiTr(hj.kisinti_saat)} <small>saat</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün; değerlendirme ve kalibrasyon dışı` : "aranmadı; beklenen üretim tahmini olmadan kısıt ayırt edilemez"}</div></div>
+                <div className="kpi-br">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün; değerlendirme ve kalibrasyon dışı` : "aranmadı; beklenen üretim tahmini olmadan kısıt ayırt edilemez"}</div></div>
               <div className="kpi"><div className="kpi-et">Kısıt olmasaydı</div>
                 <div className="kpi-dg">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "hesaplanmadı; kısıt aranmayınca kayıp da yok"}</div></div>
+                <div className="kpi-br">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "hesaplanmadı; kısıt aranmayınca kayıp da yok"}</div></div>
             </div>
             <details className="aciklama">
               <summary>Kırpma ve kısıt nasıl ayrılır</summary>
@@ -896,13 +896,13 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
               <div className="ızgara satir-3" style={{ gap: 12 }}>
                 <div className="kpi"><div className="kpi-et">Enerji performans indeksi (EPI)</div>
                   <div className="kpi-dg">{kyp.epi != null ? <>{yuzdeTr(kyp.epi * 100, 1)}</> : "—"}</div>
-                  <div className="kpi-alt">gerçekleşen {sayiTr((kyp.uretim_kwh ?? 0) / 1000, 1)} MWh / beklenen {sayiTr((kyp.beklenen_kwh ?? 0) / 1000, 1)} MWh</div></div>
+                  <div className="kpi-br">gerçekleşen {sayiTr((kyp.uretim_kwh ?? 0) / 1000, 1)} MWh / beklenen {sayiTr((kyp.beklenen_kwh ?? 0) / 1000, 1)} MWh</div></div>
                 <div className="kpi"><div className="kpi-et">Nedeni bilinen kayıp</div>
                   <div className="kpi-dg">{sayiTr((kyp.toplam_kayip_kwh ?? 0) / 1000, 1)} <small>MWh</small></div>
-                  <div className="kpi-alt">talimat, bakım, kesinti, kısıt ve arıza saatleri; kırpma kWh'si hesaplanmaz</div></div>
+                  <div className="kpi-br">talimat, bakım, kesinti, kısıt ve arıza saatleri; kırpma kWh'si hesaplanmaz</div></div>
                 <div className="kpi"><div className="kpi-et">TL karşılığı</div>
                   <div className="kpi-dg">{kyp.fiyat?.kaynak === "yok" ? "—" : <>{sayiTr((kyp.toplam_kayip_tl ?? 0) / 1000, 1)} <small>bin TL</small></>}</div>
-                  <div className="kpi-alt">{kyp.fiyat?.etiket ?? "fiyat yok"}{(kyp.fiyat?.senaryo_saat ?? 0) > 0 ? `; ${sayiTr(kyp.fiyat?.senaryo_saat ?? 0)} saat senaryo fiyatı` : ""}; gelir kaybı tahmini, fatura kalemi değil</div></div>
+                  <div className="kpi-br">{kyp.fiyat?.etiket ?? "fiyat yok"}{(kyp.fiyat?.senaryo_saat ?? 0) > 0 ? `; ${sayiTr(kyp.fiyat?.senaryo_saat ?? 0)} saat senaryo fiyatı` : ""}; gelir kaybı tahmini, fatura kalemi değil</div></div>
               </div>
               <div className="grafik-kaydir" style={{ marginTop: 12 }}>
                 <table className="veri">
@@ -1126,7 +1126,7 @@ function GonderimKarti({ plantId }: { plantId: string }) {
   const simdi = () => { setDurum(null); setMesgul(true);
     api.raporGonderimDene(plantId).then((r) => { setDurum({ metin: `${r.etiket}: ${GONDERIM_DURUM[r.durum] ?? r.durum} (${sayiTr(r.alici)} alıcı).`, ton: r.durum === "gonderildi" ? "ok" : "hata" }); return api.raporGonderim(plantId).then(setG); })
       .catch((e) => setDurum({ metin: String((e as Error).message ?? e), ton: "hata" })).finally(() => setMesgul(false)); };
-  if (g === undefined) return <Kart baslik="Zamanlanmış gönderim"><YerTutucu yukseklik={80} /></Kart>;
+  if (g === undefined) return <Kart baslik="Zamanlanmış gönderim"><YerTutucu yukseklik={250} /></Kart>;   // G2 O-1 (P-7): QA ölçümü dolu kart 353 px (iskelet kartı 238) → içerik ~250; 80 px iskelet alt kartları kaydırıyordu
   if (g === null) return <Kart baslik="Zamanlanmış gönderim"><p className="soluk" style={{ margin: 0 }}>Ayar alınamadı.</p></Kart>;
   return (
     <Kart baslik="Zamanlanmış gönderim" alt="Her ay seçtiğiniz günde önceki ayın dönem raporu e-postayla gönderilir. Alıcı girilmezse alarm alıcıları kullanılır."

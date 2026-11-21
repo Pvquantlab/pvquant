@@ -254,6 +254,9 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
    Şerit artık daralır ve kendi içinde sarar, en çok %60 alır; başlık sütunu en az %40 kalır. ≤900 kuralı aynen (şerit başlığın altına). */
 .kart-bas > .kart-arac { flex: 0 1 auto; min-width: 0; max-width: 60%; flex-wrap: wrap; justify-content: flex-end; }
 .kart-bas:has(> .kart-arac) > .kart-baslik { flex-basis: 40%; }   /* QA İ-1: başlığın esas boyu uzun alt metin değil %40 — yer varken şerit daralmaz, tek satır kalır */
+/* G2 O-10 (UAT video U-12, 21.11): kart başlığı sağındaki hap çipler geniş ekranda 2–3 satıra kırılıp «yastık/daire» oluyordu (~10 sayfa).
+   ≥901 px'te tek satır; ≤900'de şerit başlığın altına indiği için sarma serbest kalır (375'te yatay taşma yaratmasın). */
+@media (min-width: 901px) { .kart-bas .cip, .kart-bas .cip .meta > * { white-space: nowrap; } }   /* QA İ-3: .meta (inline-flex, wrap) öğeler ARASINDA sarmaya devam eder; 3+ bilgili çipler G3/U-12 */
 @media (max-width: 900px) {
   .kart-bas:has(> .kart-arac) { flex-wrap: wrap; }
   .kart-bas > .kart-arac { flex: 1 1 100%; max-width: none; flex-wrap: wrap; }

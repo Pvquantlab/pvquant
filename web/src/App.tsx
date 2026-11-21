@@ -1,4 +1,4 @@
-import { Suspense, lazy, startTransition, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Suspense, lazy, startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
@@ -191,13 +191,17 @@ export default function App() {
   // Sıra koruması: soğuk parça inmeden başka sayfa tıklanırsa geç gelen yükleme sayfayı değiştirmez (seciliRef). `bekleyen` acil
   // güncellemeyle anında iskelet; sayfa ile AYNI geçişte temizlenir — arada başka bir çizim eski sayfayı bir an gösteremez.
   const [bekleyen, setBekleyen] = useState<SayfaId | null>(null);
+  // G2 O-2 (UAT video P-5, 21.11): scrollTo(0,0) sayfaSec içinde eşzamanlıydı, içerik ise startTransition ile geliyordu → eski sayfa başa sarılmış
+  // hâlde bir kare (dev derlemede 215–350 ms) görünüyordu. Kaydırma artık yeni içerikle (sayfa) ya da soğuk parça iskeletiyle (bekleyen) AYNI karede.
+  useLayoutEffect(() => { window.scrollTo(0, 0); }, [sayfa, bekleyen]);
   const seciliRef = useRef<SayfaId>(secili);
   const sayfaSec = useCallback((s: SayfaId) => {
     if (yeniSurumVar()) {   // 19.11 Bulgu 7: api sürümü sayfa açıkken değişti → eski paketle devam etmek yerine hedef sayfada yeniden yükle (bir kez; yeni paket ilk sürümü yeniden öğrenir)
       const santral = window.location.hash.split("/")[1];
       history.replaceState(history.state, "", `#${s}${santral ? `/${santral}` : ""}`); window.location.reload(); return;   // replaceState: hashchange üretmez (din → sayfaSec yeniden girmez)
     }
-    window.scrollTo(0, 0);   // 18.11 Finansal etki yükleme düzeltmesi (ÖLÇÜLDÜ): kaydırılmış sayfadan geçişte konum korunuyordu → yeni sayfanın ortasına (yer tutucuların içine) iniliyordu; her sayfa geçişi başa
+    if (s === seciliRef.current) window.scrollTo(0, 0);   // QA İ-5 (21.11): açık sayfaya yeniden tıklama — sayfa değişmez, useLayoutEffect tetiklenmez; eski davranış korunur
+    // 18.11 Finansal etki yükleme düzeltmesi (ÖLÇÜLDÜ): kaydırılmış sayfadan geçişte konum korunuyordu → yeni sayfanın ortasına (yer tutucuların içine) iniliyordu; her sayfa geçişi başa
     setSecili(s); seciliRef.current = s;
     const gec = () => startTransition(() => { setSayfa(s); setBekleyen(null); });
     if (PARCALAR[s].hazirMi()) gec();

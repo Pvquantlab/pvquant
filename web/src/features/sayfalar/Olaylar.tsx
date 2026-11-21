@@ -78,7 +78,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
           alt={dahili ? `${dahili.tur}, ${dahili.esik}${dahili.kosul ? " (YEK-G: açıklanıp açıklanmayacağı sizin değerlendirmenizde)" : " eşiği"}: en geç ${saatTr(dahili.son_saat)} (1 saat kuralı; yürürlük ${dahili.yururluk}${dahili.basladi === false ? " — henüz başlamadı, bilgi amaçlı" : ""})`
             : `1 saat kuralı (yürürlük ${o.dahili_yururluk?.etiket ?? "01.01.2027"}): tesis 30 MW / portföy 50 MW eşiğinde süren olay yok`} />   {/* v2.538 (DK-613) */}
       </div>
-      <div className="ızgara-cift">
+      <div className="kart-sutunu">   {/* G2 Y-6 + QA İ-2 (21.11): .ızgara-cift kalktı — tek kartlı çift ızgara 1341+ px'te formu 424 px'e sıkıştırıp sağda ~630 px boşluk bırakıyordu; üç kart alt alta, 14 px aralık */}
         <Kart baslik="Yeni olay" alt="Olay başladığında girin; bitişi sonradan «Bitir» ile verin. Planlı bakımı ileri tarihle girebilirsiniz.">
           <div className="form-izgara">
             <label className="girdi-etiket">Olay türü<select className="girdi" value={form.tur} onChange={(e) => { const t = e.target.value as OlayTur; const k = o.turler.find((x) => x.kod === t); setForm({ ...form, tur: t, gerekce: k?.gerekce ?? "" }); }}>
@@ -97,6 +97,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
           </div>
           {kural && <p className="form-not t-ikincil" style={{ marginTop: 10 }}><b>{kural.etiket}:</b> {kural.not}.</p>}
         </Kart>
+      {/* G2 Y-6 (UAT video, 21.11): tür tablosu .ızgara-cift'in dar sütununda (1341–1440 px) son sütunu kesiyordu → formun altında tam satır */}
         <Kart baslik="Olay türleri ve etkileri" alt="Her türün kapasite (EAK), aylık arıza sayacı ve kullanılabilirlik hesabına etkisi">
           <div className="grafik-kaydir"><table className="veri">
             <thead><tr><th style={sol}>Tür</th><th title="O saatlerde verilebilecek güç ve program tavanı düşer">Kapasiteyi düşürür</th><th title="Ayda 30 ve üzeri arıza kaydı sapma tutarı katsayısını yükseltir">Arıza sayacına girer</th><th title="Santralın elinde olmayan saatler kullanılabilirlik hesabından düşülür">Kullanılabilirlikten düşülür</th><th style={sol} title="TPYS EAK dosyasında eksik kapasitenin yazıldığı sütun; tür için varsayılan, kayıt girilirken değiştirilebilir">EAK gerekçesi (varsayılan)</th></tr></thead>
@@ -118,7 +119,6 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <p style={{ margin: "6px 0 0" }}>{o.not}</p>
           </details>
         </Kart>
-      </div>
       <Kart baslik="Olaylar" alt={`son ${sayiTr(o.pencere_gun)} gün, süren ve planlı olaylar; geçersiz sayılanlar listede ve hesaplarda yok, indirilen dosyada «geçersiz» olarak kalır`}
         sag={<span className="cip"><Meta items={[`${sayiTr(o.olaylar.length)} olay`, `${sayiTr(o.acik)} sürüyor`, ...(o.planli > 0 ? [`${sayiTr(o.planli)} planlı`] : [])]} /></span>}>
         {o.olaylar.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu aralıkta olay kaydı yok.</p> : (
@@ -137,6 +137,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
                 <td style={{ whiteSpace: "nowrap" }}>{ol.evre === "suruyor" && <button className="dugme kucuk" title="Bitiş saati olarak şimdiyi yazar; kayıt hesaplarda kalır" onClick={() => bitir(ol)}>Bitir</button>} {ol.tur === "acil_kesme" && !ol.bildirim_zamani && ol.evre !== "planli" && <button className="dugme kucuk" title="Şebeke işletmecisinin «acil durum sona erdi» bildirimi şimdi geldi (LÜY m.21(8))" onClick={() => bildirimGeldi(ol)}>Bildirim geldi</button>} <button className="dugme kucuk" title="Yanlış kaydı hesaplardan çıkarır; silinmez" onClick={() => gecersiz(ol)}>Geçersiz say</button></td></tr>))}</tbody>
           </table></div>)}
       </Kart>
+      </div>
     </Sayfa>
   );
 }

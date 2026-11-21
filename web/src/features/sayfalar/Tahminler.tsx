@@ -138,13 +138,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
         </Kart>
       )}
       {seri && ozet && dilim && grafikSantral && (
-        <div
-          className="ızgara"
-          style={{
-            gridTemplateColumns: "minmax(0,1.9fr) minmax(0,1fr)",
-            alignItems: "start",
-          }}
-        >
+        <div className="kart-sutunu">   {/* G2 Y-6 (UAT video, 21.11): «Günlük toplamlar» 1382 px'te 1,9fr/1fr ızgaranın dar sütununda yatay kaydırıyor, değer sütunu hiç görünmüyordu → tam satır; QA İ-2: 14 px aralık */}
           <Kart
             baslik={
               GUNLUK_MOD[ufuk]
@@ -219,9 +213,9 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
         </div>
       )}
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
-      <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
+      <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme" style={{ marginTop: 14 }}   /* QA G2 şart 3 (önceden de vardı): «Günlük toplamlar» ile arada 0 px */
         sag={<span className="cip">{nc === undefined ? "hesaplanıyor" : nc?.durum === "ok" ? <Meta items={[`düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)}`, `son ${sayiTr(nc.n_saat)} saat`]} /> : nc?.durum === "gece" ? "gece: beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>
-        {nc === undefined ? <YerTutucu yukseklik={322} />
+        {nc === undefined ? <YerTutucu yukseklik={70} />   /* G2 O-1 (P-7): 322 px iskelet boş durumda kartı çökertiyordu; QA ölçümü dolu kart 190 px → içerik ~70; tablo gelirse büyür */
          : !nc || nc.durum === "scada_bayat" || nc.durum === "sanal_test" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
           /* 23.10 altıncı tur: boş durum iki kademe — API'nin nedeni başlık, ne yaptığı açıklama */
           <div className="bos-durum">

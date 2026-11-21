@@ -20,7 +20,8 @@ export interface SantralOzeti {
   aylik: { ay: string; mwh: number | null; saglam_saat: number; kapsam_pct: number;
            /** v2.205 — ay tam kapsanmadan null (kismi toplam yaniltir). */
            beklenti_mwh: number | null }[];
-  saglik: { son_scada: string | null; kesinti_gun: number | null;
+  saglik: { son_scada: string | null; son_scada_iso?: string | null;   /* G2 Y-2 (21.11): ham ISO — gün kıyası için (son_scada Türkçe metindir) */
+            kesinti_gun: number | null;
             islenen_saat: number; anomali: number;
             veri_durumu?: { kod: string; nitelik: string; etiket: string; yas_saat: number | null } | null };   // v2.605 (F4-K): tazelik rozeti, ortak sözlük
 }

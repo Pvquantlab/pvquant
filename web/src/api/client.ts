@@ -54,13 +54,22 @@ const ucustakiler = new Map<string, Promise<unknown>>();
  *  damga yoklaması getir kullanmaz (kendi ETag fetch'i) → tazelik sinyali
  *  önbelleğe takılmaz. */
 const bellekte = new Map<string, { veri: unknown; zaman: number }>();
-const BELLEK_MS = 600_000;   // 16.11 gezinme hızı: 60 sn → 10 dk. Tazelik damgaya bağlı: damga değişince bellekEskit yaşı sıfırlar (görünür sekmede 60 sn yoklama), her yazma belleği boşaltır; süre yalnız emniyet.
+const BELLEK_MS = 600_000;
+/** G2 O-3 (UAT video P-8/Ş3, 21.11): «veri yok» yanıtları (404/409/422) 30 s olumsuz bellekte — yan menü ısıtması + sayfa + bileşenler aynı ucu
+ *  2–5 kez istiyordu (forecast 404 ×5, monthly 404 ×2, kgup 422 ×2). Her yazma ve damga eskitme bu belleği de boşaltır; 5xx/ağ hatası yazılmaz. */
+const olumsuz = new Map<string, { hata: Error; zaman: number }>();
+const OLUMSUZ_MS = 30_000;
+let bellekNesli = 0;   // QA İ-6: boşaltma/eskitme sonrası gelen ESKİ uçuşun 404'ü olumsuz belleğe yazılmaz
+function bellekBosalt(): void { bellekte.clear(); olumsuz.clear(); bellekNesli++; }   // 16.11 gezinme hızı: 60 sn → 10 dk. Tazelik damgaya bağlı: damga değişince bellekEskit yaşı sıfırlar (görünür sekmede 60 sn yoklama), her yazma belleği boşaltır; süre yalnız emniyet.
 function getir<T>(yol: string): Promise<T> {
   const anilan = bellekte.get(yol);
   if (anilan && Date.now() - anilan.zaman < BELLEK_MS)
     return Promise.resolve(anilan.veri as T);
+  const olumsuzKayit = olumsuz.get(yol);
+  if (olumsuzKayit && Date.now() - olumsuzKayit.zaman < OLUMSUZ_MS) return Promise.reject(olumsuzKayit.hata);
   const eldeki = ucustakiler.get(yol);
   if (eldeki) return eldeki as Promise<T>;
+  const nesil = bellekNesli;
   const soz = (async () => {
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}${yol}`, {
@@ -79,7 +88,9 @@ function getir<T>(yol: string): Promise<T> {
     if (!y.ok) {   // G1-C (UAT Y-3, 21.11): hataya durum kodu ve sunucu gerekçesi iliştirilir — mesaj metni aynı (startsWith("404") kontrolleri bozulmaz)
       let detay: string | undefined;
       try { const g = (await y.json()) as { detail?: unknown }; const m = detayMesaji(g.detail, ""); detay = m || undefined; } catch { /* gövde yok */ }
-      throw Object.assign(new Error(`${y.status} ${yol}`), { durum: y.status, detay });
+      const hata = Object.assign(new Error(`${y.status} ${yol}`), { durum: y.status, detay });
+      if ((y.status === 404 || y.status === 409 || y.status === 422) && nesil === bellekNesli) olumsuz.set(yol, { hata, zaman: Date.now() });
+      throw hata;
     }
     const veri = (await y.json()) as T;
     bellekte.set(yol, { veri, zaman: Date.now() });
@@ -146,6 +157,7 @@ function bayatPlanla(yol: string, n: number): void {
  *  çekim bellekten dönüyor, panel yeni koşuyu/ölçümü bir sonraki değişime dek göremiyordu. */
 export function bellekEskit(): void {
   for (const [k, v] of bellekte) bellekte.set(k, { veri: v.veri, zaman: 0 });
+  olumsuz.clear(); bellekNesli++;   // G2 O-3: damga değişti → «veri yok» yanıtı da yeniden sorulur
 }
 
 /** 29.10: Portföy DSG yolu — varsayılan anahtar yolda yazılmaz (bellek anahtarı eski yolla aynı kalsın) */
@@ -270,7 +282,7 @@ async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT" | "PATCH
   // değişikliğini taze görür. Tek istisna oturum yenileme: veri değiştirmez ve
   // her sayfa geçişinde koştuğundan belleği silseydi önbellek hiç işlemezdi
   // (ilk ölçümde yakalandı: dönüş yine 393 ms'ydi).
-  if (yol !== "/v1/oturum/yenile") bellekte.clear();
+  if (yol !== "/v1/oturum/yenile") bellekBosalt();
   return (await y.json()) as T;
 }
 
@@ -335,7 +347,7 @@ export function cikis(): void {
   bayatlar.clear(); bayatYay(); for (const z of bayatZamanlayici.values()) window.clearTimeout(z); bayatZamanlayici.clear();   // 18.11: bekleyen bayat yenilemeleri hesapla birlikte düşer
   localStorage.removeItem("pvq_token");
   localStorage.removeItem("pvq_temsil");   // 26.10 denetim-2: görüntüleme işareti oturumla birlikte gider (süresi dolan temsil sonraki girişte şerit bırakmasın)
-  bellekte.clear();   // v2.325: hesap sınırı — sonraki oturum önceki hesabın verisini bellekte bulmasın
+  bellekBosalt();   // v2.325: hesap sınırı — sonraki oturum önceki hesabın verisini bellekte bulmasın
 }
 
 /** v2.88: SCADA onizleme yaniti — apps/api/main.py v2.87 ile birebir. */
@@ -439,7 +451,7 @@ async function dosyaGonder<T>(yol: string, dosya: File,
   // v2.565 inceleme: dosyalı yazma da GET belleğini düşürür (gonder ile aynı sözleşme). Eski kusur: yükleme
   // sonrası sayfanın kendi yenilemesi 60 sn boyunca bellekten dönüyor, kullanıcı yüklediğinin sonucunu göremiyordu.
   // Önizleme ucu veri yazmaz; belleğe dokunmaz.
-  if (!yol.endsWith("/preview")) bellekte.clear();
+  if (!yol.endsWith("/preview")) bellekBosalt();
   return (await y.json()) as T;
 }
 
@@ -507,7 +519,7 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
       saglam_saat: a.saglam_saat ?? 0, kapsam_pct: a.kapsam_pct ?? 0,
       // v2.205: beklenti 0'a INDIRGENMEZ — null durust yokluktur (imlec yok)
       beklenti_mwh: a.beklenti_mwh ?? null })),
-    saglik: { son_scada: trTarih(sonScada), kesinti_gun: kesintiGun,
+    saglik: { son_scada: trTarih(sonScada), son_scada_iso: sonScada ?? null, kesinti_gun: kesintiGun,   // G2 Y-2: ham ISO da taşınır
               islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali,
               veri_durumu: g.saglik.veri_durumu ?? null },   // v2.605 (F4-K): tazelik rozeti API sözlüğünden (uydurulmaz)
   };
@@ -923,7 +935,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/bildirilen?gun=${gun}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** 29.10 (v2.506): dışa aktarma biçimini müşterinin EPYS dosyasından öğren / sıfırla */
@@ -933,7 +945,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/sablon`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
@@ -950,7 +962,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat/saatlik${donem ? `?donem=${donem}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<SaatlikYuklemeYanit>(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return (await y.json()) as SaatlikYuklemeYanit; },
   saatlikKiyasIndir: async (p: string, donem: string, uretim?: string | null): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
@@ -968,7 +980,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.523 (P4a): sayaç izleme — geliş beklentisi, SCADA ↔ sayaç farkı, yüklemeler, lisanssız SCADA durumu */
@@ -981,7 +993,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/sayac?kaynak=${kaynak}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.554 (S4): IEC 104 nokta tablosu CSV (ioa, alan, carpan[, ad][, tip]) → beyana */
@@ -991,7 +1003,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/veri-yolu/iec104-nokta-tablosu`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.523: günlük SCADA ↔ sayaç tablosu (CSV) */
@@ -1138,7 +1150,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/pilot/referans?sinir=${encodeURIComponent(sinir)}&saat_sonu=${saatSonu ? 1 : 0}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
-    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
+    bellekBosalt();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.561 (Aşama 6): saha toplayıcısı kimlikleri; anahtar yalnız üretim yanıtında */

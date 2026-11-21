@@ -121,14 +121,14 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
           santraller «hazır/eksik» alır; yükümlülüğü olmayana zorunlu operasyon gibi sunulmaz; segment seçilmemişse söylenir */}
       {p && p.santraller.length > 0 && p.santraller.some((r) => r.program) && (
         <Kart baslik="Yarının üretim programı, KGÜP" alt="EPİAŞ bildirim penceresi 14:00–15:30; program, 15:30 kesiminden önce verilmiş son tahminden üretilir"
-          sag={<span className="cip">{t && t.program_yukumlu != null ? <Meta items={[`${sayiTr(t.program_hazir ?? 0)} / ${sayiTr(t.program_yukumlu)} hazır`, (t.program_bildirilen ?? 0) > 0 && `${sayiTr(t.program_bildirilen ?? 0)} bildirildi`, (t.program_segment_yok ?? 0) > 0 && `${sayiTr(t.program_segment_yok ?? 0)} santralde segment seçilmedi`]} /> : "—"}</span>}>
+          sag={<span className="cip">{t && t.program_yukumlu != null ? <Meta items={[`${sayiTr(t.program_hazir ?? 0)} / ${sayiTr(t.program_yukumlu)} tahmin hazır`, (t.program_bildirilen ?? 0) > 0 && `${sayiTr(t.program_bildirilen ?? 0)} bildirildi`, (t.program_segment_yok ?? 0) > 0 && `${sayiTr(t.program_segment_yok ?? 0)} santralde segment seçilmedi`]} /> : "—"}</span>}>
           <ul className="tanim-listesi program-listesi">
             {p.santraller.map((r) => {
               const pr = r.program;
               if (!pr) return null;
               const rozet = pr.yukumlu === null ? ["rozet-notr", "segment seçilmedi"]
                 : pr.yukumlu === false ? ["rozet-notr", "program yükümlülüğü yok"]
-                : pr.hazir === true ? ["rozet-ok", "hazır"]
+                : pr.hazir === true ? ["rozet-ok", "tahmin hazır"]   /* G2 Y-4 (21.11): «hazır» yalnız «kesim öncesi tahmin var» demektir; program dosyası/bildirim KGÜP ve Genel bakışta */
                 : pr.hazir === false ? ["rozet-uyari", "15:30 öncesi tahmin yok"]
                 : ["rozet-notr", "kontrol edilemedi"];
               // tek hücre: rozet + notlar (tanim-listesi iki sütunlu ızgaradır; birden çok çocuk hücrelere dağılıyordu)

@@ -246,7 +246,7 @@ test("Finansal etki: bayat-önce (program ve senaryo yolu), .akis dört bölüm,
   // yapılı iskelet: bileşen tablosu gerçek başlık satırı (BILESEN_BASLIK sayfa + çerçeve), 3 toplanan + Toplam + grup + 4 toplanmayan satır; künyeler koşulsuz etiketlerle
   assert.equal((s.match(/\{BILESEN_BASLIK\}/g) ?? []).length, 2, "başlık satırı tek kaynaktan");
   assert.match(s, /\{\[0, 1, 2\]\.map\(\(i\) => <IskeletSatir key=\{i\} sutunlar=\{BILESEN_SUTUN\} notlu \/>\)\}\s*<tr style=\{\{ fontWeight: 600 \}\}><td style=\{sol\}>Toplam<\/td>/);
-  assert.match(s, /Toplama girmeyen satırlar<\/td><\/tr>\s*\{\[0, 1, 2, 3\]\.map\(\(i\) => <IskeletSatir key=\{i\} sutunlar=\{BILESEN_SUTUN\} notlu \/>\)\}/);
+  assert.match(s, /Toplama girmeyen satırlar<\/td><\/tr>\s*\{\[0, 1, 2, 3, 4\]\.map\(\(i\) => <IskeletSatir key=\{i\} sutunlar=\{BILESEN_SUTUN\} notlu \/>\)\}/);
   assert.match(s, /<KunyeIskeleti etiketler=\{HESAP_ETIKET\} \/>/); assert.match(s, /<KunyeIskeleti etiketler=\{DUSUKLUK_ETIKET\} \/>/);
   assert.match(s, /const HESAP_ETIKET = \["Dönem", "Hesap durumu", "Üretim girdisi", "Program", "Fiyat", "Uzlaştırma kuralı", "Satış tarifesi", "Piyasa pozisyonu", "Hesap sözlüğü"\] as const;/, "yalnız koşulsuz künye satırları");
   assert.doesNotMatch(s, /<YerTutucu yukseklik=\{(900|120|300|600|350|820)\} \/>/, "tek gri blok kalmadı");
@@ -263,7 +263,8 @@ test("Finansal etki: bayat-önce (program ve senaryo yolu), .akis dört bölüm,
   assert.doesNotMatch(css, /iskelet[^{]*\{[^}]*animation/, "iskelet hareketsiz");
   // sayfa geçişinde kaydırma başa (ÖLÇÜLDÜ: Genel bakış 401 px kaydırılmışken Finansal etki 401 px'te açılıyordu)
   const app = oku("../../src/App.tsx");
-  assert.match(app, /const sayfaSec = useCallback\(\(s: SayfaId\) => \{\n    if \(yeniSurumVar\(\)\) \{[\s\S]{0,700}?\n    \}\n    window\.scrollTo\(0, 0\);/);   // 19.11 Bulgu 7: sürüm kayması kapısı başa, kaydırma hemen ardından
+  assert.match(app, /const sayfaSec = useCallback\(\(s: SayfaId\) => \{\n    if \(yeniSurumVar\(\)\) \{[\s\S]{0,700}?\n    \}\n/);   // 19.11 Bulgu 7: sürüm kayması kapısı başa
+  assert.match(app, /useLayoutEffect\(\(\) => \{ window\.scrollTo\(0, 0\); \}, \[sayfa, bekleyen\]\);/);   // G2 O-2 (21.11): kaydırma yeni içerik/iskeletle aynı karede (sayfaSec'te eşzamanlı değil)
   assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 4, "4 bölüm + çerçevede 4 (aynı yapı)");
   // 18.11 Parti 2: çerçeve gerçek yapıyı taşır — kart başlık/açıklamaları KART sabitinden (sayfa 6 + çerçeve 6), dört KPI etiketi bilgiyle, gövdeler boyutlu yer tutucu
   assert.equal((s.match(/baslik=\{KART\.\w+\.baslik\} alt=\{KART\.\w+\.alt\}/g) ?? []).length, 12, "6 kart × (sayfa + çerçeve)");

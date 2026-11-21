@@ -774,7 +774,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     background: v != null && Math.abs(v - hedef) <= 0.05 ? "var(--basari)" : "var(--chart-p50-future)" }} />
                   <div style={{ position: "absolute", left: `${hedef * 100}%`, top: -3, width: 2, height: 12, background: "var(--metin)" }} />
                 </div>
-                <div className="kpi-alt">{not_}</div>
+                <div className="kpi-br">{not_}</div>
               </div>
             ))}
           </div>
@@ -895,16 +895,16 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <div className="ızgara satir-4" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Dengesizlik maliyeti · EDT" bilgi="Gerçekleşen üretim ile saatlik piyasa pozisyonu (varsayılanı üretim programı; Santralim › Program sınırları) arasındaki farkın EPİAŞ uzlaştırmasındaki karşılığı, enerji dengesizlik tutarı: eksik üretim borç, fazla üretim alacak yazar; gösterilen değer net maliyettir." /></div>
                 <div className="kpi-dg">{dz.toplam.dengesizlik_tl != null ? <>{sayiTr(dz.toplam.dengesizlik_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">{fiyatEtiketi(dz)}</div></div>
+                <div className="kpi-br">{fiyatEtiketi(dz)}</div></div>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="KGÜP sapma tutarı · KÜPST" bilgi="Kesinleşmiş gün öncesi üretim programından tolerans üstü sapmanın tutarı. Enerji dengesizlik tutarından ayrı bir kalemdir; alacakla netleşmez." /></div>
                 <div className="kpi-dg">{dz.toplam.kupst_tl != null ? <>{sayiTr(dz.toplam.kupst_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">{kupstEtiketi(dz)}</div></div>
+                <div className="kpi-br">{kupstEtiketi(dz)}</div></div>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Uzlaştırma kalemleri toplamı" bilgi="Dengesizlik maliyeti ile KÜPST toplamı. KÜPST hesaplanamıyorsa toplam verilmez." /></div>
                 <div className="kpi-dg">{dz.toplam.pvquant_tl != null ? <>{sayiTr(dz.toplam.pvquant_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">{dz.toplam.pvquant_tl != null ? `dengesizlik maliyeti + KÜPST${dz.toplam.gelir_oran_pct != null ? ` · gelirin ${yuzdeTr(dz.toplam.gelir_oran_pct, 2)}'i` : ""}` : "KÜPST hesaplanamadığı için toplam verilmez"}</div></div>
+                <div className="kpi-br">{dz.toplam.pvquant_tl != null ? `dengesizlik maliyeti + KÜPST${dz.toplam.gelir_oran_pct != null ? ` · gelirin ${yuzdeTr(dz.toplam.gelir_oran_pct, 2)}'i` : ""}` : "KÜPST hesaplanamadığı için toplam verilmez"}</div></div>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın aynı kuralla maliyeti ile PVQuant programının maliyeti arasındaki fark. Varsayımsal bir karşılaştırmadır." /></div>
                 <div className="kpi-dg">{dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">referans: dün aynı saat{dz.toplam.naif_tl != null ? `, ${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL` : ""}</div></div>
+                <div className="kpi-br">referans: dün aynı saat{dz.toplam.naif_tl != null ? `, ${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL` : ""}</div></div>
             </div>
             <p className="soluk t-ikincil" style={{ marginTop: 8, marginBottom: 0 }}>
               {dz.segment.santral_tasir === false ? `Bu segmentte dengesizliği ${dz.segment.dengesizlik_sahibi} taşır; tutarlar santral sahibine yansımaz.`
@@ -980,10 +980,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
               <div className="ızgara satir-4" style={{ gap: 12, marginBottom: 10 }}>
                 <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Yürürlükteki kuralla toplam" bilgi="Her saat, o gün yürürlükte olan kuralla hesaplanan dengesizlik maliyeti ile KÜPST toplamı." /></div><div className="kpi-dg">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                  <div className="kpi-alt">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>
-                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="2026 kuralı tüm döneme uygulansaydı" bilgi="Varsayımsal karşılaştırma: 2025 saatleri de 1.1.2026 formülüyle hesaplanır." /></div><div className="kpi-dg">{gt.toplam.karsi_2026_tl != null ? <>{sayiTr(gt.toplam.karsi_2026_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal karşılaştırma</div></div>
-                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="1.11.2026 kuralı, V = 100, tüm döneme" bilgi="Varsayımsal karşılaştırma: taban parametresi V = 100 TL/MWh olan 1.11.2026 kuralı bütün döneme uygulanır." /></div><div className="kpi-dg">{gt.toplam.karsi_v100_tl != null ? <>{sayiTr(gt.toplam.karsi_v100_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal karşılaştırma</div></div>
-                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın maliyeti ile PVQuant programının maliyeti arasındaki fark; varsayımsaldır." /></div><div className="kpi-dg">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">referans: dün aynı saat{gt.toplam.referans_tl != null ? `, ${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL` : ""}</div></div>
+                  <div className="kpi-br">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="2026 kuralı tüm döneme uygulansaydı" bilgi="Varsayımsal karşılaştırma: 2025 saatleri de 1.1.2026 formülüyle hesaplanır." /></div><div className="kpi-dg">{gt.toplam.karsi_2026_tl != null ? <>{sayiTr(gt.toplam.karsi_2026_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-br">varsayımsal karşılaştırma</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="1.11.2026 kuralı, V = 100, tüm döneme" bilgi="Varsayımsal karşılaştırma: taban parametresi V = 100 TL/MWh olan 1.11.2026 kuralı bütün döneme uygulanır." /></div><div className="kpi-dg">{gt.toplam.karsi_v100_tl != null ? <>{sayiTr(gt.toplam.karsi_v100_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-br">varsayımsal karşılaştırma</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın maliyeti ile PVQuant programının maliyeti arasındaki fark; varsayımsaldır." /></div><div className="kpi-dg">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-br">referans: dün aynı saat{gt.toplam.referans_tl != null ? `, ${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL` : ""}</div></div>
               </div>
               <div className="grafik-kaydir">
                 <table className="veri dar">
