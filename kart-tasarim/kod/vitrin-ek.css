@@ -1,0 +1,42 @@
+/* kart-tasarim — TL bölümü «panel kesiti» (tasarım C). CİLA katmanı: vitrin.css'in SONUNA eklenir
+   (yapi.test «her seçici .vt ile başlar» kuralı bu kuralları da tarar). Beş kart tek beyaz yüzeyin
+   1 px çizgiyle bölünmüş hücreleridir: çizgi = ızgara boşluğundan görünen --vt-kenar zemini. */
+.vt-kesit { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--vt-kenar); border: 1px solid var(--vt-kenar); border-radius: var(--vt-r-m); overflow: hidden; }
+.vt-kesit__hucre { grid-column: span 2; display: flex; flex-direction: column; background: var(--vt-zemin); padding: 24px 28px 26px; }
+.vt-kesit__hucre--genis { grid-column: span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; column-gap: 28px; }
+/* DOM'da ad önce (başlık sırası), görselde etiket üstte */
+.vt-kesit__bas { display: flex; flex-direction: column-reverse; gap: 6px; }
+.vt-kesit__bas .vt-h3 { font-size: 19px; line-height: 26px; }
+.vt-kesit__etiket { font: 500 11.5px/16px var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-kesit__cizim { margin: 18px 0 16px; line-height: 0; }
+.vt-kesit__cizim svg { display: block; width: 100%; height: auto; }
+.vt-kesit__cizim svg * { vector-effect: non-scaling-stroke; }
+.vt-kesit__hucre--genis .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 4; margin: 0; align-self: center; }
+.vt-kesit__hucre .vt-kart__metin { font-size: 15px; line-height: 23px; }
+.vt-kesit__hucre--genis .vt-kart__metin { margin-top: 10px; }
+.vt-kesit__kunye { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.vt-kesit__kunye li { font: 400 12px/1 var(--vt-mono); color: var(--vt-metin); padding: 6px 8px; border: 1px solid var(--vt-kenar); border-radius: 4px; }
+@media (max-width: 1080px) {
+  .vt-kesit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vt-kesit__hucre, .vt-kesit__hucre--genis { grid-column: span 1; }
+  .vt-kesit__hucre--genis { display: flex; }
+  .vt-kesit__hucre--genis .vt-kesit__cizim { margin: 18px 0 16px; }
+  .vt-kesit > :last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .vt-kesit { grid-template-columns: 1fr; }
+  .vt-kesit__hucre { padding: 20px 18px 22px; }
+}
+/* giriş kademesi: .vt-izgara kartlarıyla aynı ritim */
+.vt [data-canlan].is-acildi .vt-kesit > * { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
+.vt [data-canlan].is-acildi .vt-kesit > :nth-child(2) { animation-delay: 60ms; }
+.vt [data-canlan].is-acildi .vt-kesit > :nth-child(3) { animation-delay: 120ms; }
+.vt [data-canlan].is-acildi .vt-kesit > :nth-child(4) { animation-delay: 180ms; }
+.vt [data-canlan].is-acildi .vt-kesit > :nth-child(n+5) { animation-delay: 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  .vt [data-canlan].is-acildi .vt-kesit > * { animation: none; }
+}
+/* zorlanmış renklerde zemin çizgileri kaybolur: hücre kenarı geri gelir */
+@media (forced-colors: active) {
+  .vt-kesit__hucre { border: 1px solid CanvasText; }
+}
