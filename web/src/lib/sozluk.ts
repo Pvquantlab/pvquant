@@ -4,7 +4,7 @@
  *  isler_service.ISIM_TR'dir (iki panel de API'den «ad» alır); burada tekrar edilmez. */
 export const SOZLUK = {
   /** jobs_log.status == 'ok' → tamam; aksi → başarısız (iki panelde de «düştü» yok) */
-  isDurumu: { tamam: "tamam", basarisiz: "başarısız" },
+  isDurumu: { tamam: "tamam", basarisiz: "başarısız", atlandi: "atlandı (veri yazılmadı)" },   // G1 (Ü-1): atlanan iş hata değil
   /** veri/iş tazeliği: uçtan gelen bayat/taze hükmünün sözcüğü (hesap arayüzde yapılmaz) */
   tazelik: { guncel: "güncel", eski: "eski" },
   /** son ölçüm (scada_hourly max ts) ve son tahmin koşusu (forecast_runs max run_at) — iki panelde aynı etiket */
@@ -65,7 +65,7 @@ export const SOZLUK = {
   } as Record<string, string>,
 } as const;
 
-export const isDurumu = (tamam: boolean) => (tamam ? SOZLUK.isDurumu.tamam : SOZLUK.isDurumu.basarisiz);
+export const isDurumu = (tamam: boolean, durum?: string) => (durum === "atlandi" ? SOZLUK.isDurumu.atlandi : tamam ? SOZLUK.isDurumu.tamam : SOZLUK.isDurumu.basarisiz);   // G1 (Ü-1)
 export const tazelik = (bayat: boolean) => (bayat ? SOZLUK.tazelik.eski : SOZLUK.tazelik.guncel);
 export const sorunAdi = (kod: string) => SOZLUK.sorun[kod] ?? kod;
 export const segmentKisa = (kod: string) => SOZLUK.segmentKisa[kod] ?? kod;

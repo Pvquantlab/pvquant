@@ -103,7 +103,7 @@ class IndependentValidation(BaseModel):
     status: str = Field(description="DOĞRULANMIŞ ÖLÇÜM | EKSİK DEĞERLENDİRME | GERİYE DÖNÜK SİMÜLASYON")
     dictionary_version: str
     rule: str = Field(description="program | gun_oncesi | gun_ici | ufuk")
-    source: str = Field(description="scada (tesis brüt AC) | sayac (bağlantı noktası net)")
+    source: str = Field(description="scada (tesis brüt AC) | sayac (bağlantı noktası net) | epias (EPİAŞ Şeffaflık gerçekleşen üretim, kamu — SCADA değil)")
     period_start: str
     period_end: str
     timezone: str | None = None

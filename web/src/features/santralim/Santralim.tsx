@@ -1139,7 +1139,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
                 Bildirim muhatabı: {seg.bildirim.muhatap_etiketi} ({KESINLIK_AD[seg.bildirim.kesinlik] ?? seg.bildirim.kesinlik})</span>}   {/* G4-B (K-A): mevzuat ekseni; abonelik kapsamı ve santral türünden ayrı */}
               <label className="girdi-etiket">Santral türü <span className="soluk">(sanal test santralında ölçüm tazeliği izlenmez ve veri gecikmesi alarmı üretilmez; tahmin, karne ve kota değişmez)</span>
                 <select className="girdi" value={sinifSecim.santral_turu ?? sinif?.santral_turu ?? ""} disabled={sinif === null} aria-label="Santral türü" onChange={(e) => { setSegMesaj(null); setSinifSecim((x) => ({ ...x, santral_turu: e.target.value })); }}>
-                  {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="operasyonel">operasyonel santral</option><option value="sanal_test">sanal test santralı (geliştirme)</option>
+                  {sinif === null && <option value="" disabled>okunuyor…</option>}<option value="operasyonel">operasyonel santral</option><option value="sanal_test">sanal test santralı (geliştirme)</option><option value="kamu_referans">kamu referans kaydı (kamuya açık gerçek santral; müşteri değil)</option>
                 </select>
               </label>
               <label className="girdi-etiket">Veri türü <span className="soluk">(yalnız etiket; karne ve finans çıktılarında arşiv/sentetik notu)</span>

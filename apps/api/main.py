@@ -557,6 +557,7 @@ def _forecast_uret(plant_id: str, hours: int = 168,
         "gercek_veri_turu": veri_turu,   # G4-C1: canli | sentetik | tarihsel_arsiv | yok — sentetik/arşiv «ölçüm» değildir
         "run_at": kosu[0].run_at.isoformat() if kosu else None,
         "mode": kosu[0].mode if kosu else None,
+        "kalibrasyon_var": (bool(getattr(kosu[0], "kalibrasyon_id", None)) if kosu else None),   # G1 (F1-03): Mod A kalibrasyonsuz koşu açıkça söylenir
         # v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları {kaynak: ISO}
         "etiket": (getattr(kosu[0], "etiket", None) if kosu else None),
         "nwp_kosu_zamani": (kosu[0].nwp_kosu_zamani.isoformat() if kosu and getattr(kosu[0], "nwp_kosu_zamani", None) else None),
@@ -759,12 +760,22 @@ def _summary_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
         "hava": o.hava_3gun,
         "gunler": [{"etiket": e, "mwh": _kw(v)}
                    for e, v in zip(o.gunler, o.gunluk_mwh)],
+        "sinif": _ds_sinif(row.get("params_json")),   # G1 (Ü-2): santral türü/rozeti her sayfada (Kabuk üst şeridi) görünsün
         "saglik": {"son_scada": _tarih(o.son_scada_tarihi),
                    "islenen_saat": o.islenen_saat,
                    "anomali": o.anomali_sayisi,
                    "veri_durumu": _kalite.tazelik_durumu(o.son_scada_tarihi)},   # v2.605 (F4-K): tazelik rozeti ortak sözlükten
         "aylik": aylik,
     }
+
+
+def _ds_sinif(params_json):
+    """G1 (Ü-2): summary için santral sınıfı (saf sözlük); okuma düşerse None — sayfa ölmez."""
+    try:
+        from pvquant.services import durum_sozlugu as _ds
+        return _ds.santral_sinifi(params_json)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _naif_wmape(r):
@@ -2953,14 +2964,29 @@ def _skill_uret(plant_id: str, bucket: str = "0-24", gun: int = 120,
         d = {k: _ort(k) for k in ("pinball_p10", "pinball_p50", "pinball_p90", "crps", "picp80", "kapsama_p10", "kapsama_p90", "bant_n")}
         d["gun_sayisi"] = int(kova["picp80"].notna().sum()) if len(kova) and "picp80" in kova else 0
         return d
+    # Faz 1 G1 (22.11.2026, bulgu D-2): «referansa göre iyileşme» günlük beceri ORANLARININ ortalamasıydı (naif WMAPE %1,7 olan
+    # günde −694 → pencere −11,7 ile işaret tersine dönüyordu; aynı veriden santral_karne_ozeti +%52). Artık pencere ortalamalarının
+    # oranı: 1 − ort(WMAPE)/ort(naif WMAPE), yalnız naif değeri olan günlerde — dogrulama_service.santral_karne_ozeti ile aynı tanım.
+    # Eski ortalama ayrı alanda kalır (naife_ustunluk_gun_ort_pct) — sayı gizlenmez, etiketi söyler.
+    from pvquant.services import karne_kurali as _kk
+    naif_cift = [(float(r["mape"]), _naif_wmape(r)) for _, r in kova.iterrows()] if len(kova) else []
+    naif_cift = [(m, n) for m, n in naif_cift if n is not None and not pd.isna(m)]
+    beceri = None
+    if naif_cift:
+        naif_ort = sum(n for _, n in naif_cift) / len(naif_cift)
+        beceri = _kw((1 - (sum(m for m, _ in naif_cift) / len(naif_cift)) / naif_ort) * 100) if naif_ort > 0 else None
     return {
         "kova": bucket,
+        "kova_aciklama": _kk.KOVA_ACIKLAMA.get(bucket),                      # G1: kovanın gerçek ufku ve koşu seçimi
+        "wmape_tanim": _kk.WMAPE_TANIM["karne"],                              # G1: bu sayfadaki WMAPE günlük ortalamadır (havuz değil)
+        "beceri_yontem": "1 − ort(günlük WMAPE) / ort(günlük referans WMAPE), naif değeri olan günler",
+        "naife_ustunluk_gun_ort_pct": _kw(sv.mean()) if len(sv) else None,   # eski gösterim: günlük beceri oranlarının ortalaması
         "nmae_ort": _ort("nmae"), "nrmse_ort": _ort("nrmse"), "nmbe_ort": _ort("nmbe"),
         "cliper_wmape_ort": _ort("cliper_wmape"), "cliper_ustunluk_pct": _ort("skill_vs_cliper"),   # v2.279 (Yang 2019 referansı)
         "olasiliksal": _ol(),
         "gun_sayisi": int(kova["date"].nunique()) if len(kova) else 0,
         "wmape_ort": _kw(kova["mape"].mean()) if len(kova) else None,
-        "naife_ustunluk_pct": _kw(sv.mean()) if len(sv) else None,
+        "naife_ustunluk_pct": beceri,
         "ilk_tarih": kova["date"].min().date().isoformat() if len(kova) else None,
         "son_tarih": kova["date"].max().date().isoformat() if len(kova) else None,
         "gunluk": [

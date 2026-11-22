@@ -20,6 +20,8 @@ export interface SantralOzeti {
   aylik: { ay: string; mwh: number | null; saglam_saat: number; kapsam_pct: number;
            /** v2.205 — ay tam kapsanmadan null (kismi toplam yaniltir). */
            beklenti_mwh: number | null }[];
+  /** G1 (Ü-2): santral türü ve rozeti — kamu referans / sanal test kayıtları müşteri santrali gibi görünmesin (her sayfa, üst şerit). */
+  sinif?: (SantralSinifi & { rozet?: string | null }) | null;
   saglik: { son_scada: string | null; son_scada_iso?: string | null;   /* G2 Y-2 (21.11): ham ISO — gün kıyası için (son_scada Türkçe metindir) */
             kesinti_gun: number | null;
             islenen_saat: number; anomali: number;
@@ -373,6 +375,7 @@ export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   /** v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları. */
   etiket?: string | null; nwp_bilesenler?: Record<string, string> | null;
+  /** G1 (F1-03): koşu kalibrasyonlu mu (kalibrasyon_id) — false ise «kalibrasyonsuz fizik» açıkça yazılır. */ kalibrasyon_var?: boolean | null;
   ac_tavani_kw: number | null; simdi_idx: number | null;
   /** G4-C1: gerçekleşen serinin veri türü (canli | sentetik | tarihsel_arsiv | yok) — tek kaynak, dengesizlik ucuna bağımlı değil */ gercek_veri_turu?: string | null;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
@@ -392,6 +395,9 @@ export interface Karne {
   /** v2.569: gün içi güncelleme kovası (09:30 ve 15:30 UTC revizyonları; saat başına en son revizyon) — ana karneye karışmaz */
   gun_ici?: { wmape_ort: number | null; gun_sayisi: number; naife_ustunluk_pct: number | null } | null;
   wmape_ort: number | null; naife_ustunluk_pct: number | null;
+  /** Faz 1 G1 (22.11): kovanın gerçek ufku/koşu seçimi, WMAPE tanımı (günlük ortalama ≠ havuz), beceri yöntemi ve eski günlük-oran ortalaması. */
+  kova_aciklama?: { ad: string; ufuk: string; secim: string } | null; wmape_tanim?: string; beceri_yontem?: string;
+  naife_ustunluk_gun_ort_pct?: number | null;
   ilk_tarih: string | null; son_tarih: string | null;
   /** v2.247: SFA sozlugu — kapasiteye normalize yuzdeler (eski kayitlarda null). */
   nmae_ort?: number | null; nrmse_ort?: number | null; nmbe_ort?: number | null;
@@ -486,7 +492,7 @@ export interface TakimUyesi { id: string; email: string; rol: string; aktif: boo
   son_giris: string | null; olusturma: string | null; iki_adim?: boolean; }
 
 /** v2.301: gece işleri görünürlüğü. */
-export interface Isler { isler: { is: string; zaman: string; sure_sn: number | null; tamam: boolean }[];
+export interface Isler { isler: { is: string; zaman: string; sure_sn: number | null; tamam: boolean; durum?: "ok" | "atlandi" | "error" | string }[];   // G1 (Ü-1): durum ayrı
   pencere_saat: number; gece_calisiyor: boolean; son_gece_isi: string | null; not: string | null;
   bayat_isler?: string[];
   /** v2.359: "uyari" = gerçek bayatlık; "bilgi" = santral yok / ilk gece bekleniyor. */

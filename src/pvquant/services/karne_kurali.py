@@ -38,6 +38,22 @@ ETIKET_GUN_ICI = "gun_ici"
 ETIKET_ELLE = "elle"
 ETIKET_YAYIN = "yayin"                                        # v2.597: gece/program koşusu (eski NULL)
 ETIKETLER = ("yayin", "gun_ici", "elle", "backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma")   # forecast_runs.etiket CHECK
+# Faz 1 G1 (22.11.2026): kova adları gerçek ufku söylemiyordu («0-24» = aynı gün 05:00 koşusu, ort. ufuk ≈ 8 sa; gün-öncesi değil).
+# Doğruluk sayfası, dış API ve rapor bu sözlüğü okur; kova SEÇİMİ değişmez (yalnız açıklama). Üç WMAPE gösterimi farklı küme/kural/
+# toplulaştırma kullanır ve eşitlenmez: karne = günlük WMAPE ortalaması; bağımsız motor = havuzlanmış saatlik toplam.
+KOVA_ACIKLAMA = {
+    "0-24":   {"ad": "aynı gün (05:00 TSİ tahmini)", "ufuk": "0-24 saat ileri; sabah tahmininin kendi günü (ortalama ufuk ≈ 8 saat)",   # noqa: RUF001 — Türkçe müşteri metni
+               "secim": "her saat için en erken yayımlanan tahmin"},   # noqa: RUF001 — Türkçe müşteri metni
+    "24-72":  {"ad": "1-3 gün sonrası", "ufuk": "24-72 saat ileri (ortalama ufuk ≈ 56 saat)", "secim": "her saat için en erken yayımlanan tahmin"},   # noqa: RUF001 — Türkçe müşteri metni
+    "72-168": {"ad": "3-7 gün sonrası", "ufuk": "72-168 saat ileri", "secim": "her saat için en erken yayımlanan tahmin"},   # noqa: RUF001 — Türkçe müşteri metni
+    "168+":   {"ad": "7 günden uzak", "ufuk": "168 saatten ileri", "secim": "her saat için en erken yayımlanan tahmin"},   # noqa: RUF001 — Türkçe müşteri metni
+    "program": {"ad": "program (KGÜP kesimi öncesi)", "ufuk": "teslim günü D için bir gün önce 15:30 TSİ öncesi son tahmin (ortalama ufuk ≈ 23 saat)",
+                "secim": "kesim öncesi son tahmin; kesim öncesi tahmin yoksa satır yok"},   # noqa: RUF001 — Türkçe müşteri metni
+    "gun_ici": {"ad": "gün içi güncelleme", "ufuk": "12:30 ve 18:30 TSİ revizyonları, kalan saatler (ortalama ufuk ≈ 9 saat)",   # noqa: RUF001 — Türkçe müşteri metni
+                "secim": "saat başına en son revizyon"},   # noqa: RUF001 — Türkçe müşteri metni
+}
+WMAPE_TANIM = {"karne": "günlük WMAPE değerlerinin ortalaması (oranların ortalaması; düşük üretimli günler ağır basar)",   # noqa: RUF001 — Türkçe müşteri metni
+               "havuz": "havuzlanmış WMAPE: pencere boyunca Σ|tahmin - gerçek| / Σ gerçek (gündüz saatleri)"}   # noqa: RUF001 — Türkçe müşteri metni
 GERIYE_BAKISLI_ETIKET = frozenset({"backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma"})   # v2.597: yayımlanmış sayılmaz
 PIYASA_TZ = _PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
 KURAL_SURUMU = "2026-11-11"   # v2.597: etiket sözlüğü (yayin/backtest/simulasyon/sentetik/demo/yeniden_kurma) tek süzgeç
