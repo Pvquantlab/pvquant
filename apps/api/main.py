@@ -20,15 +20,10 @@ from pvquant.services.karne_kurali import (
     yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
 )
 from pvquant import surum as _surum   # 19.11 Bulgu 7: X-PVQ-Yazilim başlığı
+from pvquant.gozlem import sentry_baslat as _sentry_baslat
 from pvquant.zaman import PIYASA_TZ
 
-try:
-    import sentry_sdk
-    if _os.environ.get("PVQ_SENTRY_DSN"):
-        sentry_sdk.init(dsn=_os.environ["PVQ_SENTRY_DSN"],
-                        traces_sample_rate=0)
-except ImportError:
-    pass  # sentry-sdk kurulu değilse sessiz geç (dev ortamı)
+_sentry_baslat()   # G1 (22.11): sır sızdırmaz tek Sentry başlatıcısı; DSN boşsa/sdk yoksa sessiz geçer
 
 app = FastAPI(title="PVQuant API", version="0.1",
               description="Panel uçları Bearer oturumla; **Dış API** uçları `X-API-Key` başlığıyla (yönetici panelden üretir). "

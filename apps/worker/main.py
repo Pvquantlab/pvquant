@@ -11,6 +11,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from sqlalchemy import text
 
 from pvquant.db import sistem_baglami, tenant_baglami
+from pvquant.gozlem import sentry_baslat as _sentry_baslat
 from pvquant.services import calib_service, forecast_service, plant_service
 from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.services.alarm_service import hatirlatma_avans as alarm_avans
@@ -24,13 +25,7 @@ from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql  # v2.597
 from pvquant.services.santral_kunye_service import guc_tanimlari as _guc_tanimlari  # v2.599 (F4-E)
 from pvquant.zaman import PIYASA_TZ
 
-try:
-    import sentry_sdk
-    if _os.environ.get("PVQ_SENTRY_DSN"):
-        sentry_sdk.init(dsn=_os.environ["PVQ_SENTRY_DSN"],
-                        traces_sample_rate=0)
-except ImportError:
-    pass  # sentry-sdk kurulu değilse sessiz geç (dev ortamı)
+_sentry_baslat()   # G1 (22.11): sır sızdırmaz tek Sentry başlatıcısı; DSN boşsa/sdk yoksa sessiz geçer
 
 
 
