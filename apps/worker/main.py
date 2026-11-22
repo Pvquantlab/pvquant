@@ -189,6 +189,39 @@ def akilli_persistans(df: "pd.DataFrame", act: "pd.Series", lat, lon, clip: floa
     return naif
 
 
+CLIPER_GECMIS_GUN = 400   # G2-B1a: CLIPER icin olcum gecmisi (bagimsiz motor `gecmis_olcum_oku` ile ayni: 400 gun)
+
+
+def karne_cliper(df: "pd.DataFrame", gecmis: "pd.Series", donem_bas, lat, lon) -> "pd.Series":
+    """G2-B1a (Faz 1 G2B-02) — karne CLIPER referansi = bagimsiz dogrulama motorunun `cliper()` tanimi (SAF, DB yok).
+    df: ts_utc, run_at (UTC); gecmis: ts_utc indeksli olcum (kW); donem_bas: skor penceresinin basi. Iklimsel (ay x saat,
+    >= 20 gun) ve tek agirlik (30 gun egitim, k=1 persistans vs iklim) YALNIZ donem_bas oncesi gecmisten; persistans
+    bilgi-tutarli (t - 24k). Yetersiz gecmiste NaN (sayi uydurulmaz). Doner: df ile hizali Series."""
+    from pvquant.services import bagimsiz_dogrulama_service as _bd
+    if df is None or df.empty:
+        return pd.Series(dtype=float)
+    e = df[["ts_utc", "run_at"]].copy()
+    db = pd.Timestamp(donem_bas)
+    db = db.tz_localize("UTC") if db.tzinfo is None else db.tz_convert("UTC")
+    g = gecmis.copy()
+    g.index = pd.to_datetime(g.index, utc=True)
+    g = g[(g.index >= db - pd.Timedelta(days=CLIPER_GECMIS_GUN)) & (g.index < db)]   # QA I-8: kesit donem_bas'a bagli -> deterministik
+    seri, _bilgi = _bd.cliper(e, g, db, lat, lon)
+    return pd.Series(pd.to_numeric(seri, errors="coerce").values, index=df.index, dtype=float)
+
+
+def karne_cliper_kosu_bazli(df: "pd.DataFrame", gecmis: "pd.Series", lat, lon) -> "pd.Series":
+    """G2-B1a (QA I-1) — her kosu icin donem_bas = run_at: iklimsel ve agirlik yalniz YAYIN ANINDAN once bilinen gecmisten.
+    Sonuc deterministiktir (hangi gece hesaplandigina bagli degil; yeniden hesap ayni degeri verir) ve tahminin bilgi
+    kumesiyle tutarlidir (uzun ufuklu kosunun referansi, kosudan sonra gelen gunleri gormez)."""
+    out = pd.Series(float("nan"), index=df.index, dtype=float)
+    if df is None or df.empty or "run_at" not in df:
+        return out
+    for run_at, idx in df.groupby("run_at").groups.items():
+        out.loc[idx] = karne_cliper(df.loc[idx], gecmis, pd.Timestamp(run_at), lat, lon).values
+    return out
+
+
 def gece_skill(plant, pencere_gun: int = 10):
     """Yeni gerceklesmeleri gecmis kosularla esle, gun+kova skoru yaz.
     v2.16 P1: mape = gunluk WMAPE = sum(|p50-gercek|)/sum(gercek)*100
@@ -244,19 +277,21 @@ def gece_skill(plant, pencere_gun: int = 10):
             parse_dates=["ts_utc"]).drop_duplicates("ts_utc") \
             .set_index("ts_utc").power_kw
     df["naif"] = akilli_persistans(df, _act, plant["lat"], plant["lon"], _clip)
-    # v2.279: CLIPER referansı (Yang 2019) — iklimsel (ay×saat ortalaması, ≥20 gün) ile persistansın kova başına
-    # optimal konveks birleşimi; ağırlık pencerenin kendi geçmişinden (kapalı form). Yetersizse NaN → tire.
+    # v2.279: CLIPER referansı (Yang 2019) — iklimsel (ay×saat) ile persistansın optimal konveks birleşimi. Yetersizse NaN → tire.
+    # G2-B1a (Faz 1 G2B-02): tanim artik bagimsiz dogrulama motoruyla AYNI (`bagimsiz_dogrulama_service.cliper`):
+    # iklimsel ve tek agirlik (30 gun egitim, bilgi-tutarli persistans) yalniz KOSU ANI (run_at) ONCESI gecmisten
+    # (orneklem disi, gelecek yok; QA I-1: koşu bazli cipa → deterministik, gece sayisindan bagimsiz). Eski blok agirligi
+    # skorlanan satirlarda ogreniyor ve iklimsele hedef/gelecek gunleri katiyordu; 11 gunluk pencerede hic hesaplanamiyordu.
     try:
-        from pvquant.ext.tahmin import referans as _ref
-        # G2-B3 (QA I-1): CLIPER girdisi ESKI pencerede kalir (pencere+1 gun) — genisleyen _act yalniz persistans icindir;
-        # aksi halde sizintili CLIPER (G2B-02) yan etki olarak dolmaya baslar. CLIPER duzeltmesi ayri paket (G2-B1).
-        _act_cliper = _act[_act.index >= pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=pencere_gun + 1)]
-        _ikl = _ref.iklimsel(_act_cliper, pd.DatetimeIndex(df.ts_utc), min_gun=20)
-        df["_iklim"] = _ikl.values
-        _kova_ufuk = (df.ufuk_s // 24).clip(upper=14).astype(int)
-        _cl, _W = _ref.optimal_birlesim(df.power_kw, df.naif, df["_iklim"], df.naif, df["_iklim"], _kova_ufuk, _kova_ufuk)
-        df["cliper"] = _cl.values
-        df.loc[df.naif.isna() | df["_iklim"].isna(), "cliper"] = float("nan")
+        _simdi = pd.Timestamp.now(tz="UTC")
+        with tenant_baglami(tid) as s:
+            _gecmis = pd.read_sql(text(
+                "SELECT ts_utc, power_kw FROM scada_hourly "
+                f"WHERE plant_id=:p AND {_ks.sql_kosulu('karne')} "
+                "AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
+                s.connection(), params={"p": pid, "a": _simdi - pd.Timedelta(days=pencere_gun + 16 + CLIPER_GECMIS_GUN), "b": _simdi},
+                parse_dates=["ts_utc"]).drop_duplicates("ts_utc").set_index("ts_utc").power_kw
+        df["cliper"] = karne_cliper_kosu_bazli(df, _gecmis, plant["lat"], plant["lon"]).values
     except Exception as _e:   # noqa: BLE001 — referans hesabı skoru düşürmez
         print("cliper atlandı:", type(_e).__name__, _e)
     satirlar = kova_skorlari(df, float(plant["capacity_kwp"]), tid, pid)  # v2.247
