@@ -157,6 +157,38 @@ def olasiliksal_skorlar(g: "pd.DataFrame", capacity_kwp: float) -> dict:
             "bn": (_dg.bant_genisligi(q.p10, q.p90, capacity_kwp) if capacity_kwp and capacity_kwp > 0 else None)}
 
 
+PERSISTANS_AZAMI_GUN = 16   # G2-B3: naif kaynagi en cok 15 gun geriden (ufuk 15 gun) + 1 gun pay
+
+
+def persistans_kaynak_ts(ts_utc: "pd.Series", run_at: "pd.Series") -> "pd.Series":
+    """G2-B3 (Faz 1 G2B-01) — bilgi-tutarli persistans kaynagi (SAF). Hedef saat t ve yayin ani r icin
+    k = floor((t - r) / 24 s) + 1 (en az 1), kaynak = t - 24k saat: yayin anindan ONCE gozlenmis son ayni saat.
+    Eski kural (t - 24 s) ufuk > 24 s olan hedeflerde yayin aninda henuz gozlenmemis saati kullaniyordu
+    (24-72 / 72-168 / 168+ kovalarinin tamami, program kovasinin ogleden sonrasi). k = 1 iken (0-24, gun_ici)
+    kaynak eski kuralla birebir aynidir. Bagimsiz dogrulama motorunun `persistans()` tanimiyla ayni."""
+    t = pd.to_datetime(ts_utc, utc=True)
+    r = pd.to_datetime(run_at, utc=True)
+    k = (((t - r).dt.total_seconds() // 86400.0).astype(int) + 1).clip(lower=1)
+    return t - pd.to_timedelta(k * 24, unit="h")
+
+
+def akilli_persistans(df: "pd.DataFrame", act: "pd.Series", lat, lon, clip: float) -> "pd.Series":
+    """G2-B3 — akilli persistans referansi (SAF, DB yok). df: ts_utc, run_at (UTC); act: ts_utc indeksli olcum (kW).
+    Formul v2.55 ile ayni: kaynak saat olcumu x cs(t) / cs(kaynak), oran [1/clip, clip] kelepceli;
+    cs(kaynak) <= 5 W/m2 (gece) ya da olcum yoksa NaN (sayi uydurulmaz). Yalnizca kaynak saat kurali degisti."""
+    import pvlib as _pvlib
+    t = pd.to_datetime(df.ts_utc, utc=True)
+    kaynak = persistans_kaynak_ts(df.ts_utc, df.run_at)
+    ham = kaynak.map(act)
+    ts = pd.DatetimeIndex(sorted(set(t) | set(kaynak)))
+    cs = _pvlib.location.Location(float(lat), float(lon), tz="UTC").get_clearsky(ts, model="haurwitz").ghi
+    cs_t = t.map(cs)
+    cs_d = kaynak.map(cs)
+    naif = ham * (cs_t / cs_d).clip(1.0 / clip, clip)
+    naif[(cs_d <= 5.0) | ham.isna()] = float("nan")
+    return naif
+
+
 def gece_skill(plant, pencere_gun: int = 10):
     """Yeni gerceklesmeleri gecmis kosularla esle, gun+kova skoru yaz.
     v2.16 P1: mape = gunluk WMAPE = sum(|p50-gercek|)/sum(gercek)*100
@@ -192,8 +224,6 @@ def gece_skill(plant, pencere_gun: int = 10):
     #     filtresinden sonra ~2 gun kayiyordu (hizalama hatasi).
     # (2) berrak-gok orani: dun bulutlu / bugun acik farki citaya islenir;
     #     duz 'dun=bugun' citasi puani sisiriyordu (kitap Kutu 14 tuzagi).
-    import pvlib as _pvlib
-
     from pvquant.config import get_settings as _gs
     _clip = _gs().skill_naive_ratio_clip
     # v2.130: naif kaynagi pencere+1 gun — kayan pencerenin ilk tam gununun
@@ -203,27 +233,25 @@ def gece_skill(plant, pencere_gun: int = 10):
     # artik scada_hourly'den BIR GUN geriden okunur; skor penceresi (df)
     # DEGISMEZ, yalniz naifin referans verisi tamamlanir. Yan kazanc: naif,
     # 'o saatte tahmin satiri da var' ortuk sartindan kurtulur.
+    # G2-B3 (Faz 1 G2B-01): naif kaynagi artik yayin anina gore secilir (t - 24k saat; bkz. persistans_kaynak_ts),
+    # bu yuzden olcum penceresi en uzun ufuk (15 gun) kadar geriye uzar. Skor penceresi (df) DEGISMEZ.
     with tenant_baglami(tid) as s:
         _act = pd.read_sql(text(
             "SELECT ts_utc, power_kw FROM scada_hourly "
             f"WHERE plant_id=:p AND {_ks.sql_kosulu('karne')} "
-            "AND ts_utc >= now()-((:g + 1) * INTERVAL '1 day')"),
-            s.connection(), params={"p": pid, "g": pencere_gun},
+            "AND ts_utc >= now()-((:g + :e) * INTERVAL '1 day')"),
+            s.connection(), params={"p": pid, "g": pencere_gun, "e": PERSISTANS_AZAMI_GUN},
             parse_dates=["ts_utc"]).drop_duplicates("ts_utc") \
             .set_index("ts_utc").power_kw
-    df["naif_ham"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_act)
-    _ts = pd.DatetimeIndex(sorted(set(df.ts_utc) | set(df.ts_utc - pd.Timedelta(hours=24))))
-    _cs = _pvlib.location.Location(float(plant["lat"]), float(plant["lon"]),
-                                   tz="UTC").get_clearsky(_ts, model="haurwitz").ghi
-    df["_cs_t"] = df.ts_utc.map(_cs)
-    df["_cs_d"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_cs)
-    df["naif"] = df.naif_ham * (df._cs_t / df._cs_d).clip(1.0 / _clip, _clip)
-    df.loc[(df._cs_d <= 5.0) | df.naif_ham.isna(), "naif"] = float("nan")
+    df["naif"] = akilli_persistans(df, _act, plant["lat"], plant["lon"], _clip)
     # v2.279: CLIPER referansı (Yang 2019) — iklimsel (ay×saat ortalaması, ≥20 gün) ile persistansın kova başına
     # optimal konveks birleşimi; ağırlık pencerenin kendi geçmişinden (kapalı form). Yetersizse NaN → tire.
     try:
         from pvquant.ext.tahmin import referans as _ref
-        _ikl = _ref.iklimsel(_act, pd.DatetimeIndex(df.ts_utc), min_gun=20)
+        # G2-B3 (QA I-1): CLIPER girdisi ESKI pencerede kalir (pencere+1 gun) — genisleyen _act yalniz persistans icindir;
+        # aksi halde sizintili CLIPER (G2B-02) yan etki olarak dolmaya baslar. CLIPER duzeltmesi ayri paket (G2-B1).
+        _act_cliper = _act[_act.index >= pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=pencere_gun + 1)]
+        _ikl = _ref.iklimsel(_act_cliper, pd.DatetimeIndex(df.ts_utc), min_gun=20)
         df["_iklim"] = _ikl.values
         _kova_ufuk = (df.ufuk_s // 24).clip(upper=14).astype(int)
         _cl, _W = _ref.optimal_birlesim(df.power_kw, df.naif, df["_iklim"], df.naif, df["_iklim"], _kova_ufuk, _kova_ufuk)
