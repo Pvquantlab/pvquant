@@ -103,7 +103,11 @@ def _sonuc(durum: Durum, neden: str, **ek) -> dict:
 # etiket/not üretir. Tahmin, karne, uzlaştırma ve kota sayımı DEĞİŞMEZ (sanal test santralleri geliştirme için gece tahmin almaya devam eder).
 # 20.11'in tek alanlı `veri_sinifi` beyanı okuma yolunda eşlenir (silinmez): operasyonel→(operasyonel, canli), tarihsel→(operasyonel,
 # tarihsel_arsiv), demo→(sanal_test, yok).
-SANTRAL_TURLERI = {"operasyonel": "operasyonel santral", "sanal_test": "sanal test santralı (geliştirme)"}
+SANTRAL_TURLERI = {"operasyonel": "operasyonel santral", "sanal_test": "sanal test santralı (geliştirme)",
+                   # Faz 1 G1 (22.11.2026, Ü-2): kamuya açık gerçek santral verisiyle beslenen referans kaydı — müşteri santrali DEĞİL;
+                   # ölçüm tazeliği izlenir (EPİAŞ akışı kesilince uyarı), tahmin/karne hesapları değişmez.
+                   "kamu_referans": "kamu referans kaydı (kamuya açık gerçek santral verisi; müşteri santrali değil)"}
+ROZET = {"operasyonel": None, "sanal_test": "SANAL TEST", "kamu_referans": "KAMU REFERANS"}   # G1: panel üst şeridi / sayfa bandı
 VERI_TURLERI = {"canli": "canlı ölçüm", "tarihsel_arsiv": "tarihsel arşiv verisi", "sentetik": "sentetik veri", "yok": "ölçüm verisi yok"}
 _ESKI_VERI_SINIFI = {"operasyonel": ("operasyonel", "canli"), "tarihsel": ("operasyonel", "tarihsel_arsiv"), "demo": ("sanal_test", "yok")}
 
@@ -129,7 +133,7 @@ def santral_sinifi(params_json) -> dict:
     if vt not in VERI_TURLERI:
         vt = eski[1] if eski else "canli"
     return {"santral_turu": st, "veri_turu": vt, "santral_turu_etiketi": SANTRAL_TURLERI[st], "veri_turu_etiketi": VERI_TURLERI[vt],
-            "tazelik_izlenir": st == "operasyonel"}
+            "tazelik_izlenir": st in ("operasyonel", "kamu_referans"), "rozet": ROZET.get(st)}
 
 
 def veri_durumu_uygulanmiyor(sinif: dict, son_olcum, son_alim, simdi: dt.datetime, *, kapsama_saat_7g: int | None = None) -> dict:
@@ -287,10 +291,12 @@ def mutabakat_durumu(donem: str, bildirim_var: bool, nihai_var: bool, bugun: dt.
     return r
 
 
-def alarm_durumu(acik_kritik: int, acik_uyari: int, suren_olay: int, son_is_hatasi, simdi: dt.datetime, *, esik: dict = ESIK) -> dict:
-    """Açık alarm (okunmamış, 7 gün), süren olay, son 48 saatte başarısız santral işi."""
+def alarm_durumu(acik_kritik: int, acik_uyari: int, suren_olay: int, son_is_hatasi, simdi: dt.datetime, *, esik: dict = ESIK, son_is_atlanan=None) -> dict:
+    """Açık alarm (okunmamış, 7 gün), süren olay, son 48 saatte başarısız santral işi; G1 (Ü-1): son 48 saatte ATLANAN iş (kimlik/veri yok) da DİKKAT."""
     yas = yas_saat(son_is_hatasi, simdi)
-    z = {"acik_kritik": int(acik_kritik), "acik_uyari": int(acik_uyari), "suren_olay": int(suren_olay), "son_is_hatasi": _iso(son_is_hatasi)}
+    yas_atl = yas_saat(son_is_atlanan, simdi)
+    z = {"acik_kritik": int(acik_kritik), "acik_uyari": int(acik_uyari), "suren_olay": int(suren_olay), "son_is_hatasi": _iso(son_is_hatasi),
+         "son_is_atlanan": _iso(son_is_atlanan)}
     if acik_kritik > 0:
         return _sonuc(Durum.KRITIK, f"{acik_kritik} kritik alarm okunmadı", **z)
     nedenler = []
@@ -300,6 +306,8 @@ def alarm_durumu(acik_kritik: int, acik_uyari: int, suren_olay: int, son_is_hata
         nedenler.append(f"{suren_olay} süren olay")
     if yas is not None and yas <= esik["is_hatasi_saat"]:
         nedenler.append("son 48 saatte başarısız iş")
+    if yas_atl is not None and yas_atl <= esik["is_hatasi_saat"]:
+        nedenler.append("son 48 saatte atlanan iş (kimlik ya da veri eksik — veri yazılmadı)")
     if nedenler:
         return _sonuc(Durum.DIKKAT, "; ".join(nedenler), **z)
     return _sonuc(Durum.SAGLIKLI, "açık alarm ve süren olay yok", **z)

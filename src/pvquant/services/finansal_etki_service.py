@@ -243,6 +243,9 @@ def uretim_ozeti_saf(donem: dict, izgara: pd.DatetimeIndex, df: pd.DataFrame, bi
     uk = df["uretim_kaynak"].reindex(izgara) if "uretim_kaynak" in df.columns else pd.Series(None, index=izgara, dtype=object)
     uk = uk.where(ger.notna(), None)
     sinir_kod, sinir_etiket = fn_sinir(uretim_secim, uk)
+    if uretim_secim != "sayac" and olcum_dokum and olcum_dokum.get("veri_kaynagi") == "epias":   # G1 (C-3/D-8): EPİAŞ satırları «SCADA» değildir
+        from pvquant.services import olcum_uygunluk_service as _ou
+        sinir_kod, sinir_etiket = _ou.SINIR["epias"]
     sapma = None; pct = None; yon = None
     if ortak.any():
         p_o, g_o = float(prog[ortak].sum()), float(ger[ortak].sum())

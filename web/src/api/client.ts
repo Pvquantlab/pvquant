@@ -23,6 +23,7 @@ interface ForecastYanit {
   mode: "A" | "B" | "C" | null;
   etiket?: string | null;                              // v2.605: yayin | gun_ici | elle
   nwp_bilesenler?: Record<string, string> | null;      // v2.605: {kaynak: ISO üretim zamanı}
+  kalibrasyon_var?: boolean | null;                    // G1 (F1-03): koşu kalibrasyonlu mu
   hours: number;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes?: { gun: string; dogus_utc: string; batis_utc: string }[];
@@ -319,6 +320,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   return {
     mod: g.mode, model: "", kosu_zamani: g.run_at ?? "",
     etiket: g.etiket ?? null, nwp_bilesenler: g.nwp_bilesenler ?? null,   // v2.605 (F4-K): tahmin etiketi ve hava tahmini kaynak zamanları
+    kalibrasyon_var: g.kalibrasyon_var ?? null,   // G1 (F1-03)
     ufuk_saat: g.hours, ac_tavani_kw: null, simdi_idx: simdiIdx,
     gercek_veri_turu: g.gercek_veri_turu ?? null,   // G4-C1 (QA Ö-1): aynı yanıttan; sentetik/arşiv etiketi yarışsız
     gunes: (g.gunes ?? []).map((x) =>

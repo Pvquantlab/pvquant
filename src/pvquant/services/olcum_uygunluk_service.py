@@ -25,7 +25,18 @@ DURUM_OLCULDU = "olculdu"
 DURUM_DISLANDI = "dislandi"
 NEDEN_EKSIK = "eksik"
 NEDEN_KISMI = "kismi_saat"
-SINIR = {"scada": ("plant_gross_ac", "tesis brüt AC (SCADA)"), "sayac": ("pcc_net", "bağlantı noktası net (sayaç)")}
+SINIR = {"scada": ("plant_gross_ac", "tesis brüt AC (SCADA)"), "sayac": ("pcc_net", "bağlantı noktası net (sayaç)"),
+         # Faz 1 G1 (22.11.2026, bulgu C-3/D-8): EPİAŞ Şeffaflık gerçek zamanlı üretimi scada_hourly'ye kaynak='epias' ile yazılır; müşteri SCADA'sı
+         # değildir ve «tesis brüt AC (SCADA)» etiketi yanıltıyordu. Etiket veri satırlarının kaynağından türetilir (hesap değişmez).
+         "epias": ("settlement_gross", "EPİAŞ Şeffaflık gerçekleşen üretim (kamuya açık; uzlaştırmaya esas, SCADA değil)")}
+
+
+def veri_kaynagi(olcum: pd.DataFrame | None, kaynak: str = "scada") -> str:
+    """SAF. Ölçüm satırlarının `kaynak` sütunu tamamen 'epias' ise 'epias', aksi hâlde seçilen kaynak (scada/sayac)."""
+    if kaynak == "sayac" or olcum is None or olcum.empty or "kaynak" not in olcum:
+        return kaynak
+    k = olcum["kaynak"].dropna()
+    return "epias" if len(k) and (k == "epias").all() else kaynak
 SAYAC_OLCULMUS = "olculmus"
 SURUM = "2026-11-10"
 
@@ -108,16 +119,17 @@ def siniflandir(izgara: pd.DatetimeIndex, olcum: pd.DataFrame | None, olaylar: d
     return df.reset_index()[["ts_utc", "kwh", "durum", "neden", "kirpma", "kapsama_dk"]]
 
 
-def dokum(df: pd.DataFrame, kaynak: str = "scada") -> dict:
-    """Dışlama dökümü: beklenen saat, ölçülen saat, kapsama %, neden → saat sayısı, kırpma saati, ölçüm sınırı."""
+def dokum(df: pd.DataFrame, kaynak: str = "scada", veri_kaynagi_: str | None = None) -> dict:
+    """Dışlama dökümü: beklenen saat, ölçülen saat, kapsama %, neden → saat sayısı, kırpma saati, ölçüm sınırı.
+    G1: `veri_kaynagi_` (scada | sayac | epias) verilirse sınır etiketi ondan; yoksa seçilen kaynaktan."""
     n = int(len(df)); olc = int((df["durum"] == DURUM_OLCULDU).sum()) if n else 0
     dis = df.loc[df["durum"] == DURUM_DISLANDI, "neden"].value_counts().to_dict() if n else {}
-    sinir_kod, sinir_etiket = SINIR.get(kaynak, SINIR["scada"])
+    sinir_kod, sinir_etiket = SINIR.get(veri_kaynagi_ or kaynak, SINIR["scada"])
     return {"beklenen_saat": n, "olculdu_saat": olc, "kapsama_pct": (round(olc / n * 100, 1) if n else None),
             "dislanan": {str(k): int(v) for k, v in sorted(dis.items(), key=lambda kv: (-kv[1], kv[0]))},
             "kirpma_saat": int(df["kirpma"].fillna(False).astype(bool).sum()) if n else 0,
             "kapsama_bilinmeyen_saat": int((df["kapsama_dk"].isna() & (df["durum"] == DURUM_OLCULDU)).sum()) if n else 0,
-            "kaynak": kaynak, "sinir": sinir_kod, "sinir_etiketi": sinir_etiket, "surum": SURUM}
+            "kaynak": kaynak, "veri_kaynagi": (veri_kaynagi_ or kaynak), "sinir": sinir_kod, "sinir_etiketi": sinir_etiket, "surum": SURUM}
 
 
 def saat_durumlari(tenant_id, plant: dict, bas: datetime, bit: datetime, kaynak: str = "scada") -> tuple[pd.DataFrame, dict]:
@@ -132,9 +144,9 @@ def saat_durumlari(tenant_id, plant: dict, bas: datetime, bit: datetime, kaynak:
             from pvquant.services import sayac_service
             olcum = sayac_service.sayac_oku(tenant_id, plant["id"], a, b)
         else:
-            olcum = pd.read_sql(text("SELECT ts_utc, power_kw, energy_kwh, flag, kirpma, kapsama_dk FROM scada_hourly "
+            olcum = pd.read_sql(text("SELECT ts_utc, power_kw, energy_kwh, flag, kirpma, kapsama_dk, kaynak FROM scada_hourly "
                                      "WHERE plant_id = CAST(:p AS uuid) AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
                                 s.connection(), params={"p": plant["id"], "a": a, "b": b}, parse_dates=["ts_utc"], index_col="ts_utc")
     olaylar = olay_service.aralik(tenant_id, plant["id"], a, b, olay_turleri())
     df = siniflandir(izgara, olcum, olay_saatleri(olaylar, a, b), kaynak)
-    return df, dokum(df, kaynak)
+    return df, dokum(df, kaynak, veri_kaynagi(olcum, kaynak))   # G1: sınır etiketi satırların gerçek kaynağından (epias ≠ SCADA)

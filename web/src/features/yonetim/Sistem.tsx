@@ -100,7 +100,7 @@ export function Sistem() {
               : o.izlenen && o.izlenen.bayat.length > 0 ? `eşiğini aşan izlenen iş: ${o.izlenen.bayat.join(", ")}`
               : `son üretici iş ${yasTr(o.gece_turu.son)}${o.izlenen ? "; izlenen işlerde eşik aşımı yok" : ""}`} />
           <Kpi etiket="İşler" deger={sayiTr(o.isler_24.hata)} birim="hata" ton={o.isler_24.hata > 0 ? "uyari" : undefined}
-            alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı${(o.isler_24.bos_ok ?? 0) > 0 ? `; ${sayiTr(o.isler_24.bos_ok ?? 0)} iş çıktı yazmadan bitti (boş «ok»: başarı doğrulanamaz)` : ""}`} />   {/* Faz 0 P0-06 (20.11) */}
+            alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı${(o.isler_24.atlandi ?? 0) > 0 ? `; ${sayiTr(o.isler_24.atlandi ?? 0)} iş atlandı (kimlik ya da veri eksik — veri yazılmadı)` : ""}${(o.isler_24.bos_ok ?? 0) > 0 ? `; ${sayiTr(o.isler_24.bos_ok ?? 0)} iş çıktı yazmadan bitti (boş «ok»: başarı doğrulanamaz)` : ""}`} />   {/* Faz 0 P0-06 (20.11); G1 (Ü-1): atlanan iş hata değil, ayrı sayılır */}
           <Kpi etiket="Hava verisi" deger={o.meteo.kaynaklar.length ? yasTr(en_yeni(o.meteo.kaynaklar.map((k) => k.son_indirme))) : "arşiv yok"}
             ton={o.meteo.kaynaklar.length === 0 || o.meteo.kaynaklar.some((k) => k.bayat) ? "uyari" : undefined}
             alt={o.meteo.kaynaklar.length === 0 ? "meteo_arsiv tablosu boş"
@@ -256,7 +256,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
   useEffect(() => { void getir(); yonetim.kiracilar().then((r) => setKiracilar(r.kiracilar)).catch(() => {}); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   // 26.10 D2: envanterden santral seçilince son 30 gün + yalnız başarısız; temizlenince varsayılan pencere
   useEffect(() => { if (santral) { setSaat(720); setYalnizHata(true); void getir({ saat: 720, yalniz_hata: true }); } }, [santral]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const hataSayisi = liste ? liste.filter((x) => !x.tamam).length : 0;
+  const hataSayisi = liste ? liste.filter((x) => !x.tamam && x.durum !== "atlandi").length : 0;   // G1 (Ü-1): atlanan iş hata sayılmaz
   return (
     <Kart baslik="İş kayıtları" alt="tüm müşteriler; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez" id="is-kayitlari"
       sag={<span className="dugme-sira">{santral && <span className="rozet rozet-uyari">santral: {santral.ad} <button type="button" className="plat-rozet-kapat" aria-label="santral süzgecini kaldır" onClick={() => { temizle(); setSaat(48); setYalnizHata(false); void getir({ saat: 48, yalniz_hata: false, plant: null }); }}>×</button></span>}
@@ -280,7 +280,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
             <tr key={x.id}><td className="ad">{x.is}</td><td style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
               <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
-              <td><span className={`rozet ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
+              <td><span className={`rozet ${x.tamam ? "rozet-ok" : x.durum === "atlandi" ? "rozet-notr" : "rozet-uyari"}`}>{isDurumu(x.tamam, x.durum)}</span></td>
               <td className="t-ikincil" style={{ ...AYRINTI, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>

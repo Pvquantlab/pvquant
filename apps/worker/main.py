@@ -40,6 +40,26 @@ def _tum_santraller():
             "ON t.id=p.tenant_id WHERE t.status='active' AND NOT p.archived"))]
 
 
+ATLANDI_IMZALARI = ("atlandı", "atlandi", "kimlik_yok", "kimlik tanımlı değil", "yazılan 0", "yazilan 0")
+ATLANDI_DURUMLARI = frozenset({"atlandi", "atlandı", "kimlik_yok"})
+
+
+def _is_durumu(sonuc, det: str) -> str:
+    """Faz 1 G1 (22.11.2026, Ü-1 / bulgu Y-1): iş hiç veri yazmadan «atlandı»ysa (kimlik yok, veri yok) status 'ok' değil
+    'atlandi' yazılır; tazelik («iş koştu mu») atlanan işi de sayar (isler_service), hizmet sağlığı ise DİKKAT gösterir —
+    14→22.11 arasında 9 gün veri gelmemesine rağmen her gösterge yeşildi. error yine yalnız gerçek istisnalar.
+    Kural: yapılı sonuçta durum ∈ ATLANDI_DURUMLARI; metin sonuçta ';' ile ayrılan HER parça atlandı imzası taşıyorsa."""
+    if isinstance(sonuc, dict):
+        return "atlandi" if str(sonuc.get("durum", "")).lower() in ATLANDI_DURUMLARI else "ok"
+    if isinstance(sonuc, str) and sonuc.strip():
+        import re as _re
+        parcalar = [p.strip().lower() for p in sonuc.split(";") if p.strip()]
+        def _atlanmis(p: str) -> bool:   # QA İ-4: «atlandı» geçse de sayı yazılmışsa (n=12, yazılan 24) veri üretmiştir
+            return any(i in p for i in ATLANDI_IMZALARI) and not _re.search(r"(n=|yaz[ıi]lan )\s*[1-9]", p)
+        return "atlandi" if parcalar and all(_atlanmis(p) for p in parcalar) else "ok"
+    return "ok"
+
+
 def _logla(job, fn):
     """Her isi jobs_log'a yazan sarmal — 'dun gece ne oldu' cevabi.
     v2.359: is metni DONDUREBILIR — "yetersiz veri, atlandi" gibi beklenen
@@ -54,6 +74,7 @@ def _logla(job, fn):
                 sonuc = fn(plant)
                 if sonuc:
                     det = str(sonuc)
+                    durum = _is_durumu(sonuc, det)   # G1 (Ü-1): atlanan iş 'atlandi'
                     if isinstance(sonuc, dict):   # v2.598 (F4-C): yapılı sonuç — veri yolu durumu regex yerine bunu okur
                         sonuc_json = _json.dumps(sonuc, default=str)
             except Exception as e:
@@ -782,6 +803,7 @@ def _logla_tek(job, fn):
             elif isinstance(r, dict):   # v2.600 (F4-F): yapılı sonuç (gece_kural_sicili) — _logla ile aynı sözleşme
                 det = str(r)
                 sonuc_json = _json.dumps(r, default=str)
+            durum = _is_durumu(r, det)   # G1 (Ü-1): atlanan iş 'atlandi' (gun_oncesi_ptf «kimlik_yok; yazılan 0» gibi)
         except Exception as e:
             durum, det = "error", f"{type(e).__name__}: {e}"
             traceback.print_exc()

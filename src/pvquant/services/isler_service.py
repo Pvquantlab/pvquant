@@ -64,7 +64,7 @@ def bayat_isler(saat: int = 30, tenant_id=None) -> list[str]:
     with sistem_baglami() as s:
         rows = s.execute(text(
             "SELECT job, max(started) AS son FROM jobs_log "
-            "WHERE job = ANY(:g) AND status = 'ok' "
+            "WHERE job = ANY(:g) AND status IN ('ok', 'atlandi') "   # G1 (Ü-1): atlanan iş de «koştu» (tazelik); hata değil
             "  AND (CAST(:t AS uuid) IS NULL OR tenant_id = CAST(:t AS uuid) "
             "       OR tenant_id IS NULL) "
             "GROUP BY job"), {"g": list(URETEN_ISLER), "t": tenant_id}).all()
@@ -102,7 +102,7 @@ def kacan_isler_db(slotlar: dict, simdi=None) -> list[str]:
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
-        rows = s.execute(text("SELECT job, max(started) AS son FROM jobs_log WHERE job = ANY(:g) AND status = 'ok' GROUP BY job"),
+        rows = s.execute(text("SELECT job, max(started) AS son FROM jobs_log WHERE job = ANY(:g) AND status IN ('ok', 'atlandi') GROUP BY job"),   # G1 (Ü-1)
                          {"g": list(slotlar)}).all()
     return kacan_isler({r.job: r.son for r in rows}, slotlar, simdi)
 
@@ -128,7 +128,8 @@ def ozet(tenant_id, saat: int = 48) -> dict:
         if r["finished"] is not None and r["started"] is not None:
             sure = round((r["finished"] - r["started"]).total_seconds(), 1)
         isler.append({"is": ISIM_TR.get(r["job"], r["job"]), "zaman": r["started"].isoformat(),
-                      "sure_sn": sure, "tamam": r["status"] == "ok", "sonuc": _sonuc_ozeti(r.get("sonuc_json"))})   # v2.606: durum/sayılar (metin değil)
+                      "sure_sn": sure, "tamam": r["status"] == "ok", "durum": r["status"],   # G1 (Ü-1): ok | atlandi | error — UI «atlandı» yazar
+                      "sonuc": _sonuc_ozeti(r.get("sonuc_json"))})   # v2.606: durum/sayılar (metin değil)
     # v2.339: hüküm artık iş bazında — "biri koştu" yetmez, HER üretici iş taze olmalı.
     bayat = bayat_isler(30, tenant_id)
     gece_calisiyor, bayat, seviye, not_ = hukum(int(n_santral), en_yeni_santral, bayat, son_gece)
@@ -165,11 +166,11 @@ def sureler(tenant_id, gun: int = 7, *, hepsi: bool = False) -> list[dict]:
     kosul = "" if hepsi else "(tenant_id = :t OR tenant_id IS NULL) AND "
     with sistem_baglami() as s:
         rows = s.execute(text(
-            "SELECT job, count(*) AS n, count(*) FILTER (WHERE status IS DISTINCT FROM 'ok') AS hata, "
+            "SELECT job, count(*) AS n, count(*) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata, count(*) FILTER (WHERE status = 'atlandi') AS atlandi, "
             " round(avg(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS ort_sn, round(max(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS en_uzun_sn, "
             f" max(started) AS son FROM jobs_log WHERE {kosul}finished IS NOT NULL "
             " AND started >= now() - (:g * INTERVAL '1 day') GROUP BY job ORDER BY en_uzun_sn DESC NULLS LAST"), {"t": tenant_id, "g": int(gun)}).mappings().all()
-    return [{"is": ISIM_TR.get(r["job"], r["job"]), "kod": r["job"], "n": int(r["n"]), "hata": int(r["hata"] or 0),
+    return [{"is": ISIM_TR.get(r["job"], r["job"]), "kod": r["job"], "n": int(r["n"]), "hata": int(r["hata"] or 0), "atlandi": int(r["atlandi"] or 0),
              "ort_sn": (float(r["ort_sn"]) if r["ort_sn"] is not None else None), "en_uzun_sn": (float(r["en_uzun_sn"]) if r["en_uzun_sn"] is not None else None),
              "son": r["son"].isoformat() if r["son"] else None} for r in rows]
 

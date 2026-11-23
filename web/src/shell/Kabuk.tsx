@@ -416,6 +416,12 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                       gecikti ? <span key="gecikme" className="meta-uyari">{sg.kesinti_gun} gündür yeni veri yok</span> : "veri akışı sağlıklı",
                     ]} />}
               </span>
+              {/* Faz 1 G1 (Ü-2): kamu referans / sanal test kaydı her sayfada rozetle söylenir — müşteri santrali izlenimi vermesin */}
+              {ozet.sinif?.rozet && (
+                <span className="meta-uyari" title={ozet.sinif.santral_turu_etiketi} aria-label={`Santral türü: ${ozet.sinif.santral_turu_etiketi}`}>
+                  {ozet.sinif.rozet} · {ozet.sinif.santral_turu_etiketi}
+                </span>
+              )}
               {sonKosu !== undefined && (
                 <span>{sonKosu
                   ? `${SOZLUK.sonTahmin} ${trKosu(sonKosu)}` : "henüz tahmin yok"}</span>

@@ -63,7 +63,7 @@ export interface SistemOzet {
   zaman: string;
   nabiz: { durum: "calisiyor" | "sessiz" | "yok"; son: string | null; yas_dk: number | null; ayrinti: Record<string, unknown>; aralik_dk: number; sessiz_dk: number };
   gece_turu: { taze: boolean; bayat_isler: string[]; son: string | null; esik_saat: number; uretici_isler: { kod: string; is: string; son_ok: string | null }[] };
-  isler_24: { toplam: number; hata: number; bos_ok?: number };   // Faz 0 P0-06
+  isler_24: { toplam: number; hata: number; atlandi?: number; bos_ok?: number };   // Faz 0 P0-06; G1 (Ü-1): atlanan ayrı
   meteo: { esik_saat: number; kaynaklar: { kaynak: string; son_indirme: string | null; nokta: number | null; satir: number | null; ilk: string | null; son_ts: string | null; yas_saat: number | null; bayat: boolean }[] };
   piyasa: { son_ts: string | null; son_guncelleme: string | null; satir: number; yas_saat: number | null; esik_saat: number; bayat: boolean;
     /** v2.516 (#4): EPİAŞ kimliği var mı (null = bilinmiyor), yön kapsamı (son yönlü saat, 7 günde yönlü/toplam saat, yön eksik mi), gün öncesi PTF ufku */

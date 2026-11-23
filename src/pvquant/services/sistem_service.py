@@ -87,11 +87,11 @@ def ozet(aktor_id: str) -> dict:
     with platform_baglami(aktor_id) as s:
         nabiz = s.execute(text("SELECT zaman, ayrinti FROM sistem_nabiz WHERE bilesen = 'worker'")).mappings().first()
         son_ok = {r["job"]: r["son"] for r in s.execute(text(
-            "SELECT job, max(started) AS son FROM jobs_log WHERE status = 'ok' AND job = ANY(:g) GROUP BY job"),
+            "SELECT job, max(started) AS son FROM jobs_log WHERE status IN ('ok', 'atlandi') AND job = ANY(:g) GROUP BY job"),
             {"g": list(URETEN_ISLER)}).mappings().all()}
         gece_son = s.execute(text("SELECT max(started) FROM jobs_log WHERE job = ANY(:g)"), {"g": list(URETEN_ISLER)}).scalar()
         sayim = s.execute(text(
-            "SELECT count(*) AS toplam, count(*) FILTER (WHERE status <> 'ok') AS hata, "
+            "SELECT count(*) AS toplam, count(*) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata, count(*) FILTER (WHERE status = 'atlandi') AS atlandi, "   # G1 (Ü-1)
             "count(*) FILTER (WHERE status = 'ok' AND coalesce(detail, '') = '' AND sonuc_json IS NULL) AS bos_ok "   # Faz 0 P0-06 (20.11): çıktısız «ok» = başarı kanıtı değil
             "FROM jobs_log WHERE started >= now() - interval '24 hours'")).mappings().first()
         yedek_ok = s.execute(text("SELECT max(started) FROM jobs_log WHERE job IN ('gece_yedek','acilis_yedek') AND status = 'ok'")).scalar()
@@ -108,7 +108,7 @@ def ozet(aktor_id: str) -> dict:
             "max(ts_utc) FILTER (WHERE kaynak = 'epias_gop') AS gop_son FROM piyasa_fiyat")).mappings().first()
         # v2.516 (#3): izlenen işlerin son başarılı koşusu
         izlenen_son = {r["job"]: r["son"] for r in s.execute(text(
-            "SELECT job, max(started) AS son FROM jobs_log WHERE status = 'ok' AND job = ANY(:g) GROUP BY job"),
+            "SELECT job, max(started) AS son FROM jobs_log WHERE status IN ('ok', 'atlandi') AND job = ANY(:g) GROUP BY job"),
             {"g": [k for k, *_ in IZLENEN_ISLER]}).mappings().all()}
         santral = s.execute(text(
             "SELECT count(*) FILTER (WHERE NOT archived) AS etkin, count(*) FILTER (WHERE archived) AS arsivli FROM plants")).mappings().first()
@@ -147,7 +147,7 @@ def ozet(aktor_id: str) -> dict:
                   "aralik_dk": NABIZ_ARALIK_DK, "sessiz_dk": NABIZ_SESSIZ_DK},
         "gece_turu": {"taze": not bayat, "bayat_isler": [ISIM_TR.get(b, b) for b in bayat], "son": _iso(gece_son), "esik_saat": BAYAT_SAAT,
                       "uretici_isler": [{"kod": j, "is": ISIM_TR.get(j, j), "son_ok": _iso(son_ok.get(j))} for j in URETEN_ISLER]},
-        "isler_24": {"toplam": int(sayim["toplam"]), "hata": int(sayim["hata"]), "bos_ok": int(sayim["bos_ok"] or 0)},   # Faz 0 P0-06
+        "isler_24": {"toplam": int(sayim["toplam"]), "hata": int(sayim["hata"]), "atlandi": int(sayim["atlandi"] or 0), "bos_ok": int(sayim["bos_ok"] or 0)},   # Faz 0 P0-06; G1: atlanan ayrı
         "hiz_sayaci": _hiz_sayaci_durumu(),   # Faz 0 §24 #3 (21.11): paylaşımlı hız sayacı sağlığı (bu işçi süreci)
         "meteo": {"esik_saat": METEO_BAYAT_SAAT,
                   "kaynaklar": [{"kaynak": k, "son_indirme": v.get("son"), "nokta": v.get("nokta"), "satir": v.get("satir"),
