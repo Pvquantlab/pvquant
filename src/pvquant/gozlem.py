@@ -22,12 +22,27 @@ SIR_KOKLERI: tuple[str, ...] = ("sifre", "parola", "password", "passwd", "secret
                                   "apikey", "pw_hash", "totp", "kurtarma", "kek", "authorization", "cookie", "eposta", "e_posta", "e-posta")
 
 
+def anahtar_normal(anahtar: str) -> str:
+    """Anahtar biçimini sabitler: küçük harf, tire → alt çizgi (`X-Api-Key` ≡ `x_api_key`). sentry-sdk 2.76.0 EventScrubber
+    aynı normalleştirmeyi yapar (#8305); 2.75.0 ve öncesi yalnız küçük harfe çevirirdi. Her iki sürümle aynı sonuç için
+    kıyaslar burada normalleştirilir."""
+    return anahtar.lower().replace("-", "_")
+
+
+_SIR_KOKLERI_NORMAL: tuple[str, ...] = tuple(dict.fromkeys(anahtar_normal(k) for k in SIR_KOKLERI))
+
+
 def sirli_anahtar(anahtar: object, tam_liste: set[str] | list[str] | tuple[str, ...]) -> bool:
-    """SAF: anahtar sır mı? Tam listede (küçük harf) ya da SIR_KOKLERI'nden birini alt dize olarak içeriyorsa evet."""
+    """SAF: anahtar sır mı? Tam listede (normalleştirilmiş: küçük harf, tire=alt çizgi) ya da SIR_KOKLERI'nden birini alt dize
+    olarak içeriyorsa evet. Liste ham (2.75.0 `x-api-key`) ya da SDK tarafından normalleştirilmiş (2.76.0 `x_api_key`) olabilir;
+    ikisi de eşleşir."""
     if not isinstance(anahtar, str):
         return False
     k = anahtar.lower()
-    return k in tam_liste or any(kok in k for kok in SIR_KOKLERI)
+    kn = anahtar_normal(anahtar)
+    if k in tam_liste or kn in tam_liste or any(anahtar_normal(t) == kn for t in tam_liste if isinstance(t, str)):
+        return True
+    return any(kok in kn for kok in _SIR_KOKLERI_NORMAL)
 
 
 def _suzgec():

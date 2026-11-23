@@ -25,6 +25,7 @@ from sentry_sdk.transport import Transport  # noqa: E402
 from pvquant.gozlem import (  # noqa: E402
     SIR_ANAHTARLARI,
     SIR_KOKLERI,
+    anahtar_normal,
     sentry_ayarlari,
     sentry_baslat,
     sirli_anahtar,
@@ -254,10 +255,11 @@ def test_ayarlar_sir_sizdirmaz_sozlesmesi():
     assert a["max_request_body_size"] == "never"
     assert a["send_default_pii"] is False
     assert a["traces_sample_rate"] == 0
-    liste = {k.lower() for k in a["event_scrubber"].denylist}
+    # sentry-sdk 2.76.0 denylist'i tire → alt çizgi normalleştirir (2.75.0 yalnız küçük harf); kıyas normalleştirilmiş kümeyle
+    liste = {anahtar_normal(k) for k in a["event_scrubber"].denylist}
     assert type(a["event_scrubber"]).__name__ == "PvqSuzgec" and isinstance(a["event_scrubber"], __import__("sentry_sdk.scrubber", fromlist=["EventScrubber"]).EventScrubber)
     assert {"password", "secret", "authorization"} <= liste, "Sentry varsayılan listesi korunmalı"
-    assert set(SIR_ANAHTARLARI) <= liste
+    assert {anahtar_normal(k) for k in SIR_ANAHTARLARI} <= liste
     assert a["event_scrubber"].recursive is True
 
 
@@ -291,3 +293,18 @@ def test_api_ve_worker_yalniz_ortak_baslaticiyi_kullanir():
     kaynak = (KOK / "src").rglob("*.py")
     ham = [str(p.relative_to(KOK)) for p in kaynak if "sentry_sdk.init(" in p.read_text(encoding="utf-8") and p.name != "gozlem.py"]
     assert ham == [], f"gozlem.py dışında Sentry başlatması: {ham}"
+
+
+def test_tireli_baslik_anahtarlari_her_sdk_surumunde_suzulur():
+    """2.76.0 regresyonu (CI #807): EventScrubber denylist'i tire→alt çizgi normalleştirince `X-Api-Key` açık kalıyordu.
+    Sahte değerlerle: tireli/alt çizgili/büyük-küçük tüm biçimler süzülmeli; sır olmayan alan dokunulmamalı."""
+    s = sentry_ayarlari(SAHTE_DSN)["event_scrubber"]
+    ev = {"request": {"headers": {"X-Api-Key": "SAHTE1", "x-api-key": "SAHTE2", "X-Toplayici-Anahtar": "SAHTE3", "Authorization": "SAHTE4", "X-Trace": "iz-1"}},
+          "extra": {"x-api-key": "SAHTE5", "api-key": "SAHTE6", "apiKey": "SAHTE7", "epias_sifre": "SAHTE8", "e-posta": "SAHTE9", "santral": "Golden 33"},
+          "tags": {"x-toplayici-anahtar": "SAHTE10", "kova": "0-24"}}
+    s.scrub_event(ev)
+    metin = json.dumps(ev, ensure_ascii=False, default=str)
+    assert not any(f"SAHTE{i}" in metin for i in range(1, 11)), metin
+    assert ev["request"]["headers"]["X-Trace"] == "iz-1" and ev["extra"]["santral"] == "Golden 33" and ev["tags"]["kova"] == "0-24"
+    assert sirli_anahtar("X-Api-Key", {"x_api_key"}) and sirli_anahtar("x_api_key", {"x-api-key"}) and sirli_anahtar("API-KEY", set())
+    assert not sirli_anahtar("x-trace", {"x_api_key"}) and not sirli_anahtar("kodlama", set())
