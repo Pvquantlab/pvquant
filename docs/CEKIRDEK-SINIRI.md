@@ -87,6 +87,15 @@ Betikler (üretim yolu değil, adıyla listeli): `scripts/dev_skill_backtest.py`
 `scripts/seed_sentetik.py` (M3: gerçek koşuları siler — F4-C'de üretimde kilit). Yeni bir yazıcı bekçi listesine ve bu
 belgeye eklenmeden giremez.
 
+### Ensemble HAM PV bandı arşivi (A1, göç v2650)
+
+`forecast_values.ens_p10_kw / ens_p25_kw / ens_p75_kw / ens_p90_kw / ens_yayilim_kw` (NULL'lanabilir, kW) ve `forecast_runs.bant_json`:
+`tahmin_uret` içinde `ensemble_service.bant_hesapla` çıktısı ufuk σ / sapma / konformal katmanlarından ÖNCE bu kolonlara kopyalanır;
+katmanlar `ens_*`'e dokunmaz; `arsive_yaz` aynı INSERT satırında (tek işlem, aynı sayım bekçisi) yazar. Bant kaynağı model ya da saat
+üye ufku dışında → NULL ("yoktu", 0 değil). **Ham GEFS meteorolojisi DEĞİLDİR** (o `meteo_uye`'de, 45 gün): bunlar üyelerden türetilen,
+hibrit oranlı, P50-tutarlı, ≥ 0 kırpılmış PV güç kantilleridir. Yalnız INSERT: `forecast_values`'a hiçbir yolda UPDATE yoktur (bekçi
+`tests/test_ens_ham_bant_arsiv.py`); geçmiş koşular geri doldurulmaz, yeniden üretilmez.
+
 ## Altın referanslar
 
 | Dosya | Ne dondurur | Tolerans |
