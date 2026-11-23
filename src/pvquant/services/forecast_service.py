@@ -53,6 +53,9 @@ def eksik_saatleri_kirp(h) -> tuple["pd.DataFrame", int]:
     return h, n_eksik
 
 
+ENS_KOLONLAR = ("ens_p10_kw", "ens_p25_kw", "ens_p75_kw", "ens_p90_kw", "ens_yayilim_kw")   # A1: ensemble HAM PV bandı (göç v2650)
+
+
 def kosu_cercevesi_denetle(h) -> None:
     """v2.176 (backtest kök sebebi): run yazan HER yol önce bunu çağırır.
     İlke: BAŞSIZ RUN BIRAKILMAZ — values taşımayacak bir koşu için run
@@ -173,11 +176,18 @@ def tahmin_uret(plant: dict, meteo, girdi: TahminGirdisi, simdi: pd.Timestamp | 
     # v2.273 (Dalga 2, ★ onaylı): ensemble bandı — taze GEFS üyeleri varsa üye başına fizik koşusundan ampirik kantiller
     # HAM bandı verir (P50 hibrit kalır); üye yoksa yukarıdaki model bandı. Konformal bunun üstüne uygulanır.
     _q, _bant = _es.bant_hesapla(plant, spec, meteo, h, girdi.uyeler)
+    # A1 (v2.650, 24.11): ensemble HAM PV bandı — ufuk σ / sapma / konformal katmanlarından ÖNCEKİ üye kantilleri ve yayılım
+    # ayrı kolonlara kopyalanır (`ens_*`), aşağıdaki katmanlar bu kolonlara dokunmaz, arşive olduğu gibi yazılır.
+    # Bant kaynağı model ya da saat üye ufku dışında → NaN → NULL ("yoktu"). Ham GEFS METEOSU değildir (o `meteo_uye`'de).
+    for _k in ENS_KOLONLAR:
+        h[_k] = None
     if _q is not None:
         for k in ("p10", "p25", "p75", "p90"):
             # üye ufku dışındaki saatler (GEFS koşu+3 s öncesi ve +240 s sonrası) model bandında kalır — NaN bant yazılmaz
             _yeni = _q[k].reindex(h.index)
             h[f"{k}_kw"] = _yeni.where(_yeni.notna(), h[f"{k}_kw"]) if h[f"{k}_kw"].notna().any() else _yeni
+            h[f"ens_{k}_kw"] = _yeni
+        h["ens_yayilim_kw"] = _q["yayilim"].reindex(h.index)
     # v2.279 (★): ufukla büyüyen belirsizlik — yarı genişlik ≥ z·σ(ufuk kovası); yalnız genişletir. Konformal bundan sonra gelir.
     tavan = plant.get("ac_limit_kw") or plant.get("capacity_kwp")
     h = _uf.uygula_df(h, girdi.ufuk_ayar, simdi, tavan)
@@ -265,9 +275,10 @@ def arsive_yaz(tenant_id, plant: dict, meteo, sonuc: TahminSonucu, kalibrasyon_i
             " meteo_source,meteo_ozet_json,"
             " kalibrasyon_id,ml_model_id,konformal_hesap_zamani,nwp_kosu_zamani,ufuk_saat,kapasite_kwp,yazilim_surumu,etiket,"
             " cozunurluk_dk,satir_sayisi,nwp_bilesenler_json,spec_json,artefakt_sha16,konformal_q_json,sapma_oran_json,ufuk_sigma_json,"
-            " ensemble_kosu_zamani,veri_kalitesi_json)"
+            " ensemble_kosu_zamani,veri_kalitesi_json,bant_json)"
             " VALUES(:t,:p,:ra,:m,:mo,:ms,:oz,:kal,:mlid,:konf,:nwp,:ufuk,:kap,:ys,:et,"
-            " 60,:ns,CAST(:bil AS jsonb),CAST(:spec AS jsonb),:sha,CAST(:kq AS jsonb),CAST(:so AS jsonb),CAST(:us AS jsonb),:ek,CAST(:vk AS jsonb))"
+            " 60,:ns,CAST(:bil AS jsonb),CAST(:spec AS jsonb),:sha,CAST(:kq AS jsonb),CAST(:so AS jsonb),CAST(:us AS jsonb),:ek,CAST(:vk AS jsonb),"
+            " CAST(:bant AS jsonb))"
             " RETURNING id"),
             {"t": tenant_id, "p": plant["id"], "ra": simdi.to_pydatetime(), "m": sonuc.mode,
              "mo": sonuc.model_adi,
@@ -286,18 +297,24 @@ def arsive_yaz(tenant_id, plant: dict, meteo, sonuc: TahminSonucu, kalibrasyon_i
              "so": (json.dumps(sonuc.sapma, default=str) if sonuc.sapma else None),
              "us": (json.dumps(_ufuk, default=str) if _ufuk else None),
              "ek": (pd.Timestamp(_g.ensemble_kosu_zamani).to_pydatetime() if (_g.ensemble_kosu_zamani is not None and sonuc.bant.get("kaynak") == "gefs") else None),
-             "vk": json.dumps(veri_kalitesi, default=str)}).scalar()
+             "vk": json.dumps(veri_kalitesi, default=str),
+             "bant": json.dumps(sonuc.bant, default=str)}).scalar()   # A1: {kaynak, uye, yayilim_ort_kw} | {kaynak:'model', not}
         satirlar = [{"t": tenant_id, "r": run_id, "p": plant["id"], "ts": ts,
                      "p50": _f(v["p50_kw"]), "p10": _f(v["p10_kw"]),
                      "p90": _f(v["p90_kw"]),
                      "p25": _f(v["p25_kw"]), "p75": _f(v["p75_kw"]),  # v2.204
                      "p10h": _f(v["p10_ham_kw"]), "p90h": _f(v["p90_ham_kw"]),  # v2.252
                      "ph": _f(v["physics_kw"]),
-                     "ml": _f(v["ml_kw"])} for ts, v in h.iterrows()]
+                     "ml": _f(v["ml_kw"]),
+                     # A1 (v2.650): ensemble HAM PV bandı — katman öncesi üye kantilleri; yoksa NULL (0 değil)
+                     "e10": _f(v.get("ens_p10_kw")), "e25": _f(v.get("ens_p25_kw")),
+                     "e75": _f(v.get("ens_p75_kw")), "e90": _f(v.get("ens_p90_kw")), "eyay": _f(v.get("ens_yayilim_kw"))}
+                    for ts, v in h.iterrows()]
         s.execute(text(
             "INSERT INTO forecast_values(tenant_id,run_id,plant_id,ts_utc,"
-            " p50_kw,p10_kw,p90_kw,p25_kw,p75_kw,physics_kw,ml_kw,p10_ham_kw,p90_ham_kw) "
-            "VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:p25,:p75,:ph,:ml,:p10h,:p90h)"), satirlar)
+            " p50_kw,p10_kw,p90_kw,p25_kw,p75_kw,physics_kw,ml_kw,p10_ham_kw,p90_ham_kw,"
+            " ens_p10_kw,ens_p25_kw,ens_p75_kw,ens_p90_kw,ens_yayilim_kw) "
+            "VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:p25,:p75,:ph,:ml,:p10h,:p90h,:e10,:e25,:e75,:e90,:eyay)"), satirlar)
         # v2.176 son-bekçi: commit'ten önce, aynı işlemde sayım. Tutmazsa
         # raise → tenant_baglami rollback → run da values da gitmez. Bu,
         # mekanizma-bağımsız garanti: hangi yoldan gelirse gelsin (sessiz
