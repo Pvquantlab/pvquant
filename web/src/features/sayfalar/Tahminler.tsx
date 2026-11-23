@@ -166,7 +166,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
                 açıklaması açılır alanda (details) — metin aynen, bilgi kaybı yok */}
             <p className="soluk t-ikincil" style={{ margin: "12px 0 0" }}>
               {/* v2.605 (F4-K): tahmin etiketi (gece / gün içi / elle) ve hava tahmini kaynaklarının üretim zamanları — etiket sözlüğü parcalar'da */}
-              Son tahmin Mod {seri.mod ?? "—"}{seri.etiket && TAHMIN_ETIKETI[seri.etiket] ? ` · ${TAHMIN_ETIKETI[seri.etiket]}` : ""}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
+              Son tahmin Mod {seri.mod ?? "—"}{seri.mod === "A" && seri.kalibrasyon_var === false ? " · kalibrasyonsuz fiziksel model" : ""}{seri.etiket && TAHMIN_ETIKETI[seri.etiket] ? ` · ${TAHMIN_ETIKETI[seri.etiket]}` : ""}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
               {seri.nwp_bilesenler && Object.keys(seri.nwp_bilesenler).length > 0 && (
                 <> Hava tahmini kaynakları: {Object.entries(seri.nwp_bilesenler).map(([k, v]) => `${k} ${new Date(v).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`).join(" · ")}.</>
               )}

@@ -8,7 +8,7 @@ const oku = (p: string) => readFileSync(new URL(`../../src/${p}`, import.meta.ur
 
 test("sözlük: iş durumu, tazelik, son veri/son tahmin ve sorun adları tek yerden", () => {
   const s = oku("lib/sozluk.ts");
-  assert.match(s, /isDurumu: \{ tamam: "tamam", basarisiz: "başarısız" \}/);
+  assert.match(s, /isDurumu: \{ tamam: "tamam", basarisiz: "başarısız", atlandi: "atlandı \(veri yazılmadı\)" \}/);   // G1 (Ü-1): atlanan iş sözlükte
   assert.match(s, /tazelik: \{ guncel: "güncel", eski: "eski" \}/);
   assert.match(s, /sonVeri: "son veri", sonTahmin: "son tahmin"/);
   assert.match(s, /kiraci_askida: "müşteri askıda"/);
@@ -19,13 +19,14 @@ test("sözlük: iş durumu, tazelik, son veri/son tahmin ve sorun adları tek ye
 test("platform Sistem ve müşteri gece işleri kartı aynı sözcükleri sözlükten alır", () => {
   const sistem = oku("features/yonetim/Sistem.tsx"), dig = oku("features/sayfalar/Digerleri.tsx"), kabuk = oku("shell/Kabuk.tsx");
   assert.match(sistem, /import \{ SOZLUK, isDurumu, tazelik, sorunAdi(?:, segmentKisa)? \} from "\.\.\/\.\.\/lib\/sozluk"/);
-  assert.match(sistem, /\{isDurumu\(x\.tamam\)\}/); assert.match(sistem, /\{tazelik\(bayat\)\}/); assert.match(sistem, /\{sorunAdi\(s\)\}/);
+  // G1 (Ü-1): iş durumu ortak sözlükten (tamam + durum)
+  assert.match(sistem, /\{isDurumu\(x\.tamam, x\.durum\)\}/); assert.match(sistem, /\{tazelik\(bayat\)\}/); assert.match(sistem, /\{sorunAdi\(s\)\}/);
   // eski sözcükler hiçbir dizge/şablon değerinde yok (kelime sınırıyla; kod kimlikleri .bayat/.taze ve yorumlar serbest)
   const metinler = (d: string) => (d.match(/"[^"\n]*"|`[^`]*`/g) ?? []).join(" ").replace(/\$\{[^}]*\}/g, "");   // ${…} kod ifadeleri dışarıda
   for (const [ad, d] of [["Sistem", sistem], ["sayfalar", oku("features/yonetim/sayfalar.tsx")], ["Kullanim", oku("features/yonetim/Kullanim.tsx")], ["Planlar", oku("features/yonetim/Planlar.tsx")]] as const)
     assert.doesNotMatch(metinler(d), /\b(taze|bayat|düştü)\b|Gece turu|Son koşu|Son SCADA|Piyasa fiyatı\b|kiracı/, ad);
   assert.match(sistem, /<th>Son veri<span className="birim">SCADA<\/span><\/th><th>Son tahmin<\/th>/);
-  assert.match(dig, /\{isDurumu\(x\.tamam\)\}/); assert.doesNotMatch(dig, /"düştü"/);
+  assert.match(dig, /\{isDurumu\(x\.tamam, x\.durum\)\}/); assert.doesNotMatch(dig, /"düştü"/);
   assert.match(kabuk, /\{SOZLUK\.sonVeri\}/); assert.match(kabuk, /\$\{SOZLUK\.sonTahmin\}/); assert.match(kabuk, /\$\{SOZLUK\.sonKontrol\}/);
 });
 

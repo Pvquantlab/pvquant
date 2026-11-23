@@ -1374,7 +1374,7 @@ function GeceIsleriKarti() {
               <td style={{ textAlign: "left" }}>{x.is}</td>
               <td className="mono" style={{ textAlign: "left" }}>{zaman(x.zaman)}</td>
               <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
-              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{isDurumu(x.tamam)}</td>
+              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{isDurumu(x.tamam, x.durum)}</td>
             </tr>))}</tbody>
         </table></div>
       )}

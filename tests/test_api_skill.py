@@ -49,7 +49,13 @@ def test_skill_200_toplulastirma_streamlit_kopyasi(istemci):
     g = r.json()
     assert g["kova"] == "0-24" and g["gun_sayisi"] == 3    # nunique(28,29,30)
     assert g["wmape_ort"] == round((8.2 + 7.4 + 9.0) / 3, 3)
-    assert g["naife_ustunluk_pct"] == 31.0                  # (31+27+35)/3
+    # Faz 1 G1 (D-2): beceri = 1 - ort(WMAPE)/ort(naif WMAPE), naif degeri olan gunlerde (28 Tem saklanan 11.9; 29 Tem turetme
+    # 7.4/(1-0.27); 30 Tem saklanan 13.5) - santral_karne_ozeti ile ayni tanim. Eski gunluk-oran ortalamasi ayri alanda kalir.
+    naif = [11.9, round(7.4 / (1 - 0.27), 3), 13.5]
+    beklenen = round((1 - (8.2 + 7.4 + 9.0) / 3 / (sum(naif) / 3)) * 100, 3)
+    assert abs(g["naife_ustunluk_pct"] - beklenen) < 0.01 and 30 < g["naife_ustunluk_pct"] < 32
+    assert g["naife_ustunluk_gun_ort_pct"] == 31.0          # (31+27+35)/3 - eski gosterim, etiketli
+    assert "05:00" in g["kova_aciklama"]["ad"] and "ortalama" in g["wmape_tanim"] and "ort(" in g["beceri_yontem"]
     assert g["ilk_tarih"] == "2026-07-28" and g["son_tarih"] == "2026-07-30"
     assert len(g["gunluk"]) == 3
     # v2.95: SAKLANAN naif oncelikli — 11.9 (turetme 11.884 DEGIL).

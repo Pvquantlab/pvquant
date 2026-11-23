@@ -429,7 +429,7 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
         # temizler, suzgec gelecegi: yarim kalan kosular listeye sizmasin.
         return s.execute(_text(
             "SELECT run_at, mode, model, meteo_ozet_json->'bant' AS bant, meteo_ozet_json->'sapma' AS sapma, "
-            "COALESCE(etiket, meteo_ozet_json->>'etiket') AS etiket, nwp_kosu_zamani, nwp_bilesenler_json AS nwp_bilesenler FROM forecast_runs "   # v2.605 (F4-K): hava tahmini kaynak zamanları
+            "COALESCE(etiket, meteo_ozet_json->>'etiket') AS etiket, nwp_kosu_zamani, nwp_bilesenler_json AS nwp_bilesenler, kalibrasyon_id FROM forecast_runs "   # G1: kalibrasyon_var için   # v2.605 (F4-K): hava tahmini kaynak zamanları
             "WHERE plant_id=:p "
             "AND EXISTS (SELECT 1 FROM forecast_values v "
             "  WHERE v.run_id = forecast_runs.id) "

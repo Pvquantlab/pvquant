@@ -103,8 +103,11 @@ def _sinyaller(s, simdi: dt.datetime, tenant_id: str | None = None) -> dict:
         "SELECT plant_id, count(*) AS n FROM olay WHERE plant_id = ANY(:ids) AND durum = 'acik' AND baslangic <= :s AND (bitis IS NULL OR bitis > :s) "
         "GROUP BY plant_id"), {**q, "s": simdi}).mappings().all()}
     hata = {r["plant_id"]: r for r in s.execute(text(
-        "SELECT DISTINCT ON (plant_id) plant_id, job, started FROM jobs_log WHERE plant_id = ANY(:ids) AND status IS DISTINCT FROM 'ok' "
-        "AND started >= :s - (:h * interval '1 hour') ORDER BY plant_id, started DESC"), {**q, "s": simdi, "h": ds.ESIK["is_hatasi_saat"]}).mappings().all()}
+        # G1 (Ü-1): başarısız iş ile ATLANAN iş (kimlik/veri yok → status 'atlandi') ayrı: ikisi de DİKKAT ama nedeni farklı yazılır
+        "SELECT plant_id, max(started) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata_son, max(started) FILTER (WHERE status = 'atlandi') AS atlandi_son, "
+        "(array_agg(job ORDER BY started DESC))[1] AS job "   # QA İ-1: en son ok-dışı işin adı (son_is etiketi)
+        "FROM jobs_log WHERE plant_id = ANY(:ids) AND status IS DISTINCT FROM 'ok' AND started >= :s - (:h * interval '1 hour') GROUP BY plant_id"),
+        {**q, "s": simdi, "h": ds.ESIK["is_hatasi_saat"]}).mappings().all()}
     portfoy = s.execute(text(
         "SELECT po.id, po.ad, po.tur, po.tenant_id, pu.plant_id FROM portfoy po JOIN portfoy_uyelik pu ON pu.portfoy_id = po.id "
         "WHERE pu.plant_id = ANY(:ids) AND pu.gecerli_bas <= :g AND (pu.gecerli_bit IS NULL OR pu.gecerli_bit >= :g) "
@@ -150,7 +153,8 @@ def _santral_sinifla(r, sg: dict, simdi: dt.datetime, pencere: dict, takvim: dic
                                          muhatap=(seg.get("bildirim") or {}).get("muhatap"), kesinlik=(seg.get("bildirim") or {}).get("kesinlik"),   # G4-B (K-A)
                                          muhatap_etiketi=(seg.get("bildirim") or {}).get("muhatap_etiketi"), bildirim_not=(seg.get("bildirim") or {}).get("not"),
                                          santral_turu=vsinif.get("santral_turu"), veri_turu=vsinif.get("veri_turu"), plan_ici=sg.get("plan_mutabakat", {}).get(str(r["tenant_id"]))),
-        "alarm": ds.alarm_durumu(int(al.get("kritik") or 0), int(al.get("uyari") or 0), sg["olay"].get(pid, 0), ht["started"] if ht else None, simdi),
+        "alarm": ds.alarm_durumu(int(al.get("kritik") or 0), int(al.get("uyari") or 0), sg["olay"].get(pid, 0), ht["hata_son"] if ht else None, simdi,
+                                 son_is_atlanan=(ht["atlandi_son"] if ht else None)),   # G1 (Ü-1)
     }
     if ht:
         from pvquant.services.isler_service import ISIM_TR

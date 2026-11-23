@@ -23,6 +23,7 @@ interface ForecastYanit {
   mode: "A" | "B" | "C" | null;
   etiket?: string | null;                              // v2.605: yayin | gun_ici | elle
   nwp_bilesenler?: Record<string, string> | null;      // v2.605: {kaynak: ISO üretim zamanı}
+  kalibrasyon_var?: boolean | null;                    // G1 (F1-03): koşu kalibrasyonlu mu
   hours: number;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes?: { gun: string; dogus_utc: string; batis_utc: string }[];
@@ -319,6 +320,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   return {
     mod: g.mode, model: "", kosu_zamani: g.run_at ?? "",
     etiket: g.etiket ?? null, nwp_bilesenler: g.nwp_bilesenler ?? null,   // v2.605 (F4-K): tahmin etiketi ve hava tahmini kaynak zamanları
+    kalibrasyon_var: g.kalibrasyon_var ?? null,   // G1 (F1-03)
     ufuk_saat: g.hours, ac_tavani_kw: null, simdi_idx: simdiIdx,
     gercek_veri_turu: g.gercek_veri_turu ?? null,   // G4-C1 (QA Ö-1): aynı yanıttan; sentetik/arşiv etiketi yarışsız
     gunes: (g.gunes ?? []).map((x) =>
@@ -476,6 +478,8 @@ interface OzetYanit {
            kapsam_pct: number | null;
            /* v2.205: ay TAM kapsanmadan API null gonderir */
            beklenti_mwh?: number | null }[];
+  /** Faz 1 G1 (Ü-2): santral türü / veri türü beyanı + üst şerit rozeti (API `santral_sinifi`). */
+  sinif?: (SantralSinifi & { rozet?: string | null }) | null;
 }
 
 const AYLAR_KISA_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -525,6 +529,7 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
     saglik: { son_scada: trTarih(sonScada), son_scada_iso: sonScada ?? null, kesinti_gun: kesintiGun,   // G2 Y-2: ham ISO da taşınır
               islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali,
               veri_durumu: g.saglik.veri_durumu ?? null },   // v2.605 (F4-K): tazelik rozeti API sözlüğünden (uydurulmaz)
+    sinif: g.sinif ?? null,   // E QA İ-K12-2 (23.11): /summary.sinif aktarılmıyordu → Kabuk «KAMU REFERANS / SANAL TEST» rozeti hiç çizilmiyordu
   };
 }
 

@@ -99,7 +99,7 @@ def test_db_is_sureleri_ve_sonuc_ozeti(santral):
                       {"j": job, "t": tid, "b": bas_sa, "d": sure_sn, "s": st, "sj": sj})
     su = {x["kod"]: x for x in isler_service.sureler(tid, gun=7)}
     assert su["gece_skill"]["n"] >= 2 and su["gece_skill"]["hata"] >= 1 and su["gece_skill"]["en_uzun_sn"] >= 90.0 and su["gece_skill"]["is"] == "Gece karnesi"
-    assert su["perf_test_isi"] == {"is": "perf_test_isi", "kod": "perf_test_isi", "n": 2, "hata": 1, "ort_sn": 5.0, "en_uzun_sn": 5.0, "son": su["perf_test_isi"]["son"]}
+    assert su["perf_test_isi"] == {"is": "perf_test_isi", "kod": "perf_test_isi", "n": 2, "hata": 1, "atlandi": 0, "ort_sn": 5.0, "en_uzun_sn": 5.0, "son": su["perf_test_isi"]["son"]}   # G1 (U-1): atlanan is ayri sayilir
     assert isler_service._sonuc_ozeti('{"durum": "ok", "n": 12, "not": "x", "bayrak": true}') == {"durum": "ok", "n": 12}
     assert isler_service._sonuc_ozeti(None) is None and isler_service._sonuc_ozeti("bozuk{") is None
     o = isler_service.ozet(tid, saat=48)

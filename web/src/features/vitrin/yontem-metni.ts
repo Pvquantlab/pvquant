@@ -11,11 +11,11 @@ export const ADIMLAR = [
   ["Tahmin önceden kaydedilir",
    "Her santral için saatlik tahmin ve iyimser–kötümser aralık, sabah erken saatte (05:00 TSİ) üretilir ve zaman damgasıyla saklanır. Kayıt üzerinde sonradan düzeltme yapılmaz. Gün içi güncellemeler ayrı kaydedilir ve karnede ayrı sayılır; her saat için karneye yalnızca en erken yayımlanan tahmin girer."],
   ["Gerçekleşen üretim toplanır",
-   "Üretim (SCADA/sayaç) verisi geldikçe saatlik seriye işlenir. Ölçüm gelmeyen saatler karneye dâhil edilmez; eksik veri sıfır sayılmaz."],
+   "Üretim verisi (müşteri SCADA'sı, sayaç ya da kamuya açık resmî üretim ölçümü (piyasa platformu yayını)) geldikçe saatlik seriye işlenir; hangi kaynaktan geldiği karne künyesinde yazılır. Ölçüm gelmeyen saatler karneye dâhil edilmez; eksik veri sıfır sayılmaz."],
   ["Her gece otomatik karşılaştırma",
    "Kapanan günün tahmini ile gerçekleşen üretimi, tüm santraller için aynı kuralla karşılaştırılır. Hesap kişiye ve güne göre değişmez."],
   ["Sonuç birikir, geçmiş değişmez",
-   "Karne satırları yalnızca eklenir; kötü geçen gün silinmez, yeniden hesaplanmaz. Doğruluk değerleri bu birikimin penceresidir."],
+   "Tahmin kaydı hiç değişmez. Karne satırı yalnızca o günün ölçümü ya da ölçüm bayrağı sonradan güncellenirse aynı kuralla yeniden hesaplanır ve bu, satırdaki yeniden hesap sayacıyla işaretlenir; kötü geçen gün silinmez. Doğruluk değerleri bu birikimin penceresidir."],
 ] as const;
 
 export const METRIKLER = [
@@ -26,7 +26,7 @@ export const METRIKLER = [
   ["Sıkı referans",
    "Ay ve saate göre iklim beklentisi ile akıllı sürekliliğin birleşimi — basit yöntemden belirgin ölçüde zor bir kıyas çıtası. Kolay rakibe karşı değil, güçlü referansa karşı ölçülürüz."],
   ["Beceri",
-   "Referansa göre iyileşme oranı: (referans sapması − PVQuant sapması) / referans sapması. Sıfırın üstü, tahminin referanstan iyi olduğu anlamına gelir."],
+   "Referansa göre iyileşme oranı, pencere ortalamalarıyla: (referansın ortalama sapması − PVQuant'ın ortalama sapması) / referansın ortalama sapması. Günlük oranların ortalaması alınmaz (çok düşük üretimli tek bir gün işareti tersine çevirebilir). Sıfırın üstü, tahminin referanstan iyi olduğu anlamına gelir."],
   ["Bant kapsaması",
    "Gerçekleşen üretimin, önceden ilan edilen iyimser–kötümser aralık içinde kaldığı gündüz saatlerinin oranı; her gün ayrı hesaplanır, pencere boyunca ortalanır. Hedef %80'dir — %100 değil: her zaman tutan bant, karar için fazla geniş demektir."],
 ] as const;

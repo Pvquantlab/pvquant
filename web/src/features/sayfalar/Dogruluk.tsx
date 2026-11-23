@@ -163,7 +163,7 @@ const OLAY_AD: Record<string, string> = { ariza: "arıza", planli_bakim: "planl�
 const SAYAC_AD: Record<string, string> = { tahmini: "tahmini", doldurulmus: "doldurulmuş", elle: "elle girilmiş" };
 const REF_AD: Record<string, string> = { fizik: "Fiziksel model (öğrenilmiş düzeltme olmadan)", cliper: "Sektör referansı (iklim ortalaması ve son ölçümler)" };
 const KURAL_AD: Record<string, string> = { program: "bir gün önce 15:30 kesimi öncesi son tahmin", gun_oncesi: "gün başlamadan önceki son tahmin" };
-const MOD_AD: Record<string, string> = { A: "fiziksel model", B: "kalibre fiziksel model", C: "fiziksel model ve öğrenilmiş düzeltme" };
+const MOD_AD: Record<string, string> = { A: "fiziksel model (kalibrasyonsuz)", B: "kalibre fiziksel model", C: "fiziksel model ve öğrenilmiş düzeltme" };
 const nedenYaz = (k: string): string => {
   if (k.startsWith("bayrak:")) return `yükleme kontrolü: ${BAYRAK_AD[k.slice(7)] ?? k.slice(7)}`;
   if (k.startsWith("olay:")) return `olay kaydı: ${k.slice(5).split("+").map((t) => OLAY_AD[t] ?? t).join(" ve ")}`;
@@ -205,8 +205,9 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
       ) : (
         <>
           <div className="ızgara satir-4">
-            <Kpi etiket="Tahmin hatası (WMAPE), saatlik toplam" deger={yuzde(m!.wmape)}
-                 alt={m!.wmape_gunluk_ort != null ? `günlük ortalaması ${yuzdeTr(m!.wmape_gunluk_ort, 1)}; ${sayiTr(m!.n_saat)} gündüz saati` : `${sayiTr(m!.n_saat)} gündüz saati`} />
+            {/* G1: bu sayı HAVUZLANMIŞ saatlik toplamdır (Σ|tahmin−gerçek|/Σgerçek) ve dönem özetindeki günlük ortalamadan farklı bir küme/kuralla hesaplanır — bilerek eşitlenmez */}
+            <Kpi etiket={`Tahmin hatası (WMAPE), havuzlanmış saatlik toplam — ${KURAL_AD[kural] ?? kural}`} deger={yuzde(m!.wmape)}
+                 alt={m!.wmape_gunluk_ort != null ? `günlük ortalaması ${yuzdeTr(m!.wmape_gunluk_ort, 1)}; ${sayiTr(m!.n_saat)} gündüz saati; dönem özetinden farklı kural ve pencere` : `${sayiTr(m!.n_saat)} gündüz saati`} />
             <Kpi etiket="Ortalama saatlik hata (MAE)" deger={m!.mae_kw == null ? "—" : sayiTr(m!.mae_kw, 0)} birim={m!.mae_kw == null ? undefined : "kW"}
                  ikinci={m!.nmbe != null ? { etiket: m!.nmbe > 0 ? "Yön: fazla tahmin" : m!.nmbe < 0 ? "Yön: eksik tahmin" : "Yön: dengede", deger: yuzdeTr(Math.abs(m!.nmbe), 1), birim: "kurulu güç" } : undefined}
                  alt={m!.enerji_sapma_kwh_gun != null ? `günlük enerji sapması ${sayiTr(m!.enerji_sapma_kwh_gun, 0)} kWh` : undefined} />
@@ -217,6 +218,12 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
                  ikinci={b ? { etiket: "Değerlendirilen gündüz saati", deger: `${sayiTr(b.degerlendirilen_saat)} / ${sayiTr(b.gunduz_saat)}`, birim: "saat" } : undefined}   /* G4-5 (Q-07): KPI ile aynı payda */
                  alt={b ? `ölçülen ${sayiTr(b.olcum.olculdu_saat)} / ${sayiTr(b.olcum.beklenen_saat)} saat (gece dahil tüm saatler); ${b.olcum.sinir_etiketi}` : undefined} />
           </div>
+          {b && b.olcum.kapsama_pct != null && b.olcum.kapsama_pct < 90 && (
+            <p className="olcut-durum" role="status">
+              {/* G1 (F1-15/D-10): ölçüm kesintisi sessiz geçmesin — sonuç yalnız ölçülen saatlerle; model kötüleşmesi değil veri eksikliği */}
+              Bu dönemde ölçüm eksik (kapsama {yuzdeTr(b.olcum.kapsama_pct, 0)}): sonuç yalnız ölçülen saatlerle hesaplandı; ölçüm akışı kesildiyse üst şeritteki «gündür yeni veri yok» uyarısına bakın. Kaynak: {b.olcum.sinir_etiketi}.
+            </p>
+          )}
           {dis.length > 0 && (
             <details className="aciklama">
               <summary>Değerlendirmeye girmeyen gündüz saatleri ({sayiTr(dis.reduce((a, [, n]) => a + n, 0))} saat), nedenleriyle</summary>
@@ -637,15 +644,22 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             sayfasının en tepesi "%0,0 WMAPE" ile kusursuzluk ilan ediyordu.
             İki KPI ayrı denetlenir: backend kova ve skill_vs_naive'i bağımsız
             hesaplıyor, tek bayrak dolu-WMAPE + null-naif vakasını kaçırır. */}
-        <Kpi etiket={k.wmape_ort == null ? "Tahmin hatası (WMAPE), gün başı tahmini" : `Tahmin hatası (WMAPE), gün başı tahmini, ${k.gun_sayisi} gün ort.`}
+        {/* Faz 1 G1 (bulgu D-3/B-7): kova adı gerçek ufku söyler («aynı gün, 05:00 koşusu», ≈8 saat; gün-öncesi değil) ve bu KPI'nın
+            GÜNLÜK ORTALAMA olduğu etikette yazar; bağımsız doğrulama bölümündeki havuzlanmış değerle bilerek eşitlenmez. */}
+        <Kpi etiket={k.wmape_ort == null ? `Tahmin hatası (WMAPE), ${k.kova_aciklama?.ad ?? "gün başı tahmini"}` : `Tahmin hatası (WMAPE), ${k.kova_aciklama?.ad ?? "gün başı tahmini"} — günlük değerlerin ortalaması, ${k.gun_sayisi} gün`}
              deger={k.wmape_ort == null ? "—" : yuzdeTr(k.wmape_ort, 1)}
              alt={k.wmape_ort == null
-               ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor" : deltaCip} />
-        <Kpi etiket="Referans tahmine göre iyileşme"
+               ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor"
+               /* E QA İ-K12-1 (23.11): deltaCip JSX düğümü olabilir — şablon dizesi «[object Object]» basıyordu; parça olarak çizilir */
+               : <>{deltaCip}; ufuk: {k.kova_aciklama?.ufuk ?? "0–24 saat ileri"}</>} />
+        {/* Faz 1 G1 (bulgu D-2): beceri = pencere ortalamalarının oranı (1 − ort WMAPE / ort referans WMAPE); günlük oranların ortalaması
+            (eski gösterim, işareti tersine çevirebiliyordu) ikinci satırda kendi etiketiyle kalır — sayı gizlenmez. */}
+        <Kpi etiket="Referans tahmine göre iyileşme (pencere ortalamalarıyla)"
              deger={k.naife_ustunluk_pct == null ? "—" : yuzdeTr(k.naife_ustunluk_pct)}
+             ikinci={k.naife_ustunluk_gun_ort_pct != null ? { etiket: "Günlük oranların ortalaması (eski gösterim)", deger: yuzdeTr(k.naife_ustunluk_gun_ort_pct) } : undefined}
              alt={k.naife_ustunluk_pct == null
                ? "karşılaştırma için yeterli gün birikmedi"
-               : "referans tahmin: dün aynı saat, gök açıklığına göre ölçekli"} />
+               : "1 − ort(WMAPE) / ort(referans WMAPE); referans: dün aynı saat, gök açıklığına göre ölçekli"} />
         <Kpi etiket="Değerlendirilen gün" deger={sayiTr(new Set(k.gunluk.map((g) => g.tarih)).size)}
              birim="gün" alt="kesintisiz değerlendirme geçmişi" />
         {/* 23.10 yedinci tur: ortalama ana değer, standart sapma kendi etiketiyle ikinci satır (iki sayı tek noktalamayla değil) */}
@@ -657,6 +671,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                ? "hedef: sıfıra yakın ortalama, dar dağılım"
                : hd === undefined ? "hesaplanıyor" : "yeterli gün birikmedi"} />
       </div>
+      {/* Faz 1 G1: bu sayfadaki üç WMAPE'nin ne olduğu — farklı küme, kural ve toplulaştırma; birbirine dönüştürülmez */}
+      <p className="olcut-durum" data-rol="wmape-aciklama">
+        Bu sayfada üç ayrı hata oranı vardır ve bilerek eşitlenmez: (1) dönem özeti — günlük WMAPE değerlerinin ortalaması, kova «{k.kova_aciklama?.ad ?? "aynı gün"}»
+        ({k.kova_aciklama?.ufuk ?? "0–24 saat ileri"}; {k.kova_aciklama?.secim ?? "her saat için en erken yayımlanan tahmin"}); (2) bağımsız doğrulama — havuzlanmış saatlik
+        toplam (Σ|tahmin − gerçek| / Σ gerçek), seçilen kural (program ≈ 23 saat ufuk; gün-öncesi ≈ 31 saat) ve kendi penceresiyle; (3) program ve gün içi
+        satırları — kendi kovalarının günlük ortalaması. Düşük üretimli günler günlük ortalamayı havuzdan yukarı çeker.
+      </p>
       {/* v2.247 (Dalga 1.2): kapasiteye normalize standart ölçütler — WMAPE'nin
           yanına, yerine değil. Eski kayıtlarda kolon boş → tire + neden. */}
       {/* 24.10 sekizinci tur: tek çipe sıkışan 6 bilgi → ölçüt grubu (.olcut-grup): başlık + niteleyici, etiket/değer
