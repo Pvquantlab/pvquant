@@ -478,6 +478,8 @@ interface OzetYanit {
            kapsam_pct: number | null;
            /* v2.205: ay TAM kapsanmadan API null gonderir */
            beklenti_mwh?: number | null }[];
+  /** Faz 1 G1 (Ü-2): santral türü / veri türü beyanı + üst şerit rozeti (API `santral_sinifi`). */
+  sinif?: (SantralSinifi & { rozet?: string | null }) | null;
 }
 
 const AYLAR_KISA_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -527,6 +529,7 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
     saglik: { son_scada: trTarih(sonScada), son_scada_iso: sonScada ?? null, kesinti_gun: kesintiGun,   // G2 Y-2: ham ISO da taşınır
               islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali,
               veri_durumu: g.saglik.veri_durumu ?? null },   // v2.605 (F4-K): tazelik rozeti API sözlüğünden (uydurulmaz)
+    sinif: g.sinif ?? null,   // E QA İ-K12-2 (23.11): /summary.sinif aktarılmıyordu → Kabuk «KAMU REFERANS / SANAL TEST» rozeti hiç çizilmiyordu
   };
 }
 

@@ -649,7 +649,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         <Kpi etiket={k.wmape_ort == null ? `Tahmin hatası (WMAPE), ${k.kova_aciklama?.ad ?? "gün başı tahmini"}` : `Tahmin hatası (WMAPE), ${k.kova_aciklama?.ad ?? "gün başı tahmini"} — günlük değerlerin ortalaması, ${k.gun_sayisi} gün`}
              deger={k.wmape_ort == null ? "—" : yuzdeTr(k.wmape_ort, 1)}
              alt={k.wmape_ort == null
-               ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor" : `${deltaCip}; ufuk: ${k.kova_aciklama?.ufuk ?? "0–24 saat ileri"}`} />
+               ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor"
+               /* E QA İ-K12-1 (23.11): deltaCip JSX düğümü olabilir — şablon dizesi «[object Object]» basıyordu; parça olarak çizilir */
+               : <>{deltaCip}; ufuk: {k.kova_aciklama?.ufuk ?? "0–24 saat ileri"}</>} />
         {/* Faz 1 G1 (bulgu D-2): beceri = pencere ortalamalarının oranı (1 − ort WMAPE / ort referans WMAPE); günlük oranların ortalaması
             (eski gösterim, işareti tersine çevirebiliyordu) ikinci satırda kendi etiketiyle kalır — sayı gizlenmez. */}
         <Kpi etiket="Referans tahmine göre iyileşme (pencere ortalamalarıyla)"
