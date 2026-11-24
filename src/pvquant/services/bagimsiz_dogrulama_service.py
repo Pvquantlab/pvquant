@@ -243,8 +243,11 @@ def persistans(e: pd.DataFrame, gecmis: pd.Series, lat: float, lon: float) -> pd
     return pd.Series(p.values, index=e.index)
 
 
-def cliper(e: pd.DataFrame, gecmis: pd.Series, donem_bas: datetime, lat: float, lon: float) -> tuple[pd.Series, dict | None]:
-    """CLIPER örneklem dışı: iklimsel (ay×saat, ≥20 gün) ve persistans; ağırlık dönem ÖNCESİ 30 günde öğrenilir (gün öncesi persistans ile)."""
+def cliper(e: pd.DataFrame, gecmis: pd.Series, donem_bas: datetime, lat: float, lon: float,
+           iklimsel_yedek: bool = False) -> tuple[pd.Series, dict | None]:
+    """CLIPER örneklem dışı: iklimsel (ay×saat, ≥20 gün) ve persistans; ağırlık dönem ÖNCESİ 30 günde öğrenilir (gün öncesi persistans ile).
+    G2-B1b: `iklimsel_yedek=True` ise ay×saat iklimseli boş kalan GENÇ santralde son 30 günün saat-bazlı ortalaması (≥20 gün) iklimsel
+    yerine geçer; bilgi `iklimsel_kaynak` ∈ {ay_saat, kayan30}. Varsayılan False → motor tanımı (dogrulama_sonuc) değişmez."""
     from pvquant.ext.tahmin import referans as ref
     bos = pd.Series(np.nan, index=e.index)
     if e.empty:
@@ -255,6 +258,10 @@ def cliper(e: pd.DataFrame, gecmis: pd.Series, donem_bas: datetime, lat: float, 
         return bos, None
     ts = pd.DatetimeIndex(pd.to_datetime(e["ts_utc"], utc=True))
     ikl = ref.iklimsel(onc, ts, min_gun=20)
+    iklimsel_kaynak = "ay_saat"
+    if ikl.isna().all() and iklimsel_yedek:
+        ikl = ref.kayan_saatlik_iklim(onc, ts, gun=30, min_gun=20)
+        iklimsel_kaynak = "kayan30"
     if ikl.isna().all():
         return bos, None
     # ağırlık: dönem öncesi son 30 günde gün-öncesi persistans (k=1) vs iklimsel
@@ -265,13 +272,16 @@ def cliper(e: pd.DataFrame, gecmis: pd.Series, donem_bas: datetime, lat: float, 
     _oran = pd.Series((egitim.index.map(cs) / (egitim.index - pd.Timedelta(hours=24)).map(cs)).values, index=egitim.index).clip(1 / PERSISTANS_KELEPCE, PERSISTANS_KELEPCE)
     _oran[pd.Series((egitim.index - pd.Timedelta(hours=24)).map(cs).values, index=egitim.index) <= 5.0] = float("nan")
     pers_e = egitim.shift(freq="24h").reindex(egitim.index) * _oran
-    ikl_e = ref.iklimsel(onc[onc.index < egitim.index.min()] if (onc.index < egitim.index.min()).any() else onc, egitim.index, min_gun=20)
+    _onc_e = onc[onc.index < egitim.index.min()] if (onc.index < egitim.index.min()).any() else onc
+    ikl_e = ref.iklimsel(_onc_e, egitim.index, min_gun=20)
+    if ikl_e.isna().all() and iklimsel_kaynak == "kayan30":
+        ikl_e = ref.kayan_saatlik_iklim(_onc_e, egitim.index, gun=30, min_gun=20)
     w = ref.optimal_agirlik(egitim, pers_e, ikl_e)
     pers_h = persistans(e, gecmis, lat, lon)
     out = (w * pers_h.values + (1 - w) * ikl.values)
     out = pd.Series(out, index=e.index).clip(lower=0)
     out[pers_h.isna().values | ikl.isna().values] = np.nan
-    return out, {"agirlik_persistans": _r(w, 3), "egitim_saat": int(len(egitim.dropna()))}
+    return out, {"agirlik_persistans": _r(w, 3), "egitim_saat": int(len(egitim.dropna())), "iklimsel_kaynak": iklimsel_kaynak}
 
 
 def referanslar(e: pd.DataFrame, kapasite: float, gecmis: pd.Series | None, donem_bas: datetime, lat: float, lon: float, model_wmape: float | None) -> dict:

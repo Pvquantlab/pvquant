@@ -97,7 +97,7 @@ def _plant_profile(plant_ctx: dict, plant_name: str = "Santral"):
             nominal_power_w=545,
             temperature_coefficient_gamma=-0.34,
             noct_celsius=45,
-            bifaciality_factor=0.7,
+            bifaciality_factor=(0.7 if plant_ctx.get("panel_technology", "bifacial") == "bifacial" else None),   # G2-C1 (C2-2)
         ),
         mounting=MountingSpec(
             mount_type="ground_fixed",

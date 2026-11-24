@@ -141,6 +141,45 @@ def girdileri_topla(tenant_id, plant: dict, days: int) -> TahminGirdisi:
     return g
 
 
+TAVAN_KANTILLERI = ("p10_kw", "p25_kw", "p50_kw", "p75_kw", "p90_kw")
+
+
+def _gecerli_kw(v) -> float | None:
+    """SAF. Pozitif sonlu sayı ise float, aksi hâlde None (None/NaN/inf/≤0/metin)."""
+    try:
+        f = float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+    return f if f is not None and f == f and f != float("inf") and f > 0 else None
+
+
+def tavan_degeri(plant: dict) -> float | None:
+    """SAF. Bant tavanı (ufuk σ / konformal, v2.279+ davranışı): `ac_limit_kw`, yoksa `capacity_kwp`; ikisi de geçersizse None."""
+    return _gecerli_kw(plant.get("ac_limit_kw")) or _gecerli_kw(plant.get("capacity_kwp"))
+
+
+def ac_tavani(plant: dict) -> float | None:
+    """SAF. Fiziksel AC sınırı = yalnız geçerli `ac_limit_kw`. AC sınırı bilinmiyorsa (None/NaN/≤0/metin) fiziksel tavan da
+    bilinmiyor sayılır → bekçi çalışmaz (QA İ-1: kurulu DC gücü AC sınırı değildir; fizik P50 kWp'yi aşabilir, kırpılmamalı)."""
+    return _gecerli_kw(plant.get("ac_limit_kw"))
+
+
+def tavan_bekcisi(h: pd.DataFrame, tavan_kw: float | None) -> pd.DataFrame:
+    """Faz 1 G2-A1 (22.11.2026, bulgu F1-01/G2-01): sapma katmanı tüm kantilleri 0,8–1,2 oranıyla çarpar ve tavan kırpmasından SONRA
+    çalışır; zincirde ondan sonra tavan uygulayan adım yoktu (konformal Mod A'da pasif; aktifken de p50'yi kırpmaz). Canlıda P50 AC'nin
+    %117,7'sine, P90 %120'sine çıktı (gerçek hiç aşmaz). Bu bekçi sapma sonrası, konformal öncesi TÜM dolu kantilleri tavanda kırpar.
+    SAF: tavan None/NaN/≤0 → değişmez; NaN (gece, bant yok) NaN kalır; kırpma monoton → p10≤p25≤p50≤p75≤p90 sırası korunur; tavan altı
+    değerler birebir aynı (altın testler değişmez). Yalnız yeni koşuları etkiler; arşiv yalnız-ekleme."""
+    tavan_kw = _gecerli_kw(tavan_kw)
+    if tavan_kw is None:
+        return h
+    h = h.copy()
+    for k in TAVAN_KANTILLERI:
+        if k in h and h[k].notna().any():
+            h[k] = pd.to_numeric(h[k], errors="coerce").clip(upper=float(tavan_kw))
+    return h
+
+
 def tahmin_uret(plant: dict, meteo, girdi: TahminGirdisi, simdi: pd.Timestamp | None = None) -> TahminSonucu:
     """SAF (v2.597): fizik → (hibrit) → ensemble bandı → ufuk → sapma → konformal → kırpma → bekçi. DB yok, ağ yok, saat yok
     (`simdi` dışarıdan; verilmezse koşu anı). Zincir sırası ve her katmanın koşulu v2.252–v2.378 ile birebir.
@@ -189,11 +228,12 @@ def tahmin_uret(plant: dict, meteo, girdi: TahminGirdisi, simdi: pd.Timestamp | 
             h[f"ens_{k}_kw"] = _yeni
         h["ens_yayilim_kw"] = _q["yayilim"].reindex(h.index)
     # v2.279 (★): ufukla büyüyen belirsizlik — yarı genişlik ≥ z·σ(ufuk kovası); yalnız genişletir. Konformal bundan sonra gelir.
-    tavan = plant.get("ac_limit_kw") or plant.get("capacity_kwp")
+    tavan = tavan_degeri(plant)   # G2-A1: tek tanım (None/NaN/≤0 → kırpma yok)
     h = _uf.uygula_df(h, girdi.ufuk_ayar, simdi, tavan)
     # v2.274 (Dalga 2, ★ onaylı): trend/sapma katmanı — yalnız taze SCADA ve anlamlı sapma varsa. Konformal bundan SONRA gelir.
     _sapma = girdi.sapma_ayar if girdi.sapma_ayar is not None else {"aktif": False, "neden": "ayar yok"}
     h = _sp.uygula_df(h, _sapma, plant.get("tz") or "UTC")
+    h = tavan_bekcisi(h, ac_tavani(plant))   # G2-A1: sapma sonrası fiziksel tavan — hiçbir kantil AC sınırını aşamaz; AC sınırı yoksa dokunmaz
     # v2.252 (Dalga 2.7, ★ onaylı): konformal bant kalibrasyonu — ham kantiller saklanır, servis edilen bant q̂ ile düzeltilir.
     h = _kf.uygula_df(h, konformal_ayar, tavan, run_at=simdi)   # v2.296: kova = koşu anına göre ufuk
     h, _n_eksik = eksik_saatleri_kirp(h)   # v2.378: NaN ufuk kuyruğu koşuyu öldürmez

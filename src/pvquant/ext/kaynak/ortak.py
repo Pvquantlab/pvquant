@@ -162,8 +162,12 @@ def kaba_adimi_saatlige_indir(seri: pd.Series, lat: float, lon: float, hedef_ind
         if onceki is None:
             onceki = t - (seri.index[1] - seri.index[0] if len(seri) > 1 else pd.Timedelta(hours=1))
         maske = (hedef_index >= onceki) & (hedef_index < t)
-        cs_ort = cs_h[maske].mean()
-        kt = (v / cs_ort) if cs_ort and cs_ort > 20 else 0.0
+        # G2-A2 (F1-09, 24.11.2026): aralık enerjisi (v × saat sayısı) yalnız GÜNDÜZ saatlerine, açık gök profiliyle orantılı dağıtılır.
+        # Eski kural aralık ORTALAMASI açık gök < 20 W/m² ise kt = 0 diyordu: 6 saatlik kış aralığında gündoğumu saati sıfırlanıyordu
+        # (419 satır). Tüm saatleri gündüz olan aralıkta sonuç eskisiyle BİREBİR (v/cs_ort = v·n/Σcs).
+        cs_blok = cs_h[maske]
+        cs_top = float(cs_blok.sum()) if len(cs_blok) else 0.0
+        kt = (v * len(cs_blok) / cs_top) if cs_top > 0 else 0.0
         kt_saat[maske] = min(max(kt, 0.0), 1.3)
         onceki = t
     return (kt_saat.ffill() * cs_h).clip(lower=0.0)

@@ -70,4 +70,6 @@ def sapma_duzelt(nwp_ghi: pd.Series, gecmis_nwp: pd.Series, gecmis_gerceklesen: 
     kt_t = gok_acikligi(nwp_ghi, lat, lon)
     duzeltme = pd.Series(nwp_ghi.index.hour, index=nwp_ghi.index).map(saat_sapma).fillna(0.0)
     cs = acik_gok_ghi(nwp_ghi.index, lat, lon)
-    return ((kt_t.fillna(0.0) + duzeltme).clip(lower=0.0, upper=1.3) * cs)
+    duzeltilmis = (kt_t.fillna(0.0) + duzeltme).clip(lower=0.0, upper=1.3) * cs
+    # G2-A2 (F1-08): alacakaranlıkta (cs < 20) kt tanımsız → NWP ham GHI'si olduğu gibi geçer (sıfırlanmaz)
+    return duzeltilmis.where(cs >= 20.0, nwp_ghi.astype(float).clip(lower=0.0))
