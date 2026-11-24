@@ -93,3 +93,23 @@ def test_cqr_hicbir_saat_20_degilse_genel_q_ile_doner():
     assert ayar is not None and ayar["grup"] == "saat_ufuk"
     assert ayar["q_hat"]["0-24"].keys() == {"_genel"} and np.isfinite(ayar["q_hat"]["0-24"]["_genel"])
     assert "_genel" in ayar["q_hat"] and np.isfinite(ayar["ort_q"])
+
+
+def test_kalibre_et_kapi_dusunce_db_yazmaz(monkeypatch):
+    """QA C1-M06: kapı düşerse `kalibre_et` 'atlandi' döner ve `tenant_baglami`'ye HİÇ girmez (kayıt yok, aktif ayar korunur)."""
+    from types import SimpleNamespace
+    ix = pd.date_range("2026-10-05", periods=240, freq="h", tz="UTC")
+    scada = SimpleNamespace(power_kw=pd.Series(100.0, index=ix), energy_kwh=None, poa_irradiance=None, temp_ambient=None,
+                            temp_module=None, wind_speed=None, plant_name="t", timestep_minutes=60)
+    cr = SimpleNamespace(eta_bos=0.9, bg=0.1, warnings=[], n_valid_hours=8, plant=None,
+                         validation_after=SimpleNamespace(total_deviation_pct=-98.6, mape_pct=99.0, wmape_pct=99.0),
+                         validation_before=SimpleNamespace(total_deviation_pct=-99.0, mape_pct=99.0, wmape_pct=99.0))
+    monkeypatch.setattr(cs, "_scada_data", lambda t, p: scada)
+    monkeypatch.setattr(cs, "_meteo", lambda p, i: SimpleNamespace(kaynak="test"))
+    monkeypatch.setattr(cs, "calibrate_from_scada", lambda **kw: cr)
+    monkeypatch.setattr(cs, "_kronolojik_holdout", lambda *a, **k: {"wmape_holdout_pct": None, "holdout_not": "yetersiz"})
+    def _yasak(*a, **k):
+        raise AssertionError("kapı düştü ama DB işlemine girildi")
+    monkeypatch.setattr(cs, "tenant_baglami", _yasak)
+    r = cs.kalibre_et("t", {"id": "p", "name": "t", "capacity_kwp": 1000.0, "lat": 37.9, "lon": 32.5, "tz": "UTC"}, hibrit=False)
+    assert r["mode"] == "atlandi" and r["calibration_id"] is None and "gündüz saati" in r["kapi"]

@@ -35,11 +35,14 @@ def test_kaba_adim_kis_gundogumu_saati_sifirlanmaz():
     bitis = hedef[ilk + 1]; bas = bitis - pd.Timedelta(hours=6)
     blok = (hedef >= bas) & (hedef < bitis)
     assert cs[blok].mean() < 20 and cs[blok].sum() > 0, "kurgu: ortalama < 20, toplam > 0"
-    v = 6.0   # W/m² blok ortalaması (NWP'nin verdiği küçük ama sıfır olmayan ışınım)
+    v = 9.0   # W/m² blok ortalaması (küçük ama sıfır değil; Σcs küçük → kt > 1,3 → kırpma devrede)
     out = kaba_adimi_saatlige_indir(pd.Series({bas: 0.0, bitis: v}), LAT, LON, hedef)   # iki damga → 6 s adım; blok [bas, bitis)
     assert out[hedef[ilk]] > 0.0, "gündoğumu saati sıfır kalmamalı"
     assert (out[blok][cs[blok] <= 0] == 0.0).all(), "karanlık saatler 0"
     assert out[blok].sum() <= v * 6 + 1e-9                 # kt ≤ 1,3 kırpması enerjiyi artırmaz
+    kt_ham = v * int(blok.sum()) / float(cs[blok].sum())
+    assert kt_ham > 1.3, "kurgu: kırpma devreye girmeli"
+    assert np.allclose(out[blok].values, (1.3 * cs[blok]).clip(lower=0).values)   # QA A2-M03: kt 1,3 ile kırpılır
     assert (out >= 0).all() and out.notna().all()
 
 
@@ -80,3 +83,12 @@ def test_sapma_duzelt_alacakaranlikta_nwp_gecer():
     out = nowcast.sapma_duzelt(nwp, gcs * 0.7, gcs * 0.7, LAT, LON)      # geçmişte sapma yok → düzeltme 0
     assert (out[alaca] > 0).all() and np.allclose(out[alaca], 6.0)
     assert np.allclose(out[cs >= 20], nwp[cs >= 20], rtol=1e-6)
+
+
+def test_harman_gunduz_kt_kirpmasi_korunur_esik_yalniz_alacakaranlik():
+    """QA A2-M06: ham GHI geçişi YALNIZ açık gök < 20 saatlerinde; gündüzde kt kırpmalı (1,3) harman korunur."""
+    idx = pd.date_range("2026-11-15 00:00", periods=24, freq="h", tz="UTC")
+    cs = acik_gok_ghi(idx, LAT, LON)
+    h = harman.harmanla({"a": _cerceve(cs * 1.5), "b": _cerceve(cs * 0.8)})   # a: kt 1,5 → 1,3'e kırpılır
+    gunduz = cs >= 20
+    assert np.allclose(h.df.loc[gunduz, "ghi"], ((1.3 + 0.8) / 2 * cs)[gunduz], rtol=1e-6)

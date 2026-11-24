@@ -71,3 +71,14 @@ def test_karne_cliper_genc_santralda_dolu():
     df = _e("2026-10-13 00:00", "2026-10-12 06:00")
     out = karne_cliper(df, g, pd.Timestamp("2026-10-13", tz="UTC"), LAT, LON)
     assert out.notna().sum() >= 8                                       # karne: genç santralde tire yerine kayan iklimsel yedek
+
+
+def test_genc_santralda_agirlik_egitim_iklimseliyle_ogrenilir():
+    """QA B1b-M06: eğitim diliminin iklimseli de yedekle dolmalı; aksi hâlde `optimal_agirlik` 0,5 varsayılanına düşer.
+    Kurgu: gün gün %3 artan profil → persistans iklimselden belirgin iyi → öğrenilen w ≈ 1 (> 0,8)."""
+    g = pd.concat([_gecmis("2026-09-18", 13), _gecmis("2026-10-01", 12)])
+    gun = (g.index - g.index[0]).days.values
+    g = g * (1.0 + 0.03 * gun)
+    e = _e("2026-10-13 00:00", "2026-10-12 06:00")
+    _, info = bd.cliper(e, g, pd.Timestamp("2026-10-13", tz="UTC"), LAT, LON, iklimsel_yedek=True)
+    assert info["iklimsel_kaynak"] == "kayan30" and info["agirlik_persistans"] > 0.8
