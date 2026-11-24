@@ -51,8 +51,60 @@ def _kalibrasyon_izgarasi(df: pd.DataFrame, plant: dict) -> pd.DataFrame:
     return df
 
 
+#: G2-C1 (C2-1, 24.11.2026): kalibrasyon penceresi, kendi NWP arşivinin başladığı kesimden (`acik_nwp.ARSIV_KESIM_UTC`) önceye
+#: uzanmaz. Eskiden `scada_oku` tarih süzgeçsizdi: Karapınar'ın 31.12.2024'ten gelen 15.120 satırı meteo kapsamasını %4,5'e
+#: düşürüyor, kalibrasyon hiç geçmiyordu. Ölçüm silinmez; yalnız bu uydurmanın penceresi kesilir (karne/uzlaştırma dokunulmaz).
+MOD_B_ASGARI_SAAT = 100          # G2-C1 (C2-8): temizlenmiş GÜNDÜZ saat sayısı (motorun 100 saat eşiğiyle aynı; gece 0'ları saymaz)
+MOD_B_SAPMA_TAVAN_PCT = 30.0     # G2-C1 (C2-8): uydurma sonrası |toplam sapma| bunu aşarsa «kör B» — kayıt yazılmaz
+
+
+def kalibrasyon_penceresi(df: pd.DataFrame, kesim: pd.Timestamp | None = None) -> pd.DataFrame:
+    """SAF (G2-C1). Ölçüm çerçevesini `kesim`'den (varsayılan: NWP arşiv başlangıcı) itibaren keser; kesim öncesi satır yoksa
+    aynen döner. Index tz'siz ise UTC varsayılır."""
+    if df is None or len(df) == 0 or not isinstance(df.index, pd.DatetimeIndex):
+        return df
+    if kesim is None:
+        from pvquant.io.acik_nwp import ARSIV_KESIM_UTC
+        kesim = ARSIV_KESIM_UTC
+    kesim = pd.Timestamp(kesim)
+    kesim = kesim.tz_localize("UTC") if kesim.tzinfo is None else kesim.tz_convert("UTC")
+    idx = df.index if df.index.tz is not None else df.index.tz_localize("UTC")
+    return df.loc[idx >= kesim]
+
+
+def mod_b_kapisi(n_valid_hours, holdout_wmape_pct, deviation_pct) -> tuple[bool, str]:
+    """SAF (G2-C1, C2-8). Mod B kalite kapısı: (1) temizlenmiş gündüz saati ≥ MOD_B_ASGARI_SAAT, (2) örneklem dışı holdout metriği
+    hesaplanabilmiş (yoksa iddia kanıtsız), (3) uydurma sonrası |toplam sapma| ≤ MOD_B_SAPMA_TAVAN_PCT. Format Lab vakası (8 saat,
+    sapma −%98,6 ile Mod B yazıldı) üçünde de düşer. Döner (geçti, neden)."""
+    try:
+        n = int(n_valid_hours or 0)
+    except (TypeError, ValueError):
+        n = 0
+    if n < MOD_B_ASGARI_SAAT:
+        return False, f"temiz gündüz saati {n} < {MOD_B_ASGARI_SAAT}"
+    if holdout_wmape_pct is None or holdout_wmape_pct != holdout_wmape_pct:
+        return False, "örneklem dışı holdout metriği hesaplanamadı"
+    try:
+        sap = abs(float(deviation_pct))
+    except (TypeError, ValueError):
+        return False, "uydurma sonrası sapma hesaplanamadı"
+    if sap > MOD_B_SAPMA_TAVAN_PCT:
+        return False, f"uydurma sonrası sapma %{sap:.1f} > %{MOD_B_SAPMA_TAVAN_PCT:.0f}"
+    return True, "kapı geçti"
+
+
+_PANEL_TEKNOLOJISI = {"monofacial": "mono", "mono": "mono", "bifacial": "bifacial", "thin_film": "thin_film", "thinfilm": "thin_film"}
+
+
+def panel_teknolojisi(panel_tech) -> str:
+    """SAF (G2-C1, C2-2). `plants.panel_tech` sözlüğü (`monofacial`/`bifacial`) → `PanelSpec.technology` Literal (`mono`/…).
+    Bilinmeyen/boş → `bifacial` (eski varsayılan). Eskiden `monofacial` doğrudan geçiyor, Pydantic ValidationError hibrit eğitimi
+    sessizce düşürüyordu (Golden 33, Format Lab, Kıvanç)."""
+    return _PANEL_TEKNOLOJISI.get(str(panel_tech or "").strip().lower(), "bifacial")
+
+
 def _scada_data(tenant_id, plant) -> SCADAData:
-    df = scada_oku(tenant_id, plant["id"])
+    df = kalibrasyon_penceresi(scada_oku(tenant_id, plant["id"]))   # G2-C1: pencere arşiv kesiminden başlar
     # v2.254 (Dalga 3.9): AC tavanında kırpılmış saatler kalibrasyona GİRMEZ — tavanlı güç DC fiziğini
     # yansıtmaz, eta_bos/BG uydurmasını aşağı çeker. Ölçüm silinmez; yalnız bu uydurmada NaN (gündüz NaN
     # → motor düşer). Karne bu saatleri saymaya devam eder (tahmin de tavanı modellemeli).
@@ -220,7 +272,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "timezone": plant["tz"],
                 "tilt": plant.get("tilt") or 20,
                 "azimuth": plant.get("azimuth") or 180,
-                "panel_technology": plant.get("panel_tech") or "bifacial",
+                "panel_technology": panel_teknolojisi(plant.get("panel_tech")),   # G2-C1 (C2-2): monofacial → mono
                 # B-1 v2.27: AC tavanı kaynağı → PlantProfile ailesi
                 "ac_limit_kw": plant.get("ac_limit_kw"),
             },
@@ -283,6 +335,11 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                                     f"{_cfg.gate_min_improvement_pct:g} ({_iyi_dil})"
                                     if _iyi_etkin is not None
                                     else "iyilesme hesaplanamadi"))),            }
+    # G2-C1 (C2-8): Mod B kalite kapısı — düşerse HİÇBİR kayıt yazılmaz (mevcut aktif kalibrasyon korunur), sebep döner/günlüğe.
+    kapi_ok, kapi_neden = mod_b_kapisi(cr.n_valid_hours, holdout.get("wmape_holdout_pct"), getattr(cr.validation_after, "total_deviation_pct", None))
+    if not kapi_ok:
+        return {"mode": "atlandi", "kapi": kapi_neden, "calibration_id": None, "gate": gate, "eta_bos": cr.eta_bos, "bg": cr.bg,
+                "n_valid_hours": cr.n_valid_hours, "warnings": list(cr.warnings or []), "holdout": holdout}
     from pvquant.surum import yazilim_surumu as _ys   # Faz 0 P0-04 (20.11): kalite kaydına sürüm ve değerlendirme sınıfı damgası
     with tenant_baglami(tenant_id) as s:
         s.execute(text(

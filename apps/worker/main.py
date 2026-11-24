@@ -774,7 +774,10 @@ def aylik_kalibrasyon(plant):
     if bayat:
         print(f"aylik_kalibrasyon atlandı: {plant.get('name')} — {neden}; mevcut ayar korunur")
         return
-    calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
+    r = calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
+    if isinstance(r, dict) and r.get("mode") == "atlandi":   # G2-C1 (C2-8): kör B yazılmadı — jobs_log 'atlandi' (G1 sınıflaması)
+        return f"kalibrasyon atlandı (Mod B kapısı): {r.get('kapi')}; mevcut ayar korunur"
+    return f"kalibrasyon {r.get('mode')} yazıldı" if isinstance(r, dict) else None
 
 
 def aylik_bankable(plant):

@@ -40,7 +40,12 @@ def q_hat_hesapla_df(df: pd.DataFrame, capacity_kwp: float, alpha: float = ALPHA
         return None
 
     def _saatlik(alt: pd.DataFrame) -> dict:
-        c = CQR(alpha=alpha, grup="saat").kalibre_et(alt["power_kw"].astype(float), alt["p10"].astype(float), alt["p90"].astype(float))
+        try:
+            c = CQR(alpha=alpha, grup="saat").kalibre_et(alt["power_kw"].astype(float), alt["p10"].astype(float), alt["p90"].astype(float))
+        except ValueError:   # G2-C1 (C2-4): kova ≥ min_toplam satır ama hiçbir saat grubu ≥20 → «tire ilkesi»: yalnız genel q̂
+            s = pd.concat([alt["p10"] - alt["power_kw"], alt["power_kw"] - alt["p90"]], axis=1).max(axis=1).astype(float)
+            n_ = len(s)
+            return {"_genel": round(float(np.quantile(s.values, min(1.0, np.ceil((n_ + 1) * (1 - alpha)) / n_))), 3)}
         return {str(k): round(float(v), 3) for k, v in c.q_hat.items()}
 
     if "ufuk_saat" not in d.columns:                       # eski çağrı biçimi (geriye dönük sınav) — davranış AYNI
@@ -61,8 +66,9 @@ def q_hat_hesapla_df(df: pd.DataFrame, capacity_kwp: float, alpha: float = ALPHA
     n = len(s_hepsi)
     q_kova["_genel"] = round(float(np.quantile(s_hepsi.values, min(1.0, np.ceil((n + 1) * (1 - alpha)) / n))), 3)
     yakin = q_kova.get("0-24") or next(q_kova[a] for a, _, _ in KOVALAR if a in q_kova)
+    _saatlikler = [v for k, v in yakin.items() if k != "_genel"]   # G2-C1 (C2-4): yalnız `_genel` varsa ort_q = genel (NaN yazılmaz)
     return {"alpha": alpha, "grup": "saat_ufuk", "q_hat": q_kova, "n": int(len(d)), "kova_n": kova_n,
-            "ort_q": round(float(np.mean([v for k, v in yakin.items() if k != "_genel"])), 3)}
+            "ort_q": round(float(np.mean(_saatlikler)) if _saatlikler else float(yakin.get("_genel", q_kova["_genel"])), 3)}
 
 
 def q_dizisi(ayar: dict, saatler, ufuklar=None) -> np.ndarray:
