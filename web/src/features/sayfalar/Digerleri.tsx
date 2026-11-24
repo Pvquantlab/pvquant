@@ -1,6 +1,7 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { AYLAR, donemEtiket } from "../../lib/donem";
 import { isDurumu } from "../../lib/sozluk";
+import { gunlereGrupla, grupOzeti } from "../../lib/isler";   // P-1 (24.11): gün bloğu gruplama
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
@@ -1354,12 +1355,14 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
  *  Hata ayrıntısı bilerek yok (yalnız günlükte); hüküm tamam/düştü. */
 function GeceIsleriKarti() {
   const [j, setJ] = useState<Isler | null>(null);
+  const [tumu, setTumu] = useState(false);   // P-1 (24.11): «tümünü göster» → en çok 300 kayıt, gün bloğuna göre; varsayılan son 14 (eski davranış)
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama: yeni iş kaydı damgayı değiştirir
-  useEffect(() => { let acik = true; api.isler().then((v) => { if (acik) setJ(v); }).catch(() => {}); return () => { acik = false; }; }, [ds]);   // 16.11: yarış koruması (hızlı damga değişimi)
+  useEffect(() => { let acik = true; api.isler(tumu ? 300 : undefined).then((v) => { if (acik) setJ(v); }).catch(() => {}); return () => { acik = false; }; }, [ds, tumu]);   // 16.11: yarış koruması (hızlı damga değişimi)
   if (!j) return null;
-  const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const saat = (t: string) => new Date(t).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  const gruplar = gunlereGrupla(tumu ? j.isler : j.isler.slice(0, 14));   // P-1: gün başlıkları; sıra sunucudan (zamana göre azalan)
   return (
-    <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip"><Meta items={[`son ${sayiTr(j.pencere_saat)} saat`]} /></span>}>
+    <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip"><Meta items={[`son ${sayiTr(j.pencere_saat)} saat`, tumu ? `${sayiTr(j.isler.length)} kayıt` : "son 14 kayıt"]} /></span>}>
       {/* v2.359: "santral yok / ilk gece" bilgi tonudur — turuncu yalnız gerçek bayatlıkta */}
       {j.not && (j.seviye === "bilgi"
         ? <p className="soluk t-ikincil" style={{ margin: "0 0 10px" }}>{j.not}</p>
@@ -1369,14 +1372,25 @@ function GeceIsleriKarti() {
       ) : (
         <div className="grafik-kaydir"><table className="veri">
           <thead><tr><th style={{ textAlign: "left" }}>İşlem</th><th style={{ textAlign: "left" }}>Zaman</th><th>Süre</th><th>Durum</th></tr></thead>
-          <tbody>{j.isler.slice(0, 14).map((x, i) => (
-            <tr key={i}>
-              <td style={{ textAlign: "left" }}>{x.is}</td>
-              <td className="mono" style={{ textAlign: "left" }}>{zaman(x.zaman)}</td>
-              <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
-              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{isDurumu(x.tamam, x.durum)}</td>
-            </tr>))}</tbody>
+          <tbody>{gruplar.map((g) => (
+            <Fragment key={g.gun}>
+              <tr><td colSpan={4} style={{ textAlign: "left", paddingTop: 10 }}>
+                <strong>{g.etiket}</strong> <span className="soluk t-ikincil" style={{ color: g.atlandi || g.basarisiz ? "var(--uyari-metin)" : undefined }}>{grupOzeti(g)}</span>
+              </td></tr>
+              {g.satirlar.map((x, i) => (
+                <tr key={`${g.gun}-${i}`}>
+                  <td style={{ textAlign: "left" }}>{x.is}</td>
+                  <td className="mono" style={{ textAlign: "left" }}>{saat(x.zaman)}</td>
+                  <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
+                  <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{isDurumu(x.tamam, x.durum)}</td>
+                </tr>))}
+            </Fragment>))}</tbody>
         </table></div>
+      )}
+      {j.isler.length > 0 && (
+        <button className="dugme" type="button" style={{ marginTop: 8 }} onClick={() => setTumu((v) => !v)}>
+          {tumu ? "Son 14 kaydı göster" : "Tümünü göster (son 48 saat, en çok 300 kayıt)"}
+        </button>
       )}
       <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>
         Hava verisi indirme, tahmin, doğruluk değerlendirmesi ve kalibrasyon her gece otomatik çalışır; başarısız işlem burada işaretlenir; ayrıntısını PVQuant ekibi izler.

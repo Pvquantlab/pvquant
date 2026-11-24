@@ -7,7 +7,7 @@ from pvquant.services import isler_service as js
 
 
 def test_uc_ve_sizmazlik(monkeypatch):
-    monkeypatch.setattr(js, "ozet", lambda t, saat=48: {
+    monkeypatch.setattr(js, "ozet", lambda t, saat=48, limit=60: {
         "isler": [{"is": "Sabah tahmini", "zaman": "2026-09-08T02:00:00+00:00", "sure_sn": 42.0, "tamam": False}],
         "pencere_saat": 48, "gece_calisiyor": True, "son_gece_isi": "2026-09-08T02:00:00+00:00", "not": None})
     api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"sub": "u", "tenant_id": "t", "role": "viewer", "exp": 0}
@@ -157,3 +157,25 @@ def test_konformal_yetersiz_veri_hata_degil(monkeypatch):
                         lambda t, p, gun=60: None)
     sonuc = wm.gece_konformal({"tenant_id": "t", "id": "p"})
     assert isinstance(sonuc, str) and "yetersiz" in sonuc
+
+
+# ── P-1 (24.11.2026): n/saat parametreleri, kırpma, kod alanı ────────────────────
+def test_p1_kirpma_ve_varsayilan():
+    assert js._kirp(48, 60) == (48, 60) and js._kirp(1000, 9999) == (168, 300) and js._kirp(0, -5) == (1, 1)
+    assert js._kirp("x", None) == (48, 60)
+
+
+def test_p1_uc_parametreleri_servise_gecer(monkeypatch):
+    yakala = {}
+    def sahte(t, saat=48, limit=60):
+        yakala.update(t=t, saat=saat, limit=limit)
+        return {"isler": [], "pencere_saat": saat, "gece_calisiyor": True, "son_gece_isi": None, "not": None}
+    monkeypatch.setattr(js, "ozet", sahte)
+    api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"sub": "u", "tenant_id": "t", "role": "viewer", "exp": 0}
+    try:
+        c = TestClient(api_main.app)
+        assert c.get("/v1/isler").status_code == 200 and yakala == {"t": "t", "saat": 48, "limit": 60}      # varsayılan = eski davranış
+        assert c.get("/v1/isler?n=300&saat=72").status_code == 200 and (yakala["saat"], yakala["limit"]) == (72, 300)
+        assert c.get("/v1/isler?n=abc").status_code == 422                                                 # tip doğrulaması
+    finally:
+        api_main.app.dependency_overrides.clear()

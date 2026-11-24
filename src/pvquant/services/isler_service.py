@@ -107,14 +107,34 @@ def kacan_isler_db(slotlar: dict, simdi=None) -> list[str]:
     return kacan_isler({r.job: r.son for r in rows}, slotlar, simdi)
 
 
-def ozet(tenant_id, saat: int = 48) -> dict:
+OZET_SAAT_AZAMI = 168     # P-1 (24.11.2026): pencere en çok 7 gün
+OZET_LIMIT_AZAMI = 300    # P-1: satır sınırı (eski sabit 60 varsayılan kalır)
+
+
+def _kirp(saat, limit) -> tuple[int, int]:
+    """SAF (P-1). Sorgu parametreleri güvenli aralığa: saat 1..168, satır 1..300; bozuk değer → varsayılan (48, 60)."""
+    try:
+        h = max(1, min(int(saat), OZET_SAAT_AZAMI))
+    except (TypeError, ValueError):
+        h = 48
+    try:
+        n = max(1, min(int(limit), OZET_LIMIT_AZAMI))
+    except (TypeError, ValueError):
+        n = 60
+    return h, n
+
+
+def ozet(tenant_id, saat: int = 48, limit: int = 60) -> dict:
+    """P-1 (24.11.2026): `limit` (varsayılan 60 = eski davranış, en çok 300) ve satıra `kod` (iş kodu; gün bloğu gruplama için) eklendi;
+    yetki/süzgeç (kiracı + küresel işler) ve sıralama değişmedi."""
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
+    saat, n = _kirp(saat, limit)
     with sistem_baglami() as s:
         rows = s.execute(text(
             "SELECT job, started, finished, status, sonuc_json FROM jobs_log "   # v2.606 (F4-L): yapılı sonuç da döner
             "WHERE (tenant_id = :t OR tenant_id IS NULL) AND started >= now() - (:h * INTERVAL '1 hour') "
-            "ORDER BY started DESC LIMIT 60"), {"t": tenant_id, "h": saat}).mappings().all()
+            "ORDER BY started DESC LIMIT :n"), {"t": tenant_id, "h": saat, "n": n}).mappings().all()
         son_gece = s.execute(text(
             "SELECT max(started) FROM jobs_log WHERE (tenant_id = :t OR tenant_id IS NULL) "
             "AND job = ANY(:g)"), {"t": tenant_id, "g": list(GECE_GRUBU)}).scalar()
@@ -127,7 +147,7 @@ def ozet(tenant_id, saat: int = 48) -> dict:
         sure = None
         if r["finished"] is not None and r["started"] is not None:
             sure = round((r["finished"] - r["started"]).total_seconds(), 1)
-        isler.append({"is": ISIM_TR.get(r["job"], r["job"]), "zaman": r["started"].isoformat(),
+        isler.append({"is": ISIM_TR.get(r["job"], r["job"]), "kod": r["job"], "zaman": r["started"].isoformat(),   # P-1: kod (gruplama)
                       "sure_sn": sure, "tamam": r["status"] == "ok", "durum": r["status"],   # G1 (Ü-1): ok | atlandi | error — UI «atlandı» yazar
                       "sonuc": _sonuc_ozeti(r.get("sonuc_json"))})   # v2.606: durum/sayılar (metin değil)
     # v2.339: hüküm artık iş bazında — "biri koştu" yetmez, HER üretici iş taze olmalı.

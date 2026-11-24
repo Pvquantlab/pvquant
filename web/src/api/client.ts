@@ -825,9 +825,9 @@ export const api = {
   },
   santralGeriAl: (id: string): Promise<{ geri_alindi: boolean }> => gonder(`/v1/plants/${id}/geri-al`, "POST"),
   /** v2.301: gece işleri görünürlüğü. */
-  isler: async (): Promise<Isler | null> => {
+  isler: async (n?: number): Promise<Isler | null> => {   // P-1 (24.11): n verilirse ?n= (≤300); yoksa eski çağrı (60)
     if (TABAN == null) return null;
-    try { return await getir<Isler>(`/v1/isler`); } catch { return null; }
+    try { return await getir<Isler>(n == null ? `/v1/isler` : `/v1/isler?n=${Math.max(1, Math.min(300, Math.trunc(n)))}`); } catch { return null; }
   },
   /** v2.300: kayan oturum — geçerli jetonla yenisi (rol/durum sunucudan taze). Sessiz: hata yutulur,
       401 zaten genel sözleşmeyle girişe düşürür.
