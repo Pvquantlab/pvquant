@@ -962,7 +962,7 @@ def acilis_yedek():
         print(f"[yedek] son yedek taze ({son:%d.%m %H:%M} UTC) — gerekmiyor")
         return
     print("[yedek] son 24 saatte yedek yok — açılışta alınıyor")
-    gece_yedek()
+    return gece_yedek()   # P-2a: doğrulama sözlüğü acilis_yedek satırına da yazılsın
 
 
 def denetim_temizlik():
@@ -1028,10 +1028,17 @@ def gece_yedek():
     if boyut < 100:                             # boş/bozuk yedek yalanı olmasın
         _os.remove(hedef)
         raise RuntimeError("yedek dosyası boş")
+    _os.chmod(hedef, 0o600)                     # P-2a/R-C (25.11): yedek dünyaya okunur (644) kalmasın
     tumu = sorted(glob.glob(_os.path.join(cfg.yedek_dizin, "pvq_*.sql.gz")), reverse=True)
     for eski in tumu[cfg.yedek_sayisi:]:        # en yeni N kalır, gerisi silinir
         _os.remove(eski)
-    print(f"[yedek] OK: {hedef} ({boyut} bayt), {min(len(tumu), cfg.yedek_sayisi)} yedek tutuluyor")
+    # P-2a (25.11): yazılan gzip baştan sona açılır + sha256; dizindeki elle dump / rol yedeğinin yaşı ve manifesti → sonuc_json
+    # (sistem_service.yedek_dogrulama bunu okur; «doğrulanamadı» yerine gerçek sinyal). Doğrulama hatası yedeği başarısız yapmaz: kayıt düşer.
+    from pvquant.services import yedek_dogrulama as _yd
+    dg = _yd.ozet(cfg.yedek_dizin, hedef)
+    print(f"[yedek] OK: {hedef} ({boyut} bayt), {min(len(tumu), cfg.yedek_sayisi)} yedek tutuluyor; gzip {'açıldı' if dg['gz_ok'] else 'AÇILAMADI'}, "
+          f"sha256 {dg['sha256'][:12]}…")
+    return {"dosya": _os.path.basename(hedef), "boyut": int(boyut), "tutulan": int(min(len(tumu), cfg.yedek_sayisi)), "dogrulama": dg}
 
 
 if __name__ == "__main__":

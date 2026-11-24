@@ -104,3 +104,25 @@ def test_db_duman_ve_uc(monkeypatch):
         assert c.get("/v1/yonetim/sistem-sagligi").status_code == 422
     finally:
         ps.oturum_onbellegi_dusur(); au.oturum_onbellegi_dusur()
+
+
+def test_p2a_yedek_dogrulama_sinyali():
+    """P-2a (25.11): sonuc_json['dogrulama'] varsa «doğrulanamadı» kalkar: açıldı+manifest ok → sağlıklı; manifest uyumsuz → dikkat;
+    gzip açılamadı → kritik; kayıt yoksa (eski işçi) → doğrulanamadı (mevcut testler)."""
+    tam = {"gz_ok": True, "sha256": "ab" * 32, "boyut": 50_000_000, "acilan_bayt": 410_000_000, "hata": None,
+           "dump_dosya": "pvquant_20261124_212117_v2650_oncesi.dump", "dump_yas_saat": 12.3, "dump_sha_ok": True,
+           "rol_dosya": "roller_20261123_231703.sql", "rol_yas_saat": 40.0, "rol_sha_ok": True, "not": "dosya düzeyi bütünlük; pg_restore sınaması yapılmadı"}
+    v = ss.sinifla(_ozet(**{"yedek.dogrulama": tam}), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v["yedek_dogrulama"]["durum"] == "saglikli" and "410 MB" in v["yedek_dogrulama"]["neden"] and "pg_restore" in v["yedek_dogrulama"]["neden"]
+    assert "12.3 sa" in v["yedek_dogrulama"]["neden"] and v["yedek_dogrulama"]["dogrulama"]["sha256"] == "ab" * 32
+    v2 = ss.sinifla(_ozet(**{"yedek.dogrulama": {**tam, "rol_sha_ok": False}}), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["yedek_dogrulama"]
+    assert v2["durum"] == "dikkat" and "rol yedeği" in v2["neden"]
+    v3 = ss.sinifla(_ozet(**{"yedek.dogrulama": {**tam, "gz_ok": False, "hata": "BadGzipFile: x"}}), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["yedek_dogrulama"]
+    assert v3["durum"] == "kritik" and "BadGzipFile" in v3["neden"]
+    # başarılı yedek yoksa doğrulama sözlüğü olsa bile iddia yok
+    v4 = ss.sinifla(_ozet(**{"yedek.son_basarili": None, "yedek.dogrulama": tam}), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["yedek_dogrulama"]
+    assert v4["durum"] == "dogrulanamadi"
+    # sonuc_json okuma: dict / metin / status error
+    assert ss._yedek_dogrulama_al({"status": "ok", "sonuc_json": {"dogrulama": tam}}) == tam
+    assert ss._yedek_dogrulama_al({"status": "ok", "sonuc_json": '{"dogrulama": {"gz_ok": true}}'}) == {"gz_ok": True}
+    assert ss._yedek_dogrulama_al({"status": "error", "sonuc_json": {"dogrulama": tam}}) is None and ss._yedek_dogrulama_al(None) is None
