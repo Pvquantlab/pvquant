@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     ensemble_min_uye: int = 20
     # v2.274 (Dalga 2, ★): trend/sapma düzeltme katmanı — 'otomatik' (taze SCADA + anlamlı sapma varsa) | 'kapali'
     sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
+    # G5-P1 / F1-14 (25.11.2026): tahmin yayın sürekliliği — son yayın koşusu bundan eskiyse /v1/sureklilik 503 (harici izleyici için)
+    sureklilik_esik_saat: int = 30
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri
     gun_ici_guncelleme: bool = True
     # v2.609 (Faz 6 F6-A): abonelik kapıları — "uyari": iz + rozet, kısıt yok (varsayılan); "zorla": modül kapalı 403, kota aşımı 409 (AÇIK ONAYLA)
