@@ -51,3 +51,39 @@ def istemci(monkeypatch):
 def test_hijyen_kapisi(istemci):
     assert istemci.get(f"/v1/plants/{PLANT}/hijyen?gun=60").json()["kisinti_kayip_kwh"] == 123.4
     assert istemci.get(f"/v1/plants/{PLANT}/hijyen?gun=1").status_code == 422
+
+
+# ── G2-B6 (24.11.2026): tam kesinti bayrağı ──────────────────────────────────
+def _gun(beklenen_kw):
+    ix = pd.date_range("2026-10-18 03:00", periods=16, freq="h", tz="UTC")   # 06–21 TSİ
+    return ix, pd.Series(beklenen_kw, index=ix)
+
+
+def test_tam_kesinti_ardisik_sifir_saatler_bayraklanir():
+    """Kıvanç 18.10 vakası: 23.900 → 8.150 → 0 × 8 saat; beklenen ≥ %30 kWp → kisinti, kayıp = beklenen."""
+    from pvquant.services.hijyen_service import bayrakla_df
+    ix, bek = _gun([0, 3000, 20000, 22000, 25000, 27000, 28000, 27000, 25000, 22000, 18000, 12000, 5000, 500, 0, 0])
+    guc = pd.Series([0, 3680, 23900, 8150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], index=ix, dtype=float)
+    d = bayrakla_df(pd.DataFrame({"ts_utc": ix, "power_kw": guc.values, "beklenen_kw": bek.values}), tavan_kw=35000.0, capacity_kwp=52500.0).set_index("ts_utc")
+    kesinti = d.index[4:11]                                                  # 10–16 TSİ: beklenen ≥ 15.750 (%30) ve gerçek 0
+    assert d.loc[kesinti, "kisinti"].all() and np.allclose(d.loc[kesinti, "kayip_kwh"], bek.loc[kesinti])
+    assert not d.loc[d.index[:4], "kisinti"].any()                           # üretimli sabah saatleri bayraksız
+    assert not d.loc[d.index[11:], "kisinti"].any()                          # 17 TSİ+ : beklenen < %30 → omuz, bayraksız (bilinçli)
+
+
+def test_tek_saatlik_dusus_ve_omuz_saatleri_bayraklanmaz():
+    from pvquant.services.hijyen_service import bayrakla_df
+    ix, bek = _gun([0, 2200, 9000, 20000, 29000, 30000, 29000, 20000, 9000, 2500, 1200, 400, 0, 0, 0, 0])
+    guc = pd.Series([0, 380, 9790, 18490, 630, 21380, 25830, 9790, 7000, 1000, 1000, 300, 0, 0, 0, 0], index=ix, dtype=float)
+    d = bayrakla_df(pd.DataFrame({"ts_utc": ix, "power_kw": guc.values, "beklenen_kw": bek.values}), tavan_kw=35000.0, capacity_kwp=52500.0).set_index("ts_utc")
+    assert not d["kisinti"].any()            # 10 TSİ tek saatlik 630 kW düşüşü (bulut) ve 07/15–17 omuz saatleri (beklenen < %30) bayraksız
+
+
+def test_tam_kesinti_kirpma_onceligi_ve_beklenen_yoksa_aranmaz():
+    from pvquant.services.hijyen_service import bayrakla_df
+    ix, bek = _gun([0] * 4 + [30000] * 8 + [0] * 4)
+    guc = pd.Series([0] * 4 + [0] * 8 + [0] * 4, index=ix, dtype=float)
+    d0 = bayrakla_df(pd.DataFrame({"ts_utc": ix, "power_kw": guc.values, "beklenen_kw": np.nan}), tavan_kw=35000.0, capacity_kwp=52500.0)
+    assert not d0["kisinti"].any()           # tire ilkesi: beklenen yoksa kesinti aranmaz
+    d1 = bayrakla_df(pd.DataFrame({"ts_utc": ix, "power_kw": guc.values, "beklenen_kw": bek.values}), tavan_kw=35000.0, capacity_kwp=52500.0)
+    assert int(d1["kisinti"].sum()) == 8 and not d1["kirpma"].any()

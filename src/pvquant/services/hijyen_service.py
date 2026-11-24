@@ -18,6 +18,10 @@ from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzg
 from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 
+TAM_KESINTI_GUC_ORAN = 0.02        # G2-B6: gerçek ≤ %2 kWp (karne gündüz eşiğiyle aynı)
+TAM_KESINTI_BEKLENEN_ORAN = 0.30   # G2-B6: beklenen (fizik) ≥ %30 kWp — omuz/bulut saatleri bayraklanmaz
+
+
 def bayrakla_df(df: pd.DataFrame, tavan_kw: float | None, capacity_kwp: float) -> pd.DataFrame:
     """SAF. df: ts_utc, power_kw, beklenen_kw (NaN olabilir). Döner df + kirpma, kisinti (bool), kayip_kwh."""
     d = df.copy()
@@ -33,6 +37,15 @@ def bayrakla_df(df: pd.DataFrame, tavan_kw: float | None, capacity_kwp: float) -
         m = d["beklenen_kw"].notna()
         cur = kisitlama.curtailment_maskesi(guc[m], d.loc[m, "beklenen_kw"].astype(float), kapasite=float(capacity_kwp))
         d.loc[m, "kisinti"] = cur.reindex(d.index[m]).fillna(False).values
+        # G2-B6 (24.11.2026): TAM KESİNTİ — curtailment_maskesi «sıfır olmayan düz segment» arar; üretimin ≤ %2 kWp'ye düşüp
+        # beklenenin ≥ %30 kWp olduğu EN AZ 2 ARDIŞIK saat (Kıvanç 18.10 10–17 TSİ: 23.900 → 8.150 → 0 × 8 saat) bayraksız kalıyor,
+        # karneye «gerçek ≤ %2» diye girmiyor ama bağımsız doğrulamaya giriyordu. Tek saatlik düşüş (bulut) ve omuz saatleri
+        # (beklenen < %30) bayraklanmaz. Bayrak 'kisinti' (kayıp = beklenen − gerçek); sözlük/CHECK değişmez; yalnız ileriye (gece_hijyen 10 g).
+        bek = d["beklenen_kw"].astype(float)
+        tam = (guc <= TAM_KESINTI_GUC_ORAN * float(capacity_kwp)) & (bek >= TAM_KESINTI_BEKLENEN_ORAN * float(capacity_kwp))
+        tam = tam & (tam.shift(1, fill_value=False) | tam.shift(-1, fill_value=False))
+        d.loc[tam, "kisinti"] = True
+        d.loc[d["kisinti"], "kayip_kwh"] = (d.loc[d["kisinti"], "beklenen_kw"] - guc[d["kisinti"]]).clip(lower=0.0)
         d.loc[d["kisinti"], "kayip_kwh"] = (d.loc[d["kisinti"], "beklenen_kw"] - guc[d["kisinti"]]).clip(lower=0.0)
     # kırpma ile kısıntı aynı saatte olamaz (tavanda plato kısıntı değildir)
     d.loc[d["kirpma"], "kisinti"] = False; d.loc[d["kirpma"], "kayip_kwh"] = 0.0
