@@ -68,6 +68,7 @@ KIMLIKSIZ_BEKLENEN = {
     ("POST", "/v1/auth/login"), ("POST", "/v1/yonetim/giris"), ("GET", "/v1/dogrulama"), ("POST", "/v1/vitrin/basvuru"),
     ("POST", "/v1/parola-sifirla-istek"), ("POST", "/v1/parola-sifirla"), ("GET", "/v1/bulut/oauth/{saglayici}/geri-donus"),
     ("GET", "/v1/healthz"), ("GET", "/v1/readyz"), ("GET", "/v1/report/json-schema"),   # readyz: Faz 9 P8 (F9-F01)
+    ("GET", "/v1/sureklilik"),   # G5-P1 / F1-14 (25.11): yayın sürekliliği — dış izleyici için kimliksiz; kiracı verisi yok, yalnız yaş/eşik/sayı
 }
 # viewer'ın yazabildiği (belgeli) müşteri uçları: kendi hesabı + Ş13
 VIEWER_YAZMA_BELGELI = {
@@ -123,7 +124,7 @@ def test_uc_envanteri_sayilari_ve_kimliksiz_liste_sabit():
                 kimliksiz.add((m, p))
     _yaz_csv("uc_kapilari.csv", satirlar)
     assert kimliksiz == KIMLIKSIZ_BEKLENEN
-    assert sum(sayac.values()) == 253   # 247 + /v1/readyz (P8) + GET /eak (v2.640) + POST alarm-kurallari/deneme (v2.641) + PUT /santral-sinifi (C1) + POST /yonetim/iki-adim/kurtarma-yenile + /yeniden-kur (A3, platform kapısı)
+    assert sum(sayac.values()) == 254   # 253 + GET /v1/sureklilik (G5-P1); 247 + /v1/readyz (P8) + GET /eak (v2.640) + POST alarm-kurallari/deneme (v2.641) + PUT /santral-sinifi (C1) + POST /yonetim/iki-adim/kurtarma-yenile + /yeniden-kur (A3, platform kapısı)
     assert sayac.get("api_anahtari") == 16 and sayac.get("toplayici") == 1 and sayac.get("platform") == 37   # A3 (21.11): +2 platform ucu (kurtarma-yenile, yeniden-kur)
 
 
