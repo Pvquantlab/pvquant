@@ -3955,6 +3955,23 @@ def readyz():
     return {"ok": True, "db": "ok", "worker_nabiz_dk": _ss._yas_dk(z, _dt.datetime.now(_dt.timezone.utc)) if z is not None else None}
 
 
+@app.get("/v1/sureklilik")
+def sureklilik():
+    """G5-P1 / F1-14 (D-9, 25.11.2026): tahmin YAYIN sürekliliği — kimliksiz, kiracı verisi yok (yalnız yaş/eşik/sayı). Son yayın koşusu
+    `sureklilik_esik_saat`ten (varsayılan 30) eskiyse ya da hiç yoksa 503: dış çalışma süresi izleyicisi (healthz gibi) bunu sorar ve
+    uyarır — işçi ölüyken işçinin kendi alarmı da ölüdür (13–17.11: 94 saat yayın yok, alarm yok). DB erişilemezse 503."""
+    from pvquant.services import sureklilik_service as _sr
+    try:
+        o = _sr.ozet()
+    except Exception as e:   # ayrıntı günlüğe, dışarıya genel mesaj
+        print(f"[sureklilik] db erişilemiyor: {type(e).__name__}: {e}")
+        raise HTTPException(503, "hazır değil: veritabanı erişilemiyor") from None
+    if not o["ok"]:
+        raise HTTPException(503, f"tahmin yayını kesildi: {o['aciklama']} (son {o['yas_saat']} sa önce, eşik {o['esik_saat']:.0f} sa)"
+                            if o["yas_saat"] is not None else f"tahmin yayını yok: {o['aciklama']}")
+    return o
+
+
 @app.get("/v1/report/json-schema", tags=["Dış API"])
 def rapor_json_semasi():
     """v2.350: JSON raporunun yayımlı sözleşmesi (JSON Schema, Pydantic'ten).
