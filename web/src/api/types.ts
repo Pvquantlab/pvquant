@@ -492,7 +492,7 @@ export interface TakimUyesi { id: string; email: string; rol: string; aktif: boo
   son_giris: string | null; olusturma: string | null; iki_adim?: boolean; }
 
 /** v2.301: gece işleri görünürlüğü. */
-export interface Isler { isler: { is: string; zaman: string; sure_sn: number | null; tamam: boolean; durum?: "ok" | "atlandi" | "error" | string }[];   // G1 (Ü-1): durum ayrı
+export interface Isler { isler: { is: string; kod?: string; zaman: string; sure_sn: number | null; tamam: boolean; durum?: "ok" | "atlandi" | "error" | string }[]   // P-1: kod (gün bloğu gruplama);   // G1 (Ü-1): durum ayrı
   pencere_saat: number; gece_calisiyor: boolean; son_gece_isi: string | null; not: string | null;
   bayat_isler?: string[];
   /** v2.359: "uyari" = gerçek bayatlık; "bilgi" = santral yok / ilk gece bekleniyor. */

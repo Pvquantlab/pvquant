@@ -74,7 +74,7 @@ test("Faz 3: müşteri tarafı değişmedi — Isler tipi ve gece işleri kartı
   const d = oku("features/sayfalar/Digerleri.tsx");
   const kart = d.slice(d.indexOf("function GeceIsleriKarti"), d.indexOf("function GeceIsleriKarti") + 2600);
   assert.doesNotMatch(kart, /ayrinti/);
-  assert.match(kart, /<Meta items=\{\[`son \$\{sayiTr\(j\.pencere_saat\)\} saat`\]\} \/>/);   // G3-C (21.11): «ayrıntı sunucu günlüğünde» iç terimi çipten kalktı; müşteri yüzü yine ayrıntı taşımaz
+  assert.match(kart, /<Meta items=\{\[`son \$\{sayiTr\(j\.pencere_saat\)\} saat`, /);   // P-1 (24.11): ikinci çip «son 14 kayıt / N kayıt»; «ayrıntı» yine yok   // G3-C (21.11): «ayrıntı sunucu günlüğünde» iç terimi çipten kalktı; müşteri yüzü yine ayrıntı taşımaz
 });
 
 // ---------------- 25.10 Faz 4: kullanım ----------------

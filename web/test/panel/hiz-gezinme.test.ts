@@ -61,7 +61,7 @@ test("Operasyon: Sayaç ve Olay kaydı yükleyicileri son-çağrı-kazanır; Ver
   }
   const dg = oku("../../src/features/sayfalar/Digerleri.tsx");
   assert.match(dg, /let acik = true; api\.epiasUretim\(plantId\)/);
-  assert.match(dg, /let acik = true; api\.isler\(\)/);
+  assert.match(dg, /let acik = true; api\.isler\(tumu \? 300 : undefined\)/);   // P-1 (24.11): tümünü göster parametresi, yarış koruması aynı
   // yönetim: Raporlar koşu listesi ve rapor gönderim kartı
   assert.match(dg, /let acik = true; api\.raporGonderim\(plantId\)/);
   assert.match(dg, /api\.kosular\(plantId\)\.then\(\(v\) => \{ if \(acik\) setKosular\(v\); \}\)/);

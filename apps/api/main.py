@@ -1054,10 +1054,11 @@ def iki_adim_kurtarma(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
 
 
 @app.get("/v1/isler")
-def isler(claims=Depends(gecerli_kullanici)):
-    """v2.301 — gece işlerinin görünürlüğü (son 48 saat; hata ayrıntısı yalnız günlükte)."""
+def isler(saat: int = 48, n: int = 60, claims=Depends(gecerli_kullanici)):
+    """v2.301 — gece işlerinin görünürlüğü (hata ayrıntısı yalnız günlükte). P-1 (24.11.2026): `saat` (≤168) ve `n` (≤300) sorgu
+    parametreleri; varsayılan 48/60 eski davranışla aynı. Yetki aynı (kiracı jetonu)."""
     from pvquant.services import isler_service
-    return isler_service.ozet(claims["tenant_id"])
+    return isler_service.ozet(claims["tenant_id"], saat=saat, limit=n)
 
 
 @app.get("/v1/kullanicilar")
