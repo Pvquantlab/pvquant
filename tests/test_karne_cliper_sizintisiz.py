@@ -103,7 +103,7 @@ def test_eski_sizintili_kuraldan_farkli():
 
 
 def test_yetersiz_gecmis_nan_ve_skor_none():
-    kisa = _gecmis(bas="2026-10-25", gun=24)                       # tek yil, Kasim < 20 gun: ay x saat dolmaz (genc santral)
+    kisa = _gecmis(bas="2026-10-27", gun=12)                       # 12 gun: ay x saat (<20) VE G2-B1b kayan 30 g (<20 gun) dolmaz → tire
     df = _hedef(pd.Timestamp("2026-11-08", tz="UTC"))
     k = karne_cliper_kosu_bazli(df, kisa, LAT, LON)
     assert k.isna().all()
@@ -117,3 +117,12 @@ def test_bos_df_ve_sabit():
     assert karne_cliper_kosu_bazli(bos, _gecmis(gun=30), LAT, LON).empty
     assert karne_cliper(bos, _gecmis(gun=30), pd.Timestamp("2026-11-08", tz="UTC"), LAT, LON).empty
     assert CLIPER_GECMIS_GUN == 400   # bagimsiz motor gecmis_olcum_oku varsayilani ile ayni
+
+
+def test_genc_santral_24_gun_b1b_kayan_yedekle_dolu():
+    """G2-B1b: 24 gun (Ekim 7 + Kasim 17) — ay x saat hicbir ayda ≥20 degil, ama kayan 30 g saat-bazli iklimsel (≥20 gun) dolu →
+    karne CLIPER tire yerine deger tasir (eski B1a davranisi: tamamen NaN)."""
+    genc = _gecmis(bas="2026-10-15", gun=24)
+    df = _hedef(pd.Timestamp("2026-11-08", tz="UTC"))
+    k = karne_cliper_kosu_bazli(df, genc, LAT, LON)
+    assert k.notna().sum() > 20 and (k.dropna() >= 0).all()

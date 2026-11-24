@@ -22,6 +22,19 @@ def iklimsel(gecmis: pd.Series, hedef_index: pd.DatetimeIndex, min_gun: int = 20
     return pd.Series([tablo["mean"].get(a, np.nan) for a in anahtar], index=hedef_index)
 
 
+def kayan_saatlik_iklim(gecmis: pd.Series, hedef_index: pd.DatetimeIndex, gun: int = 30, min_gun: int = 20) -> pd.Series:
+    """G2-B1b (24.11.2026): ay×saat iklimseli (≥20 gün) yıl 1'de boş kalan GENÇ santral için kayan yedek — geçmişin son `gun`
+    gününde saat-bazlı (ay bağımsız) ortalama; saat başına < `min_gun` gün varsa NaN (sayı uydurulmaz). Yalnız verilen `gecmis`
+    kullanılır (çağıran bunu dönem öncesiyle sınırlar → bilgi-tutarlı)."""
+    g = gecmis.dropna()
+    if g.empty:
+        return pd.Series(np.nan, index=hedef_index)
+    g = g[g.index >= g.index.max() - pd.Timedelta(days=gun)]
+    tablo = g.groupby(g.index.hour).agg(["mean", "size"])
+    tablo.loc[tablo["size"] < min_gun, "mean"] = np.nan
+    return pd.Series([tablo["mean"].get(h, np.nan) for h in hedef_index.hour], index=hedef_index)
+
+
 def akilli_persistans(gecmis: pd.Series, acik_gok_gecmis: pd.Series, acik_gok_hedef: pd.Series, gecikme_gun: int = 1) -> pd.Series:
     """kt(t − gecikme) × cs(t). acik_gok serileri aynı sözleşmeyle (saatlik, aynı büyüklük) verilmeli."""
     kt = (gecmis / acik_gok_gecmis.where(acik_gok_gecmis > 20)).clip(0, 1.3)

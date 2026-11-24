@@ -206,7 +206,7 @@ def karne_cliper(df: "pd.DataFrame", gecmis: "pd.Series", donem_bas, lat, lon) -
     g = gecmis.copy()
     g.index = pd.to_datetime(g.index, utc=True)
     g = g[(g.index >= db - pd.Timedelta(days=CLIPER_GECMIS_GUN)) & (g.index < db)]   # QA I-8: kesit donem_bas'a bagli -> deterministik
-    seri, _bilgi = _bd.cliper(e, g, db, lat, lon)
+    seri, _bilgi = _bd.cliper(e, g, db, lat, lon, iklimsel_yedek=True)   # G2-B1b: genç santralde kayan 30 g saat-bazlı iklimsel yedek (yalnız karne)
     return pd.Series(pd.to_numeric(seri, errors="coerce").values, index=df.index, dtype=float)
 
 
