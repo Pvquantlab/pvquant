@@ -126,3 +126,19 @@ def test_p2a_yedek_dogrulama_sinyali():
     assert ss._yedek_dogrulama_al({"status": "ok", "sonuc_json": {"dogrulama": tam}}) == tam
     assert ss._yedek_dogrulama_al({"status": "ok", "sonuc_json": '{"dogrulama": {"gz_ok": true}}'}) == {"gz_ok": True}
     assert ss._yedek_dogrulama_al({"status": "error", "sonuc_json": {"dogrulama": tam}}) is None and ss._yedek_dogrulama_al(None) is None
+
+
+def test_g5p2_kunye_dolulugu_sinyali():
+    """G5-P2 (25.11): ozet()['kunye'] varsa veritabani.kunye sinyali — dolu → sağlıklı; boş alan → dikkat (alan ve sayı); koşu yok →
+    doğrulanamadı; 'kunye' anahtarı yoksa (eski ozet / bu dosyadaki diğer kurgular) sinyal eklenmez ve bileşen hükmü değişmez."""
+    taban = ss.sinifla(_ozet(), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert "kunye" not in taban
+    o = _ozet(); o["kunye"] = {"pencere_gun": 7, "kosu": 42, "eksik": {a: 0 for a in ss.KUNYE_ALANLARI}}
+    v = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v["kunye"]["durum"] == "saglikli" and "42 yayın koşusu" in v["kunye"]["neden"] and v["durum"] == taban["durum"]
+    o["kunye"]["eksik"].update({"yazilim_surumu": 42, "artefakt_sha16": 3})
+    v2 = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v2["kunye"]["durum"] == "dikkat" and "yazilim_surumu 42/42" in v2["kunye"]["neden"] and "artefakt_sha16 3/42" in v2["kunye"]["neden"]
+    assert v2["kunye"]["eksik"] == {"yazilim_surumu": 42, "artefakt_sha16": 3} and v2["durum"] in ("dikkat", "kritik")   # bileşen hükmüne girer
+    o["kunye"] = {"pencere_gun": 7, "kosu": 0, "eksik": {}}
+    assert ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["kunye"]["durum"] == "dogrulanamadi"

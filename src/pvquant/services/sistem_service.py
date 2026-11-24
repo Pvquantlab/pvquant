@@ -23,7 +23,8 @@ SCADA_BAYAT_SAAT = 48     # santral envanteri: geçerli SCADA bundan eskiyse sor
 KOSU_BAYAT_SAAT = 30      # santral envanteri: son tahmin koşusu bundan eskiyse sorun
 METEO_BAYAT_SAAT = 36     # gece_meteo günlük: son indirme bundan eskiyse hava verisi bayat
 PIYASA_BAYAT_SAAT = 36    # gece_piyasa günlük: son güncelleme bundan eskiyse piyasa verisi bayat
-YEDEK_BAYAT_SAAT = 30     # gece_yedek günlük (+ açılış yakalaması 24 sa): son başarılı yedek bundan eskiyse bayat
+YEDEK_BAYAT_SAAT = 30
+KUNYE_ALANLARI = ("spec_json", "nwp_kosu_zamani", "nwp_bilesenler_json", "yazilim_surumu", "artefakt_sha16")   # G5-P2: koşu künyesi izlenebilirlik alanları     # gece_yedek günlük (+ açılış yakalaması 24 sa): son başarılı yedek bundan eskiyse bayat
 # v2.516 (yönetim boşlukları #3): PLATFORM izleme listesi — uzlaştırma, piyasa ve bakım işleri; her işin kendi eşiği (saat) ve sıklığı.
 # Müşteri hükmü (isler_service.URETEN_ISLER / bayat_isler) DEĞİŞMEZ: bu işler düşünce müşteri kartı değil platform kartı uyarır.
 # (kod, eşik saat, sıklık, santral gerekir mi — _logla ile santral başına koşan işler 0 santralde iz bırakmaz)
@@ -90,6 +91,14 @@ def ozet(aktor_id: str) -> dict:
             "SELECT job, max(started) AS son FROM jobs_log WHERE status IN ('ok', 'atlandi') AND job = ANY(:g) GROUP BY job"),
             {"g": list(URETEN_ISLER)}).mappings().all()}
         gece_son = s.execute(text("SELECT max(started) FROM jobs_log WHERE job = ANY(:g)"), {"g": list(URETEN_ISLER)}).scalar()
+        # G5-P2 / F1 künye izlenebilirliği (25.11): son 7 gün YAYIN koşularında boş künye alanları (spec_json, nwp_kosu_zamani,
+        # nwp_bilesenler_json, yazilim_surumu; artefakt_sha16 yalnız mode C). Faz 1 raporu: yazilim_surumu 649/753 NULL, artefakt 0/753.
+        kunye = s.execute(text(
+            "SELECT count(*) AS kosu, count(*) FILTER (WHERE spec_json IS NULL) AS spec_json, count(*) FILTER (WHERE nwp_kosu_zamani IS NULL) AS nwp_kosu_zamani, "
+            "count(*) FILTER (WHERE nwp_bilesenler_json IS NULL) AS nwp_bilesenler_json, count(*) FILTER (WHERE yazilim_surumu IS NULL OR yazilim_surumu = '') AS yazilim_surumu, "
+            "count(*) FILTER (WHERE mode = 'C' AND artefakt_sha16 IS NULL) AS artefakt_sha16 "
+            "FROM forecast_runs WHERE run_at >= now() - interval '7 days' AND COALESCE(etiket, 'yayin') IN ('yayin', 'gun_ici') "
+            "AND COALESCE(model, '') <> 'backtest'")).mappings().first()
         sayim = s.execute(text(
             "SELECT count(*) AS toplam, count(*) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata, count(*) FILTER (WHERE status = 'atlandi') AS atlandi, "   # G1 (Ü-1)
             "count(*) FILTER (WHERE status = 'ok' AND coalesce(detail, '') = '' AND sonuc_json IS NULL) AS bos_ok "   # Faz 0 P0-06 (20.11): çıktısız «ok» = başarı kanıtı değil
@@ -166,6 +175,8 @@ def ozet(aktor_id: str) -> dict:
                   "dogrulama": _yedek_dogrulama_al(yedek_son)},
         "db": {"boyut_bayt": int(db_boyut or 0)},
         "santral": {"etkin": int(santral["etkin"]), "arsivli": int(santral["arsivli"])},
+        "kunye": {"pencere_gun": 7, "kosu": int(kunye["kosu"] or 0),
+                  "eksik": {a: int(kunye[a] or 0) for a in KUNYE_ALANLARI}},   # G5-P2
     }
 
 
@@ -358,6 +369,19 @@ def _yedek_dogrulama_sinifla(dg: dict | None, son_basarili, k, durum) -> dict:
              + (f"; {dis}" if dis else "") + "; pg_restore sınaması yapılmadı", **ek)
 
 
+def _kunye_sinifla(kn: dict, k, durum) -> dict:
+    """G5-P2 (25.11): son N gün yayın koşularında künye alanı boşluğu. Koşu yok → doğrulanamadı; boş alan yok → sağlıklı; var → dikkat
+    (hangi alan, kaç koşu). Künye eksikliği tahmini bozmaz ama run_id → sürüm/girdi izlenebilirliğini kırar (Faz 1 raporu satır 49)."""
+    kosu = int(kn.get("kosu") or 0)
+    if kosu == 0:
+        return k(durum.DOGRULANAMADI, f"son {kn.get('pencere_gun', 7)} günde yayın koşusu yok; künye doluluğu ölçülemedi", kosu=0, eksik={})
+    eksik = {a: int(n) for a, n in (kn.get("eksik") or {}).items() if int(n or 0) > 0}
+    if not eksik:
+        return k(durum.SAGLIKLI, f"son {kn.get('pencere_gun', 7)} günde {kosu} yayın koşusu, künye alanları dolu", kosu=kosu, eksik={})
+    liste = ", ".join(f"{a} {n}/{kosu}" for a, n in sorted(eksik.items(), key=lambda x: -x[1]))
+    return k(durum.DIKKAT, f"son {kn.get('pencere_gun', 7)} günde {kosu} yayın koşusunda boş künye alanı: {liste} (izlenebilirlik eksik)", kosu=kosu, eksik=eksik)
+
+
 def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> dict:
     """SAF: ozet() çıktısı + {iş: son koşu} → altı bileşenin durumu (durum_sozlugu kodları). Test edilebilir; DB yok, saat parametre."""
     from pvquant.services import durum_sozlugu as ds
@@ -439,7 +463,10 @@ def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> d
             db["hiz_sayaci"] = k(D.DIKKAT, f"hız sayacı DB'ye yazamıyor ({hs['son_hata_turu']}); süreç içi yedek sayaç devrede (yanıtı üreten işçi) — "
                                  "sayım işçi başına, hesap tavanı işçi sayısı kadar gevşer; sunucu günlüğünde [hiz] uyarıları",
                                  hata_sayisi=hs["hata_sayisi"], son_hata=hs["son_hata"], son_basari=hs["son_basari"])
-    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci")])
+    kn = o.get("kunye")   # G5-P2: koşu künyesi doluluğu (izlenebilirlik: run_id → sürüm/girdi/spec); ozet'te yoksa sinyal yok
+    if kn is not None:
+        db["kunye"] = _kunye_sinifla(kn, k, D)
+    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci", "kunye")])
     db_neden = (db["hiz_sayaci"]["neden"] if hs is not None and not hs["saglikli"]
                 else db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"])
     db = {**k(db_genel, db_neden), **db}
