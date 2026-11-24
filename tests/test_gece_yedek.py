@@ -91,3 +91,17 @@ def test_kapali_anahtari_atlar(monkeypatch, tmp_path):
     monkeypatch.setenv("PVQ_YEDEK_KAPALI", "1")
     wm.gece_yedek()
     assert list(tmp_path.glob("pvq_*.sql.gz")) == []   # hiç dosya yazılmadı
+
+
+def test_p2a_izin_600_ve_dogrulama_sozlugu(monkeypatch, tmp_path):
+    """P-2a / R-C (25.11): yazılan yedek 600 olur; iş gzip'i açıp sha256 ile birlikte doğrulama sözlüğü döner (sonuc_json'a gider)."""
+    import hashlib
+    import stat
+    _hazirla(monkeypatch, tmp_path)
+    r = wm.gece_yedek()
+    dosya = tmp_path / r["dosya"]
+    assert stat.S_IMODE(os.stat(dosya).st_mode) == 0o600
+    dg = r["dogrulama"]
+    assert dg["gz_ok"] and dg["acilan_bayt"] > 2000 and dg["sha256"] == hashlib.sha256(dosya.read_bytes()).hexdigest()
+    assert r["boyut"] == os.path.getsize(dosya) and r["tutulan"] == 1
+    assert dg["dump_dosya"] is None and "pg_restore" in dg["not"]   # elle dump yok → iddia yok

@@ -96,8 +96,8 @@ def ozet(aktor_id: str) -> dict:
             "FROM jobs_log WHERE started >= now() - interval '24 hours'")).mappings().first()
         yedek_ok = s.execute(text("SELECT max(started) FROM jobs_log WHERE job IN ('gece_yedek','acilis_yedek') AND status = 'ok'")).scalar()
         yedek_son = s.execute(text(
-            "SELECT started, status, detail FROM jobs_log WHERE job IN ('gece_yedek','acilis_yedek') "
-            "ORDER BY started DESC LIMIT 1")).mappings().first()
+            "SELECT started, status, detail, sonuc_json FROM jobs_log WHERE job IN ('gece_yedek','acilis_yedek') "
+            "ORDER BY started DESC LIMIT 1")).mappings().first()   # P-2a (25.11): sonuc_json['dogrulama'] → yedek doğrulaması sinyali
         piyasa = s.execute(text(
             "SELECT max(ts_utc) AS son_ts, max(guncelleme) AS son_guncelleme, count(*) AS satir FROM piyasa_fiyat")).mappings().first()
         # v2.516 (#4): yön kapsamı ve gün öncesi PTF — 29.10'da yön 0 saatti, kart «güncel»di; artık yön ayrı sınanır
@@ -161,7 +161,9 @@ def ozet(aktor_id: str) -> dict:
         "izlenen": izlenen,   # v2.516 (#3)
         "yedek": {"son_basarili": _iso(yedek_ok), "yas_saat": yedek_yas, "esik_saat": YEDEK_BAYAT_SAAT, "bayat": bayat_mi(yedek_yas, YEDEK_BAYAT_SAAT),
                   "son_deneme": None if yedek_son is None else {"zaman": _iso(yedek_son["started"]), "tamam": yedek_son["status"] == "ok",
-                                                                "ayrinti": yedek_son["detail"] or None}},
+                                                                "ayrinti": yedek_son["detail"] or None},
+                  # P-2a: son BAŞARILI denemenin dosya düzeyi doğrulaması (eski işçi kaydında yok → None → «doğrulanamadı»)
+                  "dogrulama": _yedek_dogrulama_al(yedek_son)},
         "db": {"boyut_bayt": int(db_boyut or 0)},
         "santral": {"etkin": int(santral["etkin"]), "arsivli": int(santral["arsivli"])},
     }
@@ -326,6 +328,36 @@ def _son_is(s, job: str) -> dict | None:
     return None if r is None else {"zaman": _iso(r["started"]), "tamam": r["status"] == "ok", "ayrinti": (r["detail"] or "")[:160] or None}
 
 
+def _yedek_dogrulama_al(yedek_son) -> dict | None:
+    """jobs_log.sonuc_json (jsonb → dict ya da metin) içinden 'dogrulama'; yalnız status ok satırdan; yoksa None."""
+    if yedek_son is None or yedek_son["status"] != "ok":
+        return None
+    sj = yedek_son.get("sonuc_json") if hasattr(yedek_son, "get") else None
+    if isinstance(sj, str):
+        try:
+            sj = json.loads(sj)
+        except ValueError:
+            return None
+    return sj.get("dogrulama") if isinstance(sj, dict) and isinstance(sj.get("dogrulama"), dict) else None
+
+
+def _yedek_dogrulama_sinifla(dg: dict | None, son_basarili, k, durum) -> dict:
+    """P-2a (25.11): dosya düzeyi doğrulama sinyali. Kayıt yoksa «doğrulanamadı» (eski işçi); gzip açılamadıysa KRİTİK; elle dump/rol
+    manifesti uyumsuzsa DİKKAT; aksi SAĞLIKLI. pg_restore sınaması yapılmadığı her durumda yazılır (sayı uydurulmaz, iddia şişirilmez)."""
+    if son_basarili is None or not dg:
+        return k(durum.DOGRULANAMADI, "son yedekte doğrulama kaydı yok; geri yükleme sınaması yapılmıyor, dosyanın açılabilirliği sınanmadı")
+    ek = {"dogrulama": dg}
+    if not dg.get("gz_ok"):
+        return k(durum.KRITIK, f"son yedek dosyası açılamadı ({dg.get('hata') or 'gzip boş'}); yedek kullanılamaz sayılır", **ek)
+    uyumsuz = [ad for ad, ok in (("elle dump", dg.get("dump_sha_ok")), ("rol yedeği", dg.get("rol_sha_ok"))) if ok is False]
+    dis = "; ".join(f"{ad} {dg.get(k2)} sa önce" for ad, k2 in (("elle dump", "dump_yas_saat"), ("rol yedeği", "rol_yas_saat")) if dg.get(k2) is not None)
+    if uyumsuz:
+        return k(durum.DIKKAT, f"{', '.join(uyumsuz)} sha256 manifestle uyuşmuyor; gece yedeği açıldı", **ek)
+    sha = str(dg.get("sha256") or "")[:12]
+    return k(durum.SAGLIKLI, f"gece yedeği baştan sona açıldı ({int(dg.get('acilan_bayt') or 0) // 1_000_000} MB), sha256 {sha}…"
+             + (f"; {dis}" if dis else "") + "; pg_restore sınaması yapılmadı", **ek)
+
+
 def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> dict:
     """SAF: ozet() çıktısı + {iş: son koşu} → altı bileşenin durumu (durum_sozlugu kodları). Test edilebilir; DB yok, saat parametre."""
     from pvquant.services import durum_sozlugu as ds
@@ -396,7 +428,7 @@ def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> d
         yedek = k(D.SAGLIKLI, f"son başarılı yedek {int(yd['yas_saat'])} saat önce")
     yedek.update({"son_basarili": yd["son_basarili"], "son_deneme": yd["son_deneme"], "esik_saat": yd["esik_saat"]})
     db = {"baglanti": k(D.SAGLIKLI, "özet sorguları yanıt verdi", boyut_bayt=o["db"]["boyut_bayt"]), "yedek": yedek,
-          "yedek_dogrulama": k(D.DOGRULANAMADI, "geri yükleme sınaması yapılmıyor; yedek dosyasının açılabilirliği sınanmadı")}
+          "yedek_dogrulama": _yedek_dogrulama_sinifla(yd.get("dogrulama"), yd["son_basarili"], k, D)}
     # Faz 0 §24 #3 (21.11): paylaşımlı hız sayacı (hiz_pencere) — bu işçi sürecinin gördüğü durum; arızada süreç içi yedek sayaç devrededir
     hs = o.get("hiz_sayaci")
     if hs is not None:
