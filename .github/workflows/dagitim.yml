@@ -56,23 +56,39 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
           ssh-keygen -y -f ~/.ssh/dagitim > /dev/null   # anahtar biçimi doğru mu (değer yazdırılmaz)
 
-      - name: "Sunucuda: git pull → docker compose build → up -d"
+      - name: "Sunucuda: git pull → PVQ_SURUM → docker compose build → up -d"
+        id: sunucu
         run: |
+          # 25.11.2026 (Faz 1 kalan #7): PVQ_SURUM dışa aktarılmazsa compose build.args boş kalır → X-PVQ-Yazilim ve koşu künyesi
+          # yazilim_surumu boş (24.11 A1 hazırlık bulgusu). Damga sunucuda git describe'tan alınır ve doğrulama adımına taşınır.
           ssh -i ~/.ssh/dagitim -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
             "root@${DEPLOY_HOST}" "set -e
               cd /opt/pvquant
               git pull --ff-only
               echo \"sunucu HEAD: \$(git log --oneline -1)\"
+              export PVQ_SURUM=\$(git describe --always)
+              echo \"PVQ_SURUM=\$PVQ_SURUM\"
               docker compose build ${IMAJLAR}
               docker compose up -d
               sleep 6
-              docker compose ps --format '{{.Name}} {{.Status}}'"
+              docker compose ps --format '{{.Name}} {{.Status}}'" | tee /tmp/sunucu.log
+          surum=$(sed -n 's/^PVQ_SURUM=//p' /tmp/sunucu.log | tail -1)
+          [ -n "$surum" ] || { echo "::error::PVQ_SURUM sunucuda üretilemedi"; exit 1; }
+          echo "surum=$surum" >> "$GITHUB_OUTPUT"
 
-      - name: Canlı doğrulama (HTTPS 200)
+      - name: Canlı doğrulama (HTTPS 200 + sürüm damgası)
+        env:
+          BEKLENEN: ${{ steps.sunucu.outputs.surum }}
         run: |
           kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://pvquant.com/)
           echo "pvquant.com → HTTP $kod"
           [ "$kod" = "200" ]
+          # api yeniden derlendiyse yayımlanan damga beklenenle aynı olmalı (eski imaj / boş damga yakalanır); yalnız web dağıtımında atlanır
+          case " ${IMAJLAR} " in *" api "*)
+            damga=$(curl -sI --max-time 20 https://pvquant.com/v1/healthz | tr -d '\r' | awk 'tolower($1)=="x-pvq-yazilim:"{print $2}')
+            echo "X-PVQ-Yazilim: ${damga:-<boş>} (beklenen $BEKLENEN)"
+            [ "$damga" = "$BEKLENEN" ] || { echo "::error::sürüm damgası uyuşmuyor"; exit 1; } ;;
+          esac
 
       - name: Anahtarı sil
         if: always()
