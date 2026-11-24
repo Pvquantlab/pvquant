@@ -66,7 +66,11 @@ def harmanla(modeller: dict[str, MeteoCerceve], agirliklar: dict[str, float] | N
     kt_mat = pd.DataFrame({a: gok_acikligi(modeller[a].df.loc[idx, "ghi"], lat, lon) for a in adlar})
     kt_p50 = sum(kt_mat[a].fillna(0.0) * w[a] for a in adlar)
     out = pd.DataFrame(index=idx)
-    out["ghi"] = (kt_p50 * cs).clip(lower=0.0)
+    # G2-A2 (F1-08, 24.11.2026): açık gök < 20 W/m² saatlerinde kt tanımsız (NaN → 0 → GHI 0) idi; alacakaranlıkta modellerin
+    # ham GHI'si (ağırlıklı ortalama, açık gökle sınırlı) geçer. Karapınar 04Z/14Z Kasım: p50 = 0 iken gerçek 2–3,5 MW (enerji payı < %1).
+    ham = sum(modeller[a].df.loc[idx, "ghi"].astype(float).fillna(0.0) * w[a] for a in adlar)
+    alacakaranlik = cs < 20.0
+    out["ghi"] = (kt_p50 * cs).where(~alacakaranlik, ham.clip(lower=0.0, upper=cs.clip(lower=0.0) * 1.3)).clip(lower=0.0)
     for kol in ("temp_air", "wind_speed_10m", "cloud_cover"):
         out[kol] = sum(modeller[a].df.loc[idx, kol].astype(float) * w[a] for a in adlar if kol in modeller[a].df)
     # DNI/DHI: ağırlıklı ortalama (kaynak verdiyse), yoksa ayrıştır
