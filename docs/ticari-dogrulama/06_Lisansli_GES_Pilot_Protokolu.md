@@ -1,6 +1,6 @@
 # 06 — Lisanslı GES pilot protokolü (Faz 8, F8-E — 13.11.2026)
 
-> **Durum: PİLOT YOK.** Bu belge 1–2 lisanslı GES pilotu için giriş şartlarını, ölçütleri ve **önceden yazılmış** kabul eşiklerini tanımlar. Eşik sayıları **ÖNERİDİR**
+> **Durum: PİLOT YOK.** Bu belge 1–2 lisanslı GES pilotu için giriş şartlarını, ölçütleri ve **önceden yazılmış** kabul eşiklerini tanımlar (Aşama 2 teknik eki: §7, 25.11.2026). Eşik sayıları **ÖNERİDİR**
 > (plan onay 5): Faz 1 Solentegre geriye dönük çalışması ve Faz 3 bant sınavından türetildi; **pilot başlamadan kullanıcı onaylar**, canlı 30 günlük bağımsız doğrulama
 > sonuçları (Faz 1 §6, 11.11.2026'dan beri birikiyor) geldiğinde yeniden kalibre edilir. **Teknik başarı ≠ ödeme istekliliği:** bu protokol yalnız teknik kabulü ölçer;
 > ticari dönüşüm `10`, fiyat `09`, finansal geriye dönük analiz `08`. Kod değişikliği yok; ölçütler PVQuant'ın **bugün hesapladığı** metriklerle sınırlıdır (bağımsız doğrulama
@@ -91,3 +91,33 @@ yetersiz). Kabul ödeme istekliliği anlamına gelmez; dönüşüm `10`.
 | Kış / düşük üretim | mutlak hata yüksek | eşikler göreli (beceri) ve yönsel (nMBE); WMAPE gösterge |
 | Mevzuat takvimi | KGÜP kesimi 15:30, 15 dk uzlaştırma tarihi belirsiz | «program» kuralı 15:30'a bağlı; 15 dk pilot kapsamı dışı |
 | Tek pilot | tek santralden genelleme | 1–2 pilot; sonuç «bu santralde» diye yazılır |
+
+## 7. Aşama 2 teknik ek — gerçek santral doğrulama protokolü (Faz 1 §10.1; 25.11.2026)
+
+Faz 1 bağımsız değerlendirmesi (22.11.2026; kamu referans santralleri, 44 gün, VERIFIED) bu protokolü **gerçek müşteri santrali** için şöyle
+günceller. Çelişen yerde bu bölüm geçerlidir; pilot başlamadan tek tablo olarak imzalanır. Uygulama (santral, veri yetkisi) ayrı yetki ister.
+
+| Alan | §1–6 | Aşama 2 eki (Faz 1) |
+|---|---|---|
+| Süre | 60 gün | **≥ 90 gün**: ilk **≥ 30 gün gölge** (tahmin müşteriye gösterilmez, yalnız arşivlenir) + ≥ 60 gün açık; mevsim kapsaması için 12 ay izleme |
+| Gök koşulu | — | açık / parçalı / kapalı gök **≥ 15'er gün** (açık gök endeksi kt ile sınıflanır); eksikse ilgili kesit «yetersiz» |
+| Santral verisi | G1–G6 | kurulu güç **DC ve AC** ayrı, modül/inverter/izleyici teknik dosyası, saha saat dilimi; `santral_turu = gercek` |
+| Ölçüm | SCADA / bulut / OSOS | sayaç (OSOS) **ve** SCADA/inverter saatlik AC birlikte (≥ 15 dk ham; saatliğe enerji toplanır, güç ortalanır); `kaynak`, `kaynak_damga_tipi`, `kapsama_dk`, `sinir` **dolu** |
+| Tahmin künyesi | yayın damgası %100 | ek: `yazilim_surumu`, `artefakt_sha16` (mod C), `nwp_kosu_zamani`, `spec_json` **dolu** (Sistem sağlığı «Koşu künyesi» sinyali yeşil; G5-P2) |
+| Günlük veri kalitesi | ölçüm uygunluğu | eksik saat, kapasite üstü, gece üretimi, donmuş değer bayrakları günlük; bayraklı saat paydaya girmez, oranı raporlanır |
+| Hesap | `bagimsiz_dogrulama_service` | aynı motor + Faz 1 `hesap/B_*` betikleri: havuz WMAPE, nMAE, **PICP80 ve PICP50**, **pinball**, **CRPS**; referanslar bilgi-tutarlı persistans, iklimsel (kayan 30 g), sızıntısız CLIPER; belirsizlik **gün-bloklu bootstrap GA (%90)** |
+| Yayın sürekliliği | kullanılabilirlik ≥ %95 | ek: `/v1/sureklilik` dış izleyicide (G5-P1); 30 saati aşan yayın boşluğu olay olarak yazılır |
+
+**Önceden yazılı kabul eşikleri (Faz 1 önerisi; §4 ile birleşik okunur):**
+
+| Katman | Ölçüt | Eşik | Not |
+|---|---|---|---|
+| B | gün-öncesi havuz WMAPE | ≤ %25 | §4'te gösterge; Aşama 2'de eşik (kamu referansta 44 günde %26 ölçüldü — sınırda, taahhüt değil) |
+| B | nMAE (kWp) | ≤ %10 | §4 gösterge → eşik |
+| B | beceri vs persistans | ≥ %20 **ve GA alt sınırı > 0** | §4 ile aynı sayı; GA koşulu yeni (kamu referansta +%29–33 anlamlı) |
+| B | PICP80 | 0,75–0,85 | §4 [70, 90] → daraltıldı |
+| B | PICP50 | 0,40–0,60 | yeni (Faz 1 bulgu F1-04: iç bant darlığı; G2-C2 sonrası beklenen) |
+| G | 168+ saat ufku, öğrenen model (mod C), konformal bant | eşik yok | Faz 1'de doğrulanamadı; pilotta yalnız raporlanır |
+
+**Kabul kararı §4 ile aynıdır** (Z tamam + B tamam → teknik kabul; B'de eksik → şartlı; Z eksik → değerlendirilemedi). Gölge dönemi sonucu
+müşteriye gösterilmeden önce iki taraf gözden geçirir. Bu ek hiçbir hesap ya da algoritmayı değiştirmez; yalnız sözleşme ekidir.
