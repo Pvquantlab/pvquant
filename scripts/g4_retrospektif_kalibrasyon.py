@@ -30,6 +30,7 @@ def main(argv=None) -> int:
     ap.add_argument("--pvgis-era5", type=int, default=None)
     ap.add_argument("--cikti", default=None)
     ap.add_argument("--hibrit", action="store_true", help="Mod C (hibrit) retrospektif kapısı da denensin")
+    ap.add_argument("--poa-olcumsuz", action="store_true", help="G4-P3: saha sensörleri (POA, modül/ortam sıcaklığı) düşürülür; yalnız meteo yolu")
     a = ap.parse_args(argv)
     plant = {"id": None, "name": pvdaq.GOLDEN33["ad"], "capacity_kwp": pvdaq.GOLDEN33["capacity_kwp"], "lat": pvdaq.GOLDEN33["lat"],
              "lon": pvdaq.GOLDEN33["lon"], "tz": pvdaq.GOLDEN33["tz"], "tilt": pvdaq.GOLDEN33["tilt"], "azimuth": pvdaq.GOLDEN33["azimuth"],
@@ -42,6 +43,8 @@ def main(argv=None) -> int:
         m.to_csv(a.meteo, index_label="ts_utc")
         print(f"PVGIS ERA5 {a.pvgis_era5}: {len(m)} saat → {a.meteo}")
     scada = pd.read_csv(a.scada, index_col="ts_utc", parse_dates=["ts_utc"])
+    if a.poa_olcumsuz:
+        scada = rk.sensorsuz(scada)
     meteo_df = pd.read_csv(a.meteo, index_col="ts_utc", parse_dates=["ts_utc"])
     meteo = rk.meteo_cercevesi(meteo_df, plant["lat"], plant["lon"], kaynak=f"pvgis-era5-{a.pvgis_era5}" if a.pvgis_era5 else "csv")
     sonuc = rk.kalibre_et_retrospektif(scada, meteo, plant, meteo_kaynak=meteo.kaynak, hibrit=a.hibrit)

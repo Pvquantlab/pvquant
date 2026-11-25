@@ -17,6 +17,15 @@ GUNDUZ_ORAN = 0.02       # geçerli saat eşiği = kWp × 0,02 (karne_kurali.GUN
                          # yalnız parlak saatleri sayıyordu (Golden 33 2018: 1036 saat) → metrikler iyimser olurdu
 
 
+OLCUM_SENSORLERI = ("poa_wm2", "t_module", "t_air", "wind_ms")
+
+
+def sensorsuz(df: pd.DataFrame) -> pd.DataFrame:
+    """G4-P3: ölçüm çerçevesinden saha sensörlerini (POA ışınımı, modül/ortam sıcaklığı, rüzgar) düşürür → motor ve hibrit yalnız
+    meteo (NWP/reanaliz) girdisiyle çalışır; «ölçülmüş POA yolu» ile «meteo yolu» ayrı raporlanır. Güç/enerji/kapsama kalır."""
+    return df.drop(columns=[c for c in OLCUM_SENSORLERI if c in df.columns])
+
+
 def scada_cercevesi(df: pd.DataFrame, plant: dict):
     """Saatlik ölçüm çerçevesi (ts_utc index; power_kw, energy_kwh?, poa_wm2?, t_air?, t_module?) → SCADAData (kesintisiz saatlik ızgara).
     `kalibrasyon_penceresi` uygulanmaz (bkz. modül notu)."""
@@ -91,6 +100,8 @@ def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo
             "pencere": pencere,
             "santral": {"ad": plant.get("name"), "kwp": plant.get("capacity_kwp"), "panel_tech": plant.get("panel_tech"), "bifacial_factor": spec.bifacial_factor},
             "meteo_kaynak": meteo_kaynak, "esik_kw": esik_kw, "poa_olcumu_kullanildi": scada.poa_irradiance is not None,
+            "sensorler": [k for k, v in (("poa", scada.poa_irradiance), ("t_module", scada.temp_module), ("t_air", scada.temp_ambient),
+                                          ("wind", scada.wind_speed)) if v is not None],
             "not": "retrospektif model deneyi: kalibrasyon_penceresi uygulanmadı; calibrations tablosuna YAZILMAZ; operasyonel iddia değildir; "
                    "POA ölçümü varsa motor doğrulamayı ölçülmüş POA ile yapar (meteo ışınımı hesaba girmez — NWP/ERA5 hatası dâhil değil)"}
 

@@ -63,3 +63,14 @@ def test_hibrit_kapisi_retrospektif():
     assert r["mode"] in ("B", "C") and (r["mode"] == "C") == h["gecti"]
     assert set(h) >= {"holdout_wmape", "fizik_wmape", "wmape_iyilesme_pct", "esik"}
     assert rk.kalibre_et_retrospektif(scada, m, PLANT, hibrit=False)["hibrit"] is None
+
+
+def test_sensorsuz_meteo_yolu():
+    scada, meteo = _veri(gun=30)
+    m = rk.meteo_cercevesi(meteo, PLANT["lat"], PLANT["lon"], "sentetik")
+    s2 = rk.sensorsuz(scada)
+    assert "poa_wm2" not in s2.columns and "t_module" not in s2.columns and "power_kw" in s2.columns and len(s2) == len(scada)
+    r = rk.kalibre_et_retrospektif(s2, m, PLANT, meteo_kaynak="sentetik")
+    assert r["poa_olcumu_kullanildi"] is False and r["sensorler"] == [] and r["mode"] in ("B", "atlandi")
+    r2 = rk.kalibre_et_retrospektif(scada, m, PLANT, meteo_kaynak="sentetik")
+    assert r2["poa_olcumu_kullanildi"] is True and "poa" in r2["sensorler"]
