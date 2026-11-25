@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # fizik koşusundan ampirik kantil, yoksa model bandı; 'model': eski yol; 'ensemble': üye yoksa bant yok (None).
     bant_kaynagi: Literal["otomatik", "model", "ensemble"] = "otomatik"
     ensemble_min_uye: int = 20
+    # G5-P3 (26.11.2026): GEFS üye arşivi (meteo_uye) saklama süresi (gün); 45 = eski sabit. Bant yeniden kurma yalnız bu süre içinde
+    # mümkündür (run_id → aynı değer); >45 gün kararı kodsuz uygulanır (canlı 26.11: 44 g ≈ 346 MB, 5 nokta).
+    meteo_uye_saklama_gun: int = 45
     # v2.274 (Dalga 2, ★): trend/sapma düzeltme katmanı — 'otomatik' (taze SCADA + anlamlı sapma varsa) | 'kapali'
     sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
     # G5-P1 / F1-14 (25.11.2026): tahmin yayın sürekliliği — son yayın koşusu bundan eskiyse /v1/sureklilik 503 (harici izleyici için)

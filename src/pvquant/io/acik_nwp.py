@@ -36,6 +36,16 @@ def bagil_nem(t_c, td_c):
     return np.clip(100.0 * e(np.asarray(td_c, dtype=float)) / e(np.asarray(t_c, dtype=float)), 0.0, 100.0)
 
 
+def uye_saklama_gun() -> int:
+    """G5-P3: meteo_uye saklama süresi (gün), Settings.meteo_uye_saklama_gun; geçersiz/0 → 45 (eski sabit). SAF (ayar okur)."""
+    from pvquant.config import get_settings
+    try:
+        g = int(getattr(get_settings(), "meteo_uye_saklama_gun", 45) or 45)
+    except (TypeError, ValueError):
+        g = 45
+    return g if g >= 1 else 45
+
+
 def _nokta_anahtar(lat: float, lon: float) -> tuple[float, float]:
     return round(float(lat), 3), round(float(lon), 3)
 
@@ -570,7 +580,8 @@ def _uyeleri_yaz(rows: list[dict]) -> int:
                 "INSERT INTO meteo_uye(kaynak,kosu_zamani,lat,lon,uye,ts_utc,ghi,temp_air,wind_speed_10m,cloud_cover) "
                 "VALUES(:k,:z,:la,:lo,:u,:ts,:ghi,:temp_air,:wind_speed_10m,:cloud_cover) "
                 "ON CONFLICT (kaynak,kosu_zamani,lat,lon,uye,ts_utc) DO NOTHING"), rows[i:i + 5000])
-        s.execute(text("DELETE FROM meteo_uye WHERE kosu_zamani < now() - interval '45 days'"))   # üye arşivi kısa ömürlü
+        s.execute(text("DELETE FROM meteo_uye WHERE kosu_zamani < now() - make_interval(days => :g)"),   # üye arşivi kısa ömürlü; G5-P3: süre ayardan
+                  {"g": uye_saklama_gun()})
     return len(rows)
 
 
