@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 # v2.535 dayanak künyeleri [KARAR_14968] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
-    "Karar 14968: EPDK Kurul Kararı 14968 (Şeffaflık Platformu veri listesi, 1.1.2027'den), RG 20.10.2026-33406; öncesi Karar 10711"
+    "Karar 14968: EPDK Kurul Kararı 14968 (15.10.2026; Şeffaflık Platformu veri listesi, 1.1.2027'den; Md.2 Karar 10711'i kaldırır), RG 20.10.2026-33406; öncesi Karar 10711 (06.01.2022, RG'de yayımlanmadı)"
 )
 
 
