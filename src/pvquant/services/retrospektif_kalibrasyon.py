@@ -13,6 +13,8 @@ import pandas as pd
 
 ETIKET = "retrospektif_model_deneyi"
 GEREKLI = ("power_kw",)
+GUNDUZ_ORAN = 0.02       # geçerli saat eşiği = kWp × 0,02 (karne_kurali.GUNDUZ_ORAN ile aynı); motorun mutlak 1 kW varsayılanı küçük santralde (2,4 kWp)
+                         # yalnız parlak saatleri sayıyordu (Golden 33 2018: 1036 saat) → metrikler iyimser olurdu
 
 
 def scada_cercevesi(df: pd.DataFrame, plant: dict):
@@ -65,15 +67,17 @@ def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo
     spec = plant_spec_kur(plant)
     idx = scada.power_kw.index
     pencere = {"bas": idx.min().isoformat(), "bit": idx.max().isoformat(), "saat": len(idx), "gecerli_saat": int(scada.power_kw.notna().sum())}
+    esik_kw = max(float(plant.get("capacity_kwp") or 0.0) * GUNDUZ_ORAN, 0.001)
     try:
-        cr = calibrate_from_scada(scada=scada, historical_meteo=meteo, plant=spec, fit_bg=True, fit_eta_bos=True, clean_outliers=True)
+        cr = calibrate_from_scada(scada=scada, historical_meteo=meteo, plant=spec, fit_bg=True, fit_eta_bos=True, clean_outliers=True,
+                                  threshold_kw=esik_kw)
     except ValueError as e:   # motorun asgari veri kuralı (ör. <100 saat) — deney düşmez, «atlandı» olarak raporlanır
         return {"etiket": ETIKET, "mode": "atlandi", "kapi": f"motor: {e}", "eta_bos": None, "bg": None, "n_valid_hours": 0,
                 "wmape_pct": None, "wmape_once_pct": None, "sapma_pct": None, "holdout": {}, "uyarilar": [], "pencere": pencere,
                 "santral": {"ad": plant.get("name"), "kwp": plant.get("capacity_kwp"), "panel_tech": plant.get("panel_tech"), "bifacial_factor": spec.bifacial_factor},
                 "meteo_kaynak": meteo_kaynak, "not": "retrospektif model deneyi: motor asgari veri kuralı; yazılmaz"}
     try:
-        holdout = _kronolojik_holdout(scada, meteo, spec)
+        holdout = _kronolojik_holdout(scada, meteo, spec, threshold_kw=esik_kw)
     except Exception as e:   # ölçüm yardımcı; deney düşmez
         holdout = {"wmape_holdout_pct": None, "mape_holdout_pct": None, "holdout_saat": None, "holdout_not": f"hesaplanamadı: {type(e).__name__}"}
     sapma = getattr(cr.validation_after, "total_deviation_pct", None)
@@ -84,5 +88,6 @@ def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo
             "sapma_pct": sapma, "holdout": holdout, "uyarilar": list(cr.warnings or []) + list(cr.notes or []),
             "pencere": pencere,
             "santral": {"ad": plant.get("name"), "kwp": plant.get("capacity_kwp"), "panel_tech": plant.get("panel_tech"), "bifacial_factor": spec.bifacial_factor},
-            "meteo_kaynak": meteo_kaynak,
-            "not": "retrospektif model deneyi: kalibrasyon_penceresi uygulanmadı; calibrations tablosuna YAZILMAZ; operasyonel iddia değildir"}
+            "meteo_kaynak": meteo_kaynak, "esik_kw": esik_kw, "poa_olcumu_kullanildi": scada.poa_irradiance is not None,
+            "not": "retrospektif model deneyi: kalibrasyon_penceresi uygulanmadı; calibrations tablosuna YAZILMAZ; operasyonel iddia değildir; "
+                   "POA ölçümü varsa motor doğrulamayı ölçülmüş POA ile yapar (meteo ışınımı hesaba girmez — NWP/ERA5 hatası dâhil değil)"}
