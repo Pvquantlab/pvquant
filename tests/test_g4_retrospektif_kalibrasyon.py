@@ -52,3 +52,14 @@ def test_kapi_yetersiz_saat_atlanir():
     scada, meteo = _veri(gun=4)                                                  # ~50 gündüz saati < 100
     r = rk.kalibre_et_retrospektif(scada, rk.meteo_cercevesi(meteo, PLANT["lat"], PLANT["lon"], "sentetik"), PLANT)
     assert r["mode"] == "atlandi" and "100" in r["kapi"] and r["n_valid_hours"] == 0 and r["pencere"]["saat"] == 96
+
+
+def test_hibrit_kapisi_retrospektif():
+    scada, meteo = _veri(gun=30)
+    m = rk.meteo_cercevesi(meteo, PLANT["lat"], PLANT["lon"], "sentetik")
+    r = rk.kalibre_et_retrospektif(scada, m, PLANT, meteo_kaynak="sentetik", hibrit=True)
+    h = r["hibrit"]
+    assert h is not None and h["denendi"] is True and isinstance(h["gecti"], bool) and "kronolojik" in h["not"]
+    assert r["mode"] in ("B", "C") and (r["mode"] == "C") == h["gecti"]
+    assert set(h) >= {"holdout_wmape", "fizik_wmape", "wmape_iyilesme_pct", "esik"}
+    assert rk.kalibre_et_retrospektif(scada, m, PLANT, hibrit=False)["hibrit"] is None

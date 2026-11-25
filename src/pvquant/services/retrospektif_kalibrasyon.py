@@ -57,7 +57,7 @@ def meteo_cercevesi(df: pd.DataFrame, lat: float, lon: float, kaynak: str = "ana
                      kaynak=kaynak, nwp_model=kaynak)
 
 
-def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo_kaynak: str = "analiz") -> dict:
+def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo_kaynak: str = "analiz", hibrit: bool = False) -> dict:
     """Mod B retrospektif kalibrasyon + kronolojik holdout + G2-C1 Mod B kapısı. Döner (yazmaz): etiket, mode (B | atlandi), kapi,
     eta_bos, bg, n_valid_hours, wmape_pct, sapma_pct, holdout{…}, pencere{…}, uyarilar, meteo_kaynak, not."""
     from pvquant.pipeline.calibration import calibrate_from_scada
@@ -82,7 +82,9 @@ def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo
         holdout = {"wmape_holdout_pct": None, "mape_holdout_pct": None, "holdout_saat": None, "holdout_not": f"hesaplanamadı: {type(e).__name__}"}
     sapma = getattr(cr.validation_after, "total_deviation_pct", None)
     kapi_ok, kapi_neden = mod_b_kapisi(cr.n_valid_hours, holdout.get("wmape_holdout_pct"), sapma)
-    return {"etiket": ETIKET, "mode": "B" if kapi_ok else "atlandi", "kapi": kapi_neden,
+    hib = hibrit_kapisi(scada, meteo, plant) if (hibrit and kapi_ok) else None
+    mode = "atlandi" if not kapi_ok else ("C" if (hib and hib.get("gecti")) else "B")
+    return {"etiket": ETIKET, "mode": mode, "kapi": kapi_neden, "hibrit": hib,
             "eta_bos": float(cr.eta_bos), "bg": float(cr.bg), "n_valid_hours": int(cr.n_valid_hours),
             "wmape_pct": getattr(cr.validation_after, "wmape_pct", None), "wmape_once_pct": getattr(cr.validation_before, "wmape_pct", None),
             "sapma_pct": sapma, "holdout": holdout, "uyarilar": list(cr.warnings or []) + list(cr.notes or []),
@@ -91,3 +93,30 @@ def kalibre_et_retrospektif(scada_df: pd.DataFrame, meteo, plant: dict, *, meteo
             "meteo_kaynak": meteo_kaynak, "esik_kw": esik_kw, "poa_olcumu_kullanildi": scada.poa_irradiance is not None,
             "not": "retrospektif model deneyi: kalibrasyon_penceresi uygulanmadı; calibrations tablosuna YAZILMAZ; operasyonel iddia değildir; "
                    "POA ölçümü varsa motor doğrulamayı ölçülmüş POA ile yapar (meteo ışınımı hesaba girmez — NWP/ERA5 hatası dâhil değil)"}
+
+
+def hibrit_kapisi(scada, meteo, plant: dict) -> dict:
+    """Mod C retrospektif: `hybrid_ui.run_hybrid_training` (kronolojik %80/%20 holdout; rastgele bölme yok) + üretimle AYNI kapı kuralı
+    (`kalibre_et`): göreli iyileşme ≥ gate_min_improvement_pct VE holdout WMAPE ≤ gate_wmape_ceiling. Artefakt kaydedilmez."""
+    from pvquant.config import get_settings
+    from pvquant.pipeline.hybrid_ui import run_hybrid_training
+    from pvquant.services.calib_service import panel_teknolojisi
+    cfg = get_settings()
+    ctx = {"capacity_kwp": plant["capacity_kwp"], "latitude": plant["lat"], "longitude": plant["lon"], "timezone": plant.get("tz") or "UTC",
+           "tilt": plant.get("tilt") or 20, "azimuth": plant.get("azimuth") or 180, "panel_technology": panel_teknolojisi(plant.get("panel_tech")),
+           "ac_limit_kw": plant.get("ac_limit_kw")}
+    try:
+        res = run_hybrid_training(scada=scada, historical_meteo=meteo, plant_ctx=ctx, plant_name=str(plant.get("name") or "retrospektif"))
+    except Exception as e:   # deney düşmez
+        return {"denendi": True, "gecti": False, "sebep": f"hibrit eğitimi hata: {type(e).__name__}: {e}"[:200]}
+    w = getattr(res, "holdout_wmape_pct", None)
+    pw = getattr(res, "physics_wmape_pct", None)
+    iyi = float((pw - w) / pw * 100.0) if (w is not None and pw is not None and pw > 0) else None
+    taban_ok = (w is not None and w <= cfg.gate_wmape_ceiling)
+    gecti = bool(res.ok and iyi is not None and iyi >= cfg.gate_min_improvement_pct and taban_ok)
+    sebep = None if gecti else (res.error or (f"holdout WMAPE {w} > tavan {cfg.gate_wmape_ceiling}" if not taban_ok
+                                             else f"iyileşme {iyi} < {cfg.gate_min_improvement_pct}"))
+    return {"denendi": True, "gecti": gecti, "sebep": sebep, "holdout_wmape": w, "fizik_wmape": pw, "wmape_iyilesme_pct": iyi,
+            "holdout_mape": getattr(res, "holdout_mape_pct", None), "fizik_mape": getattr(res, "physics_mape_pct", None),
+            "holdout_saat": getattr(res, "holdout_hours", None), "esik": {"iyilesme_pct": cfg.gate_min_improvement_pct, "wmape_tavan": cfg.gate_wmape_ceiling},
+            "not": "kronolojik holdout (ilk %80 eğitim, son %20 doğrulama); artefakt kaydedilmedi"}
