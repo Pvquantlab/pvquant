@@ -424,8 +424,9 @@ def yayimlanmis_kosu(tenant_id, plant_id, hedef, yayin_oncesi=None) -> dict | No
         r = s.execute(text(
             "SELECT r.id, r.run_at, r.mode, r.model, r.etiket, r.meteo_source, r.nwp_kosu_zamani, r.nwp_bilesenler_json, r.kalibrasyon_id, "
             "r.ml_model_id, r.artefakt_sha16, r.konformal_hesap_zamani, r.ensemble_kosu_zamani, r.yazilim_surumu, r.ufuk_saat, r.cozunurluk_dk, "
-            "r.kapasite_kwp, r.veri_kalitesi_json, r.spec_json, "
-            "f.p50_kw, f.p10_kw, f.p90_kw, f.p25_kw, f.p75_kw, f.physics_kw, f.ml_kw, f.p10_ham_kw, f.p90_ham_kw "
+            "r.kapasite_kwp, r.veri_kalitesi_json, r.spec_json, r.bant_json, "
+            "f.p50_kw, f.p10_kw, f.p90_kw, f.p25_kw, f.p75_kw, f.physics_kw, f.ml_kw, f.p10_ham_kw, f.p90_ham_kw, "
+            "f.ens_p10_kw, f.ens_p25_kw, f.ens_p75_kw, f.ens_p90_kw, f.ens_yayilim_kw "   # A1-K1 (25.11): ham ensemble PV bandı (göç v2650; eski koşularda NULL)
             "FROM forecast_values f JOIN forecast_runs r ON r.id = f.run_id "
             f"WHERE f.plant_id = :p AND f.ts_utc = :h AND r.run_at <= :y AND {yayin_kosu_sql('r')} "
             "ORDER BY r.run_at DESC LIMIT 1"), {"p": plant_id, "h": hedef.to_pydatetime(), "y": yo.to_pydatetime()}).mappings().first()
@@ -440,8 +441,10 @@ def yayimlanmis_kosu(tenant_id, plant_id, hedef, yayin_oncesi=None) -> dict | No
                      "konformal_hesap_zamani": iso(r["konformal_hesap_zamani"]), "ensemble_kosu_zamani": iso(r["ensemble_kosu_zamani"]),
                      "yazilim_surumu": r["yazilim_surumu"], "ufuk_saat_toplam": r["ufuk_saat"], "cozunurluk_dk": r["cozunurluk_dk"],
                      "kapasite_kwp": (float(r["kapasite_kwp"]) if r["kapasite_kwp"] is not None else None),
-                     "veri_kalitesi": r["veri_kalitesi_json"], "spec": r["spec_json"]},
-            "deger": {k: _f(r[k]) for k in ("p50_kw", "p10_kw", "p90_kw", "p25_kw", "p75_kw", "physics_kw", "ml_kw", "p10_ham_kw", "p90_ham_kw")}}
+                     "veri_kalitesi": r["veri_kalitesi_json"], "spec": r["spec_json"],
+                     "bant": r["bant_json"]},   # A1-K1: {kaynak, uye, ...} — v2650 öncesi koşularda None (iddia yok)
+            "deger": {k: _f(r[k]) for k in ("p50_kw", "p10_kw", "p90_kw", "p25_kw", "p75_kw", "physics_kw", "ml_kw", "p10_ham_kw", "p90_ham_kw",
+                                            *ENS_KOLONLAR)}}
 
 
 def aylik_beklenti(tenant_id, plant_id) -> dict:

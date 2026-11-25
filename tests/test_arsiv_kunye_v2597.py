@@ -135,6 +135,8 @@ def test_db_uret_ve_kaydet_kunye_sutunlari(santral, monkeypatch):
     # arşiv sorgusu: yayımlanmış koşu
     out = fs.yayimlanmis_kosu(tid, plant["id"], "2026-06-22T12:00:00Z", "2026-06-21T06:00:00Z")
     assert out["kosu"]["run_id"] == run_id and out["ufuk_saat"] == 35.5 and out["deger"]["p50_kw"] > 0 and out["kosu"]["spec"]["eta_bos"] == 0.85
+    # A1-K1 (25.11): künye bant_json ve ens_* değerleri döner (bu kurguda ensemble yok → bant None/ens None; anahtar var, sayı uydurulmaz)
+    assert "bant" in out["kosu"] and set(fs.ENS_KOLONLAR) <= set(out["deger"]) and (out["kosu"]["bant"] is None or isinstance(out["kosu"]["bant"], dict))
     assert fs.yayimlanmis_kosu(tid, plant["id"], "2026-06-22T12:00:00Z", "2026-06-21T00:00:00Z") is None   # koşudan önce yayımlanmış değil
 
 
