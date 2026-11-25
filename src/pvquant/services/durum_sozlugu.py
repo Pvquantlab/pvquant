@@ -128,12 +128,16 @@ def santral_sinifi(params_json) -> dict:
     pj = _pj_sozluk(params_json)
     st, vt = pj.get("santral_turu"), pj.get("veri_turu")
     eski = _ESKI_VERI_SINIFI.get(pj.get("veri_sinifi"))
+    # K9-B (25.11.2026): tür BEYAN EDİLMEDİYSE varsayılan yine operasyonel/canlı (hesap ve tazelik davranışı değişmez) ama etiket bunu
+    # açıkça söyler — 4/4 canlı santral beyansızken test santralleri «canlı ölçüm» gibi okunuyordu (Aşama I K9-B). Beyan: Santralim ayarı.
+    beyan = st in SANTRAL_TURLERI or eski is not None
     if st not in SANTRAL_TURLERI:
         st = eski[0] if eski else "operasyonel"
     if vt not in VERI_TURLERI:
         vt = eski[1] if eski else "canli"
-    return {"santral_turu": st, "veri_turu": vt, "santral_turu_etiketi": SANTRAL_TURLERI[st], "veri_turu_etiketi": VERI_TURLERI[vt],
-            "tazelik_izlenir": st in ("operasyonel", "kamu_referans"), "rozet": ROZET.get(st)}
+    ek = "" if beyan else " (tür beyan edilmedi — varsayılan)"
+    return {"santral_turu": st, "veri_turu": vt, "santral_turu_etiketi": SANTRAL_TURLERI[st] + ek, "veri_turu_etiketi": VERI_TURLERI[vt] + ek,
+            "tazelik_izlenir": st in ("operasyonel", "kamu_referans"), "rozet": ROZET.get(st), "beyan_edildi": beyan}
 
 
 def veri_durumu_uygulanmiyor(sinif: dict, son_olcum, son_alim, simdi: dt.datetime, *, kapsama_saat_7g: int | None = None) -> dict:
