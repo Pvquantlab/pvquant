@@ -23,15 +23,10 @@ from datetime import date, datetime, timezone
 
 # v2.535 dayanak künyeleri [DUY, DEPOLAMA_YON, CK7189, LISANS] — bu dosyadaki madde atıflarının birincil yayımı; tests/test_kunye_bekcisi.py sicille eş tutar.
 DAYANAK_KUNYELERI = (
-    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; '
-    'değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
-    'Depolama Yön.: Elektrik Piyasasında Depolama Faaliyetleri Yönetmeliği, RG 09.05.2021-31479; '
-    'değişiklikler RG 29.12.2025-33122 (m.4(4) emre amade tanımı, m.5(7), EK-1a/1b/1c/1ç ve EK-2; '
-    '1.1.2026), 19.10.2026-33405 (m.6(1)); '
-    '7189 sayılı CK: 7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; '
-    'düzeltme RG 04.05.2023-32180; '
-    'Lisans Yön.: Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; '
-    'değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, 29.04.2026-33238, 19.10.2026-33405'
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'Depolama Yön.: Elektrik Piyasasında Depolama Faaliyetleri Yönetmeliği, RG 09.05.2021-31479; değişiklikler RG 29.12.2025-33122 (m.4(4) emre amade tanımı, m.5(7), EK-1a/1b/1c/1ç ve EK-2; 1.1.2026), 19.10.2026-33405 (m.6(1)); '
+    '7189 sayılı CK: 7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; düzeltme RG 04.05.2023-32180; '
+    'Lisans Yön.: Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, 21.01.2025-32789, 29.04.2026-33238, 19.10.2026-33405'
 )
 DAYANAKLAR = (   # madde bazında dayanaklar ve bulunamayanlar (API `dayanaklar`)
     "DUY m.81/A depolama ünitesi emre amadelik koşulları: ek RG 21.01.2025-32789; (2)(a) ve (3) değişikliği RG 29.12.2025-33122 (1.1.2026)",

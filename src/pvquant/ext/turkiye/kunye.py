@@ -12,13 +12,13 @@ KUNYE: dict[str, tuple[str, str]] = {
     "DUY": ("DUY", "Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, "
                    "18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, "
                    "29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407"),
-    "LUY": ("LÜY", "Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405"),
+    "LUY": ("LÜY", "Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 17.12.2024-32755, 02.04.2026-33212, 19.10.2026-33405"),
     "LISANS": ("Lisans Yön.", "Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, "
-                              "29.04.2026-33238, 19.10.2026-33405"),
+                              "21.01.2025-32789, 29.04.2026-33238, 19.10.2026-33405"),
     "DEPOLAMA_YON": ("Depolama Yön.", "Elektrik Piyasasında Depolama Faaliyetleri Yönetmeliği, RG 09.05.2021-31479; değişiklikler RG 29.12.2025-33122 (m.4(4) emre amade tanımı, "
                                      "m.5(7), EK-1a/1b/1c/1ç ve EK-2; 1.1.2026), 19.10.2026-33405 (m.6(1))"),   # v2.543 (P9)
     "YEK_YON": ("YEK Yön.", "Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler "
-                            "RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6))"),
+                            "RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 17.12.2024-32755 (m.3(1)(dd) YEK Fiyatı tanımı), 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405 (m.23(6))"),
     "5346": ("5346", "5346 sayılı Yenilenebilir Enerji Kaynaklarının Elektrik Enerjisi Üretimi Amaçlı Kullanımına İlişkin Kanun, RG 18.05.2005-25819"),
     "6446": ("6446", "6446 sayılı Elektrik Piyasası Kanunu, RG 30.03.2013-28603; m.16 idari para cezası tebliğleri RG 27.11.2025-33090, 25.12.2025-33118"),
     "CK7189": ("7189 sayılı CK", "7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; düzeltme RG 04.05.2023-32180"),
@@ -32,8 +32,8 @@ KUNYE: dict[str, tuple[str, str]] = {
     "TUE": ("Teminat U&E", "Teminat Usul ve Esasları, Karar 6282-3, RG 28.05.2016-29725; son değişiklik Karar 14954, RG 21.10.2026-33407"),
     "SEBEKE": ("Şebeke Yön.", "Elektrik Şebeke Yönetmeliği, RG 28.05.2014-29013 (mükerrer); son değişiklik RG 29.12.2025-33122"),
     "TOPLAYICI": ("Toplayıcılık Yön.", "Elektrik Piyasasında Toplayıcılık Faaliyeti Yönetmeliği, RG 17.12.2024-32755; değişiklik RG 29.12.2025-33122"),
-    "SEFFAFLIK": ("Şeffaflık Yön.", "Enerji Piyasalarında Şeffaflığa ve Piyasa Bozucu Davranışlara İlişkin Yönetmelik, RG 14.02.2026-33168; değişiklik RG 23.05.2026-33262"),
-    "KARAR_14968": ("Karar 14968", "EPDK Kurul Kararı 14968 (Şeffaflık Platformu veri listesi, 1.1.2027'den), RG 20.10.2026-33406; öncesi Karar 10711"),
+    "SEFFAFLIK": ("Şeffaflık Yön.", "Enerji Piyasalarında ve Çevresel Piyasalarda Şeffaflığa ve Piyasa Bozucu Davranışlara İlişkin Yönetmelik, RG 14.02.2026-33168; değişiklik RG 23.05.2026-33262"),
+    "KARAR_14968": ("Karar 14968", "EPDK Kurul Kararı 14968 (15.10.2026; Şeffaflık Platformu veri listesi, 1.1.2027'den; Md.2 Karar 10711'i kaldırır), RG 20.10.2026-33406; öncesi Karar 10711 (06.01.2022, RG'de yayımlanmadı)"),
     "KARAR_14967": ("Karar 14967", "EPDK Kurul Kararı 14967 (dâhilî bilgi bildirimi), RG 20.10.2026-33406"),
     "KARAR_14907": ("Karar 14907", "EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405"),
     "KARAR_14911": ("Karar 14911", "EPDK Kurul Kararı 14911 (DUY m.110 V = 100 TL/MWh), RG 19.10.2026-33405"),
@@ -44,7 +44,7 @@ KUNYE: dict[str, tuple[str, str]] = {
     "KARAR_5905": ("Karar 5905-27", "EPDK Kurul Kararı 5905-27 (02.12.2015; YEKDEM yararlanma yılları) — EPDK listesi, RG'de yayımlanmaz"),
     "KARAR_13995": ("Karar 13995", "Akıllı Sayaç Sistemlerinin Yaygınlaştırılmasına ve Kullanımına İlişkin Usul ve Esaslar, Karar 13995, RG 05.12.2025-33098"),
     "KARAR_14982": ("Karar 14982", "EPDK Kurul Kararı 14982 (dağıtım şirketi mobil uygulaması), RG 24.10.2026-33410"),
-    "OSOS_UE": ("OSOS U&E", "OSOS Kapsamına Giren Tesislere İlişkin Usul ve Esaslar, RG 08.08.2015-29439"),
+    "OSOS_UE": ("OSOS U&E", "Otomatik Sayaç Okuma Sistemlerinin Kapsamına ve Sayaç Değerlerinin Belirlenmesine İlişkin Usul ve Esaslar, RG 08.08.2015-29439 — Ölçüm Sist. Yön. m.17(1) ile 01.01.2024'ten MÜLGA (tarihsel dayanak)"),
     "2429": ("2429", "2429 sayılı Ulusal Bayram ve Genel Tatiller Hakkında Kanun, RG 19.03.1981-17284"),
     "YAZ_SAATI": ("BKK 2016/9154", "Bütün Yurtta Yaz Saati Uygulanması Hakkında Karar (2016/9154), RG 08.09.2016-29825 — yıl boyu UTC+3; 697 sayılı Kanun RG 02.01.1926-260"),
     "AYM": ("AYM 2024/133", "Anayasa Mahkemesi 26.11.2025, E.2024/133 K.2025/233 (5346 m.6(2) kısmi iptal; yürürlük 10.12.2026), RG 10.03.2026-33192"),
