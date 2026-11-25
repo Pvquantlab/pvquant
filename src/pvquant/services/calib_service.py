@@ -96,11 +96,21 @@ def mod_b_kapisi(n_valid_hours, holdout_wmape_pct, deviation_pct) -> tuple[bool,
 _PANEL_TEKNOLOJISI = {"monofacial": "mono", "mono": "mono", "bifacial": "bifacial", "thin_film": "thin_film", "thinfilm": "thin_film"}
 
 
+def panel_teknolojisi_bilgi(panel_tech) -> tuple[str, bool]:
+    """SAF (G4-P0, 26.11.2026). (teknoloji, beyan_edildi). Beyansız/bilinmeyen panel → **mono** (bifacial kazancı YOK): eski varsayılan
+    `bifacial`, beyanı olmayan santrala sessizce BF 0,7 kazancı yüklüyordu (araştırma havuzu PANEL_SOZLUGU_NOTU §2: pvlib/CEC/Sandia/
+    PVGIS sözlükleri bilinmeyeni bifacial saymaz; Golden 33 «Unknown», CdTe ince film). Bilinmeyen = kazanç iddiası yok."""
+    anahtar = str(panel_tech or "").strip().lower()
+    if anahtar in _PANEL_TEKNOLOJISI:
+        return _PANEL_TEKNOLOJISI[anahtar], True
+    return "mono", False
+
+
 def panel_teknolojisi(panel_tech) -> str:
-    """SAF (G2-C1, C2-2). `plants.panel_tech` sözlüğü (`monofacial`/`bifacial`) → `PanelSpec.technology` Literal (`mono`/…).
-    Bilinmeyen/boş → `bifacial` (eski varsayılan). Eskiden `monofacial` doğrudan geçiyor, Pydantic ValidationError hibrit eğitimi
-    sessizce düşürüyordu (Golden 33, Format Lab, Kıvanç)."""
-    return _PANEL_TEKNOLOJISI.get(str(panel_tech or "").strip().lower(), "bifacial")
+    """SAF (G2-C1, C2-2; G4-P0). `plants.panel_tech` sözlüğü (`monofacial`/`bifacial`) → `PanelSpec.technology` Literal (`mono`/…).
+    Bilinmeyen/boş → `mono` (G4-P0: beyansız santrala bifacial kazancı yüklenmez). Eskiden `monofacial` doğrudan geçiyor, Pydantic
+    ValidationError hibrit eğitimi sessizce düşürüyordu (Golden 33, Format Lab, Kıvanç)."""
+    return panel_teknolojisi_bilgi(panel_tech)[0]
 
 
 def _scada_data(tenant_id, plant) -> SCADAData:

@@ -60,7 +60,7 @@ def test_kapi_sabitleri_pinli():
 
 # ── C2-2 panel teknolojisi ─────────────────────────────────────────────────────
 @pytest.mark.parametrize("girdi,beklenen", [("monofacial", "mono"), ("mono", "mono"), ("Monofacial ", "mono"), ("bifacial", "bifacial"),
-                                            ("thin_film", "thin_film"), (None, "bifacial"), ("", "bifacial"), ("bilinmeyen", "bifacial")])
+                                            ("thin_film", "thin_film"), (None, "mono"), ("", "mono"), ("bilinmeyen", "mono")])   # G4-P0: beyansız → mono
 def test_panel_teknolojisi_eslemesi(girdi, beklenen):
     assert cs.panel_teknolojisi(girdi) == beklenen
 
@@ -113,3 +113,14 @@ def test_kalibre_et_kapi_dusunce_db_yazmaz(monkeypatch):
     monkeypatch.setattr(cs, "tenant_baglami", _yasak)
     r = cs.kalibre_et("t", {"id": "p", "name": "t", "capacity_kwp": 1000.0, "lat": 37.9, "lon": 32.5, "tz": "UTC"}, hibrit=False)
     assert r["mode"] == "atlandi" and r["calibration_id"] is None and "gündüz saati" in r["kapi"]
+
+
+# ── G4-P0 panel beyanı ──────────────────────────────────────────────────
+def test_g4p0_beyansiz_panel_mono_ve_bf_yok():
+    """Beyansız/bilinmeyen panel bifacial kazancı almaz; beyanlı bifacial değişmez; bilgi fonksiyonu beyanı söyler."""
+    assert cs.panel_teknolojisi_bilgi(None) == ("mono", False) and cs.panel_teknolojisi_bilgi("Unknown") == ("mono", False)
+    assert cs.panel_teknolojisi_bilgi("bifacial") == ("bifacial", True) and cs.panel_teknolojisi_bilgi(" Monofacial") == ("mono", True)
+    from pvquant.pipeline.hybrid_ui import _plant_profile as _pp
+    ctx = {"capacity_kwp": 1000.0, "latitude": 37.0, "longitude": 33.0, "tilt": 25.0, "azimuth": 180.0}
+    assert _pp({**ctx}).panel.bifaciality_factor is None and _pp({**ctx}).panel.technology == "mono"
+    assert _pp({**ctx, "panel_technology": "bifacial"}).panel.bifaciality_factor == 0.7
