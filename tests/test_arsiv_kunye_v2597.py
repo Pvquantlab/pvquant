@@ -32,8 +32,10 @@ KOK = Path(__file__).resolve().parents[1]
 def test_etiket_sozlugu_goc_ile_ayni():
     spec = importlib.util.spec_from_file_location("goc_v2597", KOK / "alembic" / "versions" / "v2597_arsiv_kunye.py")
     m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-    assert tuple(m.ETIKETLER) == tuple(kk.ETIKETLER)
-    assert kk.GERIYE_BAKISLI_ETIKET | {"yayin", "gun_ici", "elle"} == set(kk.ETIKETLER)
+    # v2667 (26.11, G1): sözlük yalnız sona 'golge' ekleyerek genişledi — v2597 listesi önek olarak aynen durur; tam eşitlik v2667 pini
+    # test_golge_etiket_dislama'da. Gölge ne yayımlanmış ne geriye bakışlıdır (DISLANAN_ETIKET = geriye bakışlı ∪ gölge).
+    assert tuple(m.ETIKETLER) == tuple(kk.ETIKETLER[:len(m.ETIKETLER)]) and set(kk.ETIKETLER) - set(m.ETIKETLER) == {kk.ETIKET_GOLGE}
+    assert kk.DISLANAN_ETIKET | {"yayin", "gun_ici", "elle"} == set(kk.ETIKETLER)
 
 
 def test_yayin_kosu_sql_ve_geriye_bakisli_ayni_kume():

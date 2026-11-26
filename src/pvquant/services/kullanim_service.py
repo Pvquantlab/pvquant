@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from pvquant.db import platform_baglami, sistem_baglami
 from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services import karne_kurali as _kk  # G3 (26.11): gölge koşu dışlaması
 from pvquant.services import yetki_service as _ys  # v2.609 (F6-B): kota hükümleri tek yerden
 
 TURLER = ("dis_api", "webhook", "webhook_hata")
@@ -168,8 +169,8 @@ def _ay_toplamlari(s, ilk: dt.date, son: dt.date) -> dict[str, dict]:
         {"a": ilk, "b": son}).mappings().all()
     rapor = s.execute(text("SELECT tenant_id, count(*) AS n FROM report_log WHERE created_at >= :a AND created_at < :b GROUP BY tenant_id"),
                       {"a": ilk, "b": son}).mappings().all()
-    kosu = s.execute(text("SELECT tenant_id, count(*) AS n FROM forecast_runs WHERE run_at >= :a AND run_at < :b GROUP BY tenant_id"),
-                     {"a": ilk, "b": son}).mappings().all()
+    kosu = s.execute(text(f"SELECT tenant_id, count(*) AS n FROM forecast_runs WHERE run_at >= :a AND run_at < :b AND {_kk.golge_disi_sql('')} GROUP BY tenant_id"),
+                     {"a": ilk, "b": son}).mappings().all()   # G3: gölge koşu kiracı kullanımı sayılmaz
     scada = s.execute(text(f"SELECT tenant_id, count(*) AS n FROM scada_hourly WHERE ts_utc >= :a AND ts_utc < :b AND {_ks.sql_kosulu('tazelik')} GROUP BY tenant_id"),
                       {"a": ilk, "b": son}).mappings().all()
     yukleme = s.execute(text("SELECT tenant_id, count(*) AS n FROM ingestion_batches WHERE created_at >= :a AND created_at < :b GROUP BY tenant_id"),
@@ -264,7 +265,7 @@ def gunler(aktor_id: str, tenant_id: str, ay: str | None = None) -> dict:
         rapor = s.execute(text("SELECT CAST(created_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM report_log "
                                "WHERE tenant_id = CAST(:t AS uuid) AND created_at >= :a AND created_at < :b GROUP BY 1"), p).mappings().all()
         kosu = s.execute(text("SELECT CAST(run_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM forecast_runs "
-                              "WHERE tenant_id = CAST(:t AS uuid) AND run_at >= :a AND run_at < :b GROUP BY 1"), p).mappings().all()
+                              f"WHERE tenant_id = CAST(:t AS uuid) AND run_at >= :a AND run_at < :b AND {_kk.golge_disi_sql('')} GROUP BY 1"), p).mappings().all()   # G3
         scada = s.execute(text("SELECT CAST(ts_utc AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM scada_hourly "
                                f"WHERE tenant_id = CAST(:t AS uuid) AND ts_utc >= :a AND ts_utc < :b AND {_ks.sql_kosulu('tazelik')} GROUP BY 1"), p).mappings().all()
         yukleme = s.execute(text("SELECT CAST(created_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM ingestion_batches "

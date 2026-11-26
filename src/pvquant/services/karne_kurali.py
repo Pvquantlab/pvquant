@@ -37,7 +37,7 @@ GERIYE_BAKISLI_METEO = frozenset({"open-meteo-arsiv", "sentetik_tohum"})
 ETIKET_GUN_ICI = "gun_ici"
 ETIKET_ELLE = "elle"
 ETIKET_YAYIN = "yayin"                                        # v2.597: gece/program koşusu (eski NULL)
-ETIKETLER = ("yayin", "gun_ici", "elle", "backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma")   # forecast_runs.etiket CHECK
+ETIKETLER = ("yayin", "gun_ici", "elle", "backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma", "golge")   # forecast_runs.etiket CHECK (v2597 + göç v2667 'golge')
 # Faz 1 G1 (22.11.2026): kova adları gerçek ufku söylemiyordu («0-24» = aynı gün 05:00 koşusu, ort. ufuk ≈ 8 sa; gün-öncesi değil).
 # Doğruluk sayfası, dış API ve rapor bu sözlüğü okur; kova SEÇİMİ değişmez (yalnız açıklama). Üç WMAPE gösterimi farklı küme/kural/
 # toplulaştırma kullanır ve eşitlenmez: karne = günlük WMAPE ortalaması; bağımsız motor = havuzlanmış saatlik toplam.
@@ -55,8 +55,15 @@ KOVA_ACIKLAMA = {
 WMAPE_TANIM = {"karne": "günlük WMAPE değerlerinin ortalaması (oranların ortalaması; düşük üretimli günler ağır basar)",   # noqa: RUF001 — Türkçe müşteri metni
                "havuz": "havuzlanmış WMAPE: pencere boyunca Σ|tahmin - gerçek| / Σ gerçek (gündüz saatleri)"}   # noqa: RUF001 — Türkçe müşteri metni
 GERIYE_BAKISLI_ETIKET = frozenset({"backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma"})   # v2.597: yayımlanmış sayılmaz
+# Faz 1 G3 (26.11.2026): GÖLGE koşu etiketi — Mod A/B/C paralel koşular müşteri son tahmini OLAMAZ; karne, bağımsız doğrulama,
+# portföy, son koşu, yayımlanmış koşu ve koşu geçmişi seçimine GİRMEZ (yayin_kosu_sql + geriye_bakisli aynı kümeyi okur; backtest'i
+# gösteren geçmiş/damga/kullanım sorguları golge_disi_sql ile yalnız gölgeyi dışlar). Depolama: göç v2667 CHECK sözlüğüne 'golge'
+# ekler; göç uygulanmamış DB'de INSERT kısıta çarpar → koşu rollback (tek işlem). GERIYE_BAKISLI_ETIKET'e eklenmez: simülasyon
+# eşlemesi gölgeyi yayına çevirmesin (bagimsiz_dogrulama.kosu_sec). Gölge yalnız golge_service.golge_arsivle ile yazılır; worker yok.
+ETIKET_GOLGE = "golge"
+DISLANAN_ETIKET = GERIYE_BAKISLI_ETIKET | frozenset({ETIKET_GOLGE})   # yayımlanmış sayılmayan etiketlerin TAM kümesi (SQL + df tek yer)
 PIYASA_TZ = _PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
-KURAL_SURUMU = "2026-11-11"   # v2.597: etiket sözlüğü (yayin/backtest/simulasyon/sentetik/demo/yeniden_kurma) tek süzgeç
+KURAL_SURUMU = "2026-11-26"   # v2.597: etiket sözlüğü tek süzgeç; G3 (26.11): gölge koşu da yayımlanmış sayılmaz
 
 
 def yayin_kosu_sql(alias: str = "r", elle_dahil: bool = True) -> str:
@@ -65,11 +72,18 @@ def yayin_kosu_sql(alias: str = "r", elle_dahil: bool = True) -> str:
     `elle_dahil=False` panelden elle tetiklenen koşuyu da dışlar (karne ana kovaları; program/son koşu için elle sayılır).
     Parametre taşımaz (sabit sözlük); `WHERE ... AND {yayin_kosu_sql('r')}` biçiminde eklenir."""
     a = f"{alias}." if alias else ""
-    etiketler = ", ".join(f"'{e}'" for e in sorted(GERIYE_BAKISLI_ETIKET | ({ETIKET_ELLE} if not elle_dahil else set())))
+    etiketler = ", ".join(f"'{e}'" for e in sorted(DISLANAN_ETIKET | ({ETIKET_ELLE} if not elle_dahil else set())))   # G3: gölge dâhil
     modeller = ", ".join(f"'{m}'" for m in sorted(GERIYE_BAKISLI_MODEL))
     meteolar = ", ".join(f"'{m}'" for m in sorted(GERIYE_BAKISLI_METEO))
     return (f"(COALESCE({a}etiket, '{ETIKET_YAYIN}') NOT IN ({etiketler}) AND COALESCE({a}model, '') NOT IN ({modeller})"
             f" AND COALESCE({a}meteo_source, '') NOT IN ({meteolar}))")
+
+
+def golge_disi_sql(alias: str = "r") -> str:
+    """Faz 1 G3: yalnız GÖLGE koşuyu dışlayan SQL parçası — geriye bakışlı koşuları bilerek GÖSTEREN yüzeyler için (koşu geçmişi,
+    damga/son koşu zamanı, kullanım sayacı). Eksik etiket 'yayin' sayılır (geriye uyum). Müşteri tahmin seçimi için `yayin_kosu_sql`."""
+    a = f"{alias}." if alias else ""
+    return f"COALESCE({a}etiket, '{ETIKET_YAYIN}') <> '{ETIKET_GOLGE}'"
 
 
 def kova_etiketle(ufuk_s: pd.Series) -> pd.Series:
@@ -88,9 +102,19 @@ def geriye_bakisli(df: pd.DataFrame) -> pd.Series:
         m |= df["model"].isin(GERIYE_BAKISLI_MODEL)
     if "meteo_source" in df:
         m |= df["meteo_source"].isin(GERIYE_BAKISLI_METEO)
-    if "etiket" in df:   # v2.597: etiket sözlüğü (yayin_kosu_sql ile aynı küme)
-        m |= df["etiket"].isin(GERIYE_BAKISLI_ETIKET)
+    if "etiket" in df:   # v2.597: etiket sözlüğü (yayin_kosu_sql ile aynı küme); G3: gölge de dışarıda
+        m |= df["etiket"].isin(DISLANAN_ETIKET)
     return m
+
+
+def musteri_kosusu_mu(etiket: str | None, model: str | None = None, meteo_source: str | None = None) -> bool:
+    """Faz 1 G3: tek koşunun müşteriye yayımlanmış sayılıp sayılmayacağı — `yayin_kosu_sql`/`geriye_bakisli` ile AYNI kural, tek kayıt
+    için. Eksik etiket (None/boş) eski koşu demektir → 'yayin' sayılır (geriye uyum). 'golge' ve geriye bakışlı etiketler, model='backtest',
+    arşiv/sentetik meteo → False."""
+    e = etiket if etiket else ETIKET_YAYIN
+    if e in DISLANAN_ETIKET:
+        return False
+    return (model or "") not in GERIYE_BAKISLI_MODEL and (meteo_source or "") not in GERIYE_BAKISLI_METEO
 
 
 def karne_secimi(df: pd.DataFrame) -> pd.DataFrame:
