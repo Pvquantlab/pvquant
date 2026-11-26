@@ -99,7 +99,8 @@ export interface SistemSagligi {
     hava: SagDurum & { son_indirme: string | null; en_yeni_kosu: string | null; kaynak_sayisi: number; esik_saat: number; son_is: SonIs | null };
     epias: SagDurum & { kimlik: boolean | null; son_baglanti: SonIs | null; son_veri_alimi: string | null; en_yeni_kayit: string | null; yon_son: string | null; yon_saat_7g: number; gop_son: string | null; epias_uretim: SonIs | null };
     veritabani: SagDurum & { baglanti: SagDurum & { boyut_bayt: number }; yedek: SagDurum & { son_basarili: string | null; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null; esik_saat: number }; yedek_dogrulama: SagDurum; hiz_sayaci?: SagDurum & { hata_sayisi: number; son_hata: string | null; son_basari: string | null };
-      kunye?: SagDurum & { kosu: number; eksik: Record<string, number> } };   // G5-P2 (25.11): koşu künyesi doluluğu (izlenebilirlik)
+      kunye?: SagDurum & { kosu: number; eksik: Record<string, number> };   // G5-P2 (25.11): koşu künyesi doluluğu (izlenebilirlik)
+      yeniden_kurma?: SagDurum & { kosu: number; kurulabilir: number; kismi: number; kurulamaz: number } };   // G5-P4 (26.11): son yayın koşusu yeniden kurulabilirliği
     sunucu: SagDurum & { api: SagDurum; hata_gunlugu: SagDurum; is_hatalari: SagDurum };
   };
   sureler: { is: string; kod: string; n: number; hata: number; ort_sn: number | null; en_uzun_sn: number | null; son: string | null }[];

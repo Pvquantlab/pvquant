@@ -99,6 +99,11 @@ def ozet(aktor_id: str) -> dict:
             "count(*) FILTER (WHERE mode = 'C' AND artefakt_sha16 IS NULL) AS artefakt_sha16 "
             "FROM forecast_runs WHERE run_at >= now() - interval '7 days' AND COALESCE(etiket, 'yayin') IN ('yayin', 'gun_ici') "
             "AND COALESCE(model, '') <> 'backtest'")).mappings().first()
+        # G5-P4 (26.11): her etkin santralin SON yayın koşusu için yeniden kurulabilirlik ön koşulları (yeniden_kurma_service; salt okunur)
+        son_kosular = s.execute(text(
+            "SELECT DISTINCT ON (r.plant_id) r.id, r.tenant_id FROM forecast_runs r JOIN plants p ON p.id = r.plant_id "
+            "WHERE NOT p.archived AND COALESCE(r.etiket, 'yayin') IN ('yayin', 'gun_ici') AND COALESCE(r.model, '') <> 'backtest' "
+            "ORDER BY r.plant_id, r.run_at DESC")).mappings().all()
         sayim = s.execute(text(
             "SELECT count(*) AS toplam, count(*) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata, count(*) FILTER (WHERE status = 'atlandi') AS atlandi, "   # G1 (Ü-1)
             "count(*) FILTER (WHERE status = 'ok' AND coalesce(detail, '') = '' AND sonuc_json IS NULL) AS bos_ok "   # Faz 0 P0-06 (20.11): çıktısız «ok» = başarı kanıtı değil
@@ -177,7 +182,30 @@ def ozet(aktor_id: str) -> dict:
         "santral": {"etkin": int(santral["etkin"]), "arsivli": int(santral["arsivli"])},
         "kunye": {"pencere_gun": 7, "kosu": int(kunye["kosu"] or 0),
                   "eksik": {a: int(kunye[a] or 0) for a in KUNYE_ALANLARI}},   # G5-P2
+        "yeniden_kurma": _yeniden_kurma_ozet(son_kosular),   # G5-P4
     }
+
+
+def _yeniden_kurma_ozet(son_kosular) -> dict:
+    """G5-P4 (26.11): etkin santrallerin son yayın koşuları yeniden_kurma_service.kurulabilirlik ile sayılır (kurulabilir / kısmi / kurulamaz).
+    Her eksik adıyla (ilk 4 ayrı neden) listelenir; okuma çökerse koşu sayısı 0 → «doğrulanamadı» (sayı uydurulmaz)."""
+    from pvquant.services import yeniden_kurma_service as yk
+    out = {"kosu": 0, "kurulabilir": 0, "kismi": 0, "kurulamaz": 0, "nedenler": []}
+    nedenler: list[str] = []
+    for r in son_kosular:
+        try:
+            h = yk.kurulabilirlik(r["tenant_id"], r["id"])
+        except Exception:  # bir santralin künyesi okunamazsa sayım o santral olmadan sürer, sayfa açılır
+            h = None
+        if h is None:
+            continue
+        out["kosu"] += 1
+        out[h["durum"]] += 1
+        for n in (h.get("eksik") or []) + (h.get("kismi") or []):
+            if n not in nedenler:
+                nedenler.append(n)
+    out["nedenler"] = nedenler[:4]
+    return out
 
 
 def _izlenen(son_ok: dict, simdi: dt.datetime, etkin_santral: int) -> dict:
@@ -382,6 +410,22 @@ def _kunye_sinifla(kn: dict, k, durum) -> dict:
     return k(durum.DIKKAT, f"son {kn.get('pencere_gun', 7)} günde {kosu} yayın koşusunda boş künye alanı: {liste} (izlenebilirlik eksik)", kosu=kosu, eksik=eksik)
 
 
+def _yeniden_kurma_sinifla(yk: dict, k, durum) -> dict:
+    """G5-P4 (26.11): etkin santrallerin son yayın koşusu yeniden kurulabilir mi (ön koşul sayımı; yeniden üretme yapılmaz). Koşu yok →
+    doğrulanamadı; hepsi kurulabilir → sağlıklı; kurulamaz ya da kısmi varsa → dikkat (hangi girdi eksik). Eksiklik tahmini bozmaz,
+    «aynı değeri yeniden üretebilirim» iddiasını kırar (Faz 1 G5)."""
+    kosu = int(yk.get("kosu") or 0)
+    sayi = {a: int(yk.get(a) or 0) for a in ("kurulabilir", "kismi", "kurulamaz")}
+    if kosu == 0:
+        return k(durum.DOGRULANAMADI, "etkin santral için yayın koşusu yok; yeniden kurulabilirlik ölçülemedi", kosu=0, **sayi)
+    if sayi["kurulamaz"] == 0 and sayi["kismi"] == 0:
+        return k(durum.SAGLIKLI, f"{kosu} santralin son yayın koşusu künye ve arşivden yeniden kurulabilir", kosu=kosu, **sayi)
+    parca = [f"{sayi['kurulamaz']} kurulamaz" if sayi["kurulamaz"] else "", f"{sayi['kismi']} kısmi" if sayi["kismi"] else ""]
+    neden = "; ".join(yk.get("nedenler") or [])
+    return k(durum.DIKKAT, f"{kosu} santralin son yayın koşusundan {', '.join(x for x in parca if x)}" + (f": {neden}" if neden else ""),
+             kosu=kosu, **sayi)
+
+
 def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> dict:
     """SAF: ozet() çıktısı + {iş: son koşu} → altı bileşenin durumu (durum_sozlugu kodları). Test edilebilir; DB yok, saat parametre."""
     from pvquant.services import durum_sozlugu as ds
@@ -466,7 +510,10 @@ def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> d
     kn = o.get("kunye")   # G5-P2: koşu künyesi doluluğu (izlenebilirlik: run_id → sürüm/girdi/spec); ozet'te yoksa sinyal yok
     if kn is not None:
         db["kunye"] = _kunye_sinifla(kn, k, D)
-    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci", "kunye")])
+    yk = o.get("yeniden_kurma")   # G5-P4: son yayın koşusu yeniden kurulabilirliği; ozet'te yoksa sinyal yok
+    if yk is not None:
+        db["yeniden_kurma"] = _yeniden_kurma_sinifla(yk, k, D)
+    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci", "kunye", "yeniden_kurma")])
     db_neden = (db["hiz_sayaci"]["neden"] if hs is not None and not hs["saglikli"]
                 else db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"])
     db = {**k(db_genel, db_neden), **db}
