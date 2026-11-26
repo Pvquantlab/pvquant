@@ -10,6 +10,8 @@ from __future__ import annotations
 import datetime as dt
 import json
 
+import pandas as pd
+
 from sqlalchemy import text
 
 from pvquant.db import sistem_baglami, platform_baglami
@@ -104,6 +106,12 @@ def ozet(aktor_id: str) -> dict:
             "SELECT DISTINCT ON (r.plant_id) r.id, r.tenant_id FROM forecast_runs r JOIN plants p ON p.id = r.plant_id "
             "WHERE NOT p.archived AND COALESCE(r.etiket, 'yayin') IN ('yayin', 'gun_ici') AND COALESCE(r.model, '') <> 'backtest' "
             "ORDER BY r.plant_id, r.run_at DESC")).mappings().all()
+        # Tasarım A (26.11): etkin santrallerin aktif kalibrasyonu (mode, created_at) + son aylık kalibrasyon işi (status, started)
+        kalib_satirlar = s.execute(text(
+            "SELECT p.id AS plant_id, p.name, c.mode, c.created_at, j.status AS son_is_durum, j.started AS son_is_zaman "
+            "FROM plants p LEFT JOIN calibrations c ON c.plant_id = p.id AND c.active "
+            "LEFT JOIN LATERAL (SELECT status, started FROM jobs_log WHERE job = 'aylik_kalibrasyon' AND plant_id = p.id "
+            "ORDER BY started DESC LIMIT 1) j ON true WHERE NOT p.archived ORDER BY p.name")).mappings().all()
         sayim = s.execute(text(
             "SELECT count(*) AS toplam, count(*) FILTER (WHERE status NOT IN ('ok', 'atlandi')) AS hata, count(*) FILTER (WHERE status = 'atlandi') AS atlandi, "   # G1 (Ü-1)
             "count(*) FILTER (WHERE status = 'ok' AND coalesce(detail, '') = '' AND sonuc_json IS NULL) AS bos_ok "   # Faz 0 P0-06 (20.11): çıktısız «ok» = başarı kanıtı değil
@@ -183,7 +191,51 @@ def ozet(aktor_id: str) -> dict:
         "kunye": {"pencere_gun": 7, "kosu": int(kunye["kosu"] or 0),
                   "eksik": {a: int(kunye[a] or 0) for a in KUNYE_ALANLARI}},   # G5-P2
         "yeniden_kurma": _yeniden_kurma_ozet(son_kosular),   # G5-P4
+        "kalibrasyon": kalibrasyon_ozeti_kur(kalib_satirlar, simdi),   # Tasarım A (26.11): kalibrasyon yaşı sinyali (danışma)
     }
+
+
+def kalibrasyon_yasi_gun(created_at, simdi: dt.datetime) -> int | None:
+    """SAF. created_at (tz'li/tz'siz datetime ya da ISO metin) → gün; None/boş → None. tz'siz UTC varsayılır."""
+    if created_at is None or created_at == "":
+        return None
+    z = pd.Timestamp(created_at)
+    if z.tzinfo is None:
+        z = z.tz_localize("UTC")
+    return max(0, int((pd.Timestamp(simdi) - z).total_seconds() // 86400))
+
+
+def kalibrasyon_durumu(mode, created_at, son_is_durum, son_is_zaman, simdi: dt.datetime, esik_gun: int) -> tuple[str, int | None]:
+    """SAF. Santral başına durum kodu: NEVER_CALIBRATED (aktif kalibrasyon yok) · FAILED (son aylık iş 'error' ve aktif kalibrasyondan
+    SONRA) · STALE (yaş > esik_gun) · HEALTHY. FAILED, STALE'den önce gelir (yeni başarısızlık eski parametrelerin bayatlığından önemli).
+    Döner (durum, yas_gun). Tahmin/mod/parametreye DOKUNMAZ — yalnız sınıflama."""
+    yas = kalibrasyon_yasi_gun(created_at, simdi)
+    if mode is None or yas is None:
+        return "NEVER_CALIBRATED", None
+    if son_is_durum == "error":
+        iz = pd.Timestamp(son_is_zaman) if son_is_zaman is not None else None
+        if iz is not None and iz.tzinfo is None:
+            iz = iz.tz_localize("UTC")
+        ca = pd.Timestamp(created_at)
+        if ca.tzinfo is None:
+            ca = ca.tz_localize("UTC")
+        if iz is None or iz > ca:
+            return "FAILED", yas
+    if yas > esik_gun:
+        return "STALE", yas
+    return "HEALTHY", yas
+
+
+def kalibrasyon_ozeti_kur(satirlar, simdi: dt.datetime) -> dict:
+    """ozet() alt sözlüğü: {esik_gun, santraller[{ad, mode, yas_gun, durum, son_is_durum}], sayim{durum: n}}."""
+    from pvquant.services.calib_service import KALIBRASYON_TAZELIK_GUN
+    out, sayim = [], {"NEVER_CALIBRATED": 0, "FAILED": 0, "STALE": 0, "HEALTHY": 0}
+    for r in satirlar:
+        d, yas = kalibrasyon_durumu(r["mode"], r["created_at"], r["son_is_durum"], r["son_is_zaman"], simdi, KALIBRASYON_TAZELIK_GUN)
+        sayim[d] += 1
+        out.append({"ad": r["name"], "mode": r["mode"], "yas_gun": yas, "durum": d, "son_is_durum": r["son_is_durum"],
+                    "son_is_zaman": _iso(r["son_is_zaman"]) if r["son_is_zaman"] is not None and not isinstance(r["son_is_zaman"], str) else r["son_is_zaman"]})
+    return {"esik_gun": KALIBRASYON_TAZELIK_GUN, "santraller": out, "sayim": sayim}
 
 
 def _yeniden_kurma_ozet(son_kosular) -> dict:
@@ -426,6 +478,25 @@ def _yeniden_kurma_sinifla(yk: dict, k, durum) -> dict:
              kosu=kosu, **sayi)
 
 
+def _kalibrasyon_sinifla(kb: dict, k, durum) -> dict:
+    """Tasarım A (26.11): DANIŞMA sinyali — hiç kalibrasyonlu santral yok → doğrulanamadı («kalibrasyonlu mod yok; tahmin Mod A»);
+    FAILED/STALE varsa → dikkat (hangi santral, kaç gün); hepsi HEALTHY → sağlıklı. Tahmin sürer; parametre/mod değişmez."""
+    s = kb.get("sayim") or {}
+    san = kb.get("santraller") or []
+    esik = kb.get("esik_gun", 60)
+    kalibreli = [x for x in san if x["durum"] != "NEVER_CALIBRATED"]
+    if not kalibreli:
+        return k(durum.DOGRULANAMADI, f"{len(san)} etkin santralde aktif kalibrasyon yok (tahmin kalibrasyonsuz Mod A); kalibrasyon yaşı ölçülemedi",
+                 esik_gun=esik, sayim=s, santraller=san)
+    sorunlu = [x for x in san if x["durum"] in ("FAILED", "STALE")]
+    if sorunlu:
+        parca = ", ".join(f"{x['ad']} ({'son aylık kalibrasyon HATA' if x['durum'] == 'FAILED' else 'bayat'}, {x['yas_gun']} g, Mod {x['mode']})" for x in sorunlu)
+        return k(durum.DIKKAT, f"kalibrasyon sorunu: {parca}; parametreler {esik} günden eski ya da yenilenemedi — tahmin mevcut parametrelerle sürüyor",
+                 esik_gun=esik, sayim=s, santraller=san)
+    return k(durum.SAGLIKLI, f"{len(kalibreli)} kalibrasyonlu santralda parametreler taze (≤{esik} g); {s.get('NEVER_CALIBRATED', 0)} santral Mod A",
+             esik_gun=esik, sayim=s, santraller=san)
+
+
 def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> dict:
     """SAF: ozet() çıktısı + {iş: son koşu} → altı bileşenin durumu (durum_sozlugu kodları). Test edilebilir; DB yok, saat parametre."""
     from pvquant.services import durum_sozlugu as ds
@@ -513,7 +584,10 @@ def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> d
     yk = o.get("yeniden_kurma")   # G5-P4: son yayın koşusu yeniden kurulabilirliği; ozet'te yoksa sinyal yok
     if yk is not None:
         db["yeniden_kurma"] = _yeniden_kurma_sinifla(yk, k, D)
-    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci", "kunye", "yeniden_kurma")])
+    kb = o.get("kalibrasyon")   # Tasarım A: kalibrasyon yaşı/başarısızlık (danışma); ozet'te yoksa sinyal yok
+    if kb is not None:
+        db["kalibrasyon"] = _kalibrasyon_sinifla(kb, k, D)
+    db_genel = ds.en_kotu([v["durum"] for kk, v in db.items() if kk in ("baglanti", "yedek", "yedek_dogrulama", "hiz_sayaci", "kunye", "yeniden_kurma", "kalibrasyon")])
     db_neden = (db["hiz_sayaci"]["neden"] if hs is not None and not hs["saglikli"]
                 else db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"])
     db = {**k(db_genel, db_neden), **db}
