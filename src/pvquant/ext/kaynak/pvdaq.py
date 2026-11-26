@@ -69,3 +69,43 @@ def dizin_donustur(dizin: str, desen: str = "system_33__date_*.csv", tz: str = G
             "kapsama_dk_ort": round(float(saat["kapsama_dk"].mean()), 1) if len(saat) else None,
             "tz": tz, "not": "yerel damga Etc/GMT+7 → UTC; güç ortalaması kW; saat başı damga; kapsama<45 dk → NaN"}
     return saat, ozet
+
+
+# --- G6-P1 (26.11.2026): mevsimsel kapsama tablosu — G4 kapısının «DJF ≥ %95» ön koşulu için yıl dosyası başına dürüst sayım
+MEVSIMLER = {"djf": (12, 1, 2), "mam": (3, 4, 5), "jja": (6, 7, 8), "son": (9, 10, 11)}
+KAPSAMA_ESIK_PCT = 95.0   # G4 kalibrasyon kapısı: kış (DJF) geçerli saat oranı ≥ %95 (eşik burada yalnız RAPORLANIR, değiştirilmez)
+
+
+def mevsim_kapsama(saat: pd.DataFrame, yil: int, tz: str = GOLDEN33["tz"]) -> dict:
+    """SAF. UTC saatlik ölçüm çerçevesi (ts_utc index, power_kw) → takvim yılı `yil` için mevsim kapsaması.
+    Beklenen saat = o yılın takvimindeki saat sayısı (yerel saatle, `tz`); eksik günler de eksik sayılır (dosyada olmayan saat
+    «var» sayılmaz). Geçerli = power_kw NaN değil (kapsama_dk ≥ asgari zaten uygulandı). Döner: {yil, saat, gecerli, gecerli_pct,
+    djf_pct, mam_pct, jja_pct, son_pct, djf_esik_pct, djf_uygun, maks_kw, kwh, ilk, son}. Sayı uydurulmaz: boş çerçeve → 0."""
+    if saat.empty or "power_kw" not in saat:
+        beklenen = pd.date_range(f"{yil}-01-01", f"{yil + 1}-01-01", freq="1h", tz=tz, inclusive="left")
+        out = {"yil": int(yil), "saat": 0, "gecerli": 0, "gecerli_pct": 0.0, "djf_esik_pct": KAPSAMA_ESIK_PCT, "djf_uygun": False,
+               "maks_kw": None, "kwh": None, "ilk": None, "son": None, "tz": tz, "beklenen_saat": len(beklenen)}
+        for m in MEVSIMLER:
+            out[f"{m}_pct"] = 0.0
+        return out
+    idx = saat.index
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC")
+    yerel = idx.tz_convert(tz)
+    gecerli = saat["power_kw"].notna().to_numpy()
+    yil_maske = (yerel.year == yil)
+    beklenen = pd.date_range(f"{yil}-01-01", f"{yil + 1}-01-01", freq="1h", tz=tz, inclusive="left")
+    out = {"yil": int(yil), "saat": int(yil_maske.sum()), "gecerli": int((gecerli & yil_maske).sum()), "beklenen_saat": len(beklenen), "tz": tz}
+    out["gecerli_pct"] = round(100.0 * out["gecerli"] / len(beklenen), 1)
+    for m, aylar in MEVSIMLER.items():
+        bek = int(np.isin(beklenen.month, aylar).sum())
+        var = int((gecerli & yil_maske & np.isin(yerel.month, aylar)).sum())
+        out[f"{m}_pct"] = round(100.0 * var / bek, 1) if bek else 0.0
+    out["djf_esik_pct"] = KAPSAMA_ESIK_PCT
+    out["djf_uygun"] = bool(out["djf_pct"] >= KAPSAMA_ESIK_PCT)
+    g = saat.loc[yil_maske, "power_kw"]
+    out["maks_kw"] = round(float(g.max()), 3) if g.notna().any() else None
+    out["kwh"] = round(float(saat.loc[yil_maske, "energy_kwh"].sum())) if "energy_kwh" in saat and g.notna().any() else None
+    out["ilk"] = idx[yil_maske].min().isoformat() if yil_maske.any() else None
+    out["son"] = idx[yil_maske].max().isoformat() if yil_maske.any() else None
+    return out
