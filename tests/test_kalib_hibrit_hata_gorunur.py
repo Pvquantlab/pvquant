@@ -54,3 +54,16 @@ def test_aylik_is_yapili_sonuc_ve_durum(monkeypatch):
     monkeypatch.setattr(w.calib_service, "kalibre_et", lambda t, p, hibrit=True: {"mode": "atlandi", "kapi": "n<100", "gate": None, "hibrit_hata": None})
     s2 = w.aylik_kalibrasyon(plant)
     assert s2["durum"] == "atlandi" and w._is_durumu(s2, str(s2)) == "atlandi" and "hibrit denenmedi" in s2["mesaj"]
+
+
+def test_bayat_olcum_atlandi_bos_ok_degil(monkeypatch):
+    """01.11.2026: bayat ölçümde iş None dönüyor → jobs_log boş 'ok' (iki satır). Artık yapılı 'atlandi' + neden; kalibre_et çağrılmaz."""
+    import apps.worker.main as w
+    from pvquant.services import ingest_service
+
+    def _yasak(*a, **k):
+        raise AssertionError("bayatta kalibre_et çağrılmamalı")
+    monkeypatch.setattr(ingest_service, "veri_ozeti", lambda t, p: {"son_ts": "2019-01-01T00:00:00+00:00"})
+    monkeypatch.setattr(w.calib_service, "kalibre_et", _yasak)
+    s = w.aylik_kalibrasyon({"tenant_id": "t", "id": "p", "name": "P"})
+    assert isinstance(s, dict) and s["durum"] == "atlandi" and "gün önce" in s["neden"] and w._is_durumu(s, str(s)) == "atlandi"

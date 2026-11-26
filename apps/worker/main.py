@@ -794,7 +794,9 @@ def aylik_kalibrasyon(plant):
     bayat, neden = calib_service.kalibrasyon_bayat_mi(oz.get("son_ts"))
     if bayat:
         print(f"aylik_kalibrasyon atlandı: {plant.get('name')} — {neden}; mevcut ayar korunur")
-        return
+        # 26.11: None dönüş jobs_log'a boş 'ok' yazıyordu (01.11: Golden/Edikli iki boş ok) → yapılı 'atlandi' + neden (G1 sınıflaması)
+        return {"durum": "atlandi", "mesaj": f"kalibrasyon atlandı: {neden}; mevcut ayar korunur", "mode": None, "neden": neden,
+                "hibrit_hata": None, "hibrit_gecti": False}
     r = calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
     if not isinstance(r, dict):
         return None
