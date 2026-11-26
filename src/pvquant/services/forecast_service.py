@@ -125,15 +125,14 @@ def girdileri_topla(tenant_id, plant: dict, days: int) -> TahminGirdisi:
             "ORDER BY created_at DESC LIMIT 1"), {"p": plant["id"]}).first()
     g = TahminGirdisi(mode=(cal.mode if cal else "A"), kalibrasyon_id=(cal.id if cal else None),
                       kalibrasyon_params=(cal.params_json if cal else None), kalibrasyon_zamani=(cal.created_at if cal else None))
-    if g.mode == "C" and ml:
-        g.model = _model_yukle(ml.artifact_path)
-        g.ml_model_id = ml.id if g.model is not None else None
-        g.artefakt_sha16 = _artefakt_sha16(ml.artifact_path) if g.model is not None else None
-        if g.model is None:
-            # v2.80: 20:25 vakası — açılış yarışında artefakt henüz diskte yoktu; etiket kayda dürüstçe gider
-            g.mode = "B"; g.geri_dusus = "hibrit_artefakt_yok"
-    elif g.mode == "C":
-        g.mode = "B"; g.geri_dusus = "hibrit_artefakt_yok"   # kalibrasyon C der, aktif ML kaydı yok: eski yolda da B yazılırdı (mo=... mode'a bağlı değil, aşağıda)
+    if g.mode == "C":
+        # Faz 1 Mod C bekçisi (27.11.2026): aktivasyon = ayar `mod_c_musteri=acik` ∧ artefakt sha16 onay listesinde ∧ kodla uyumlu;
+        # aksi B + geri_dusus (mod_c_kapali | hibrit_artefakt_yok [v2.80 vakası] | hibrit_artefakt_onaysiz | hibrit_artefakt_uyumsuz).
+        # Onaysız dosya için pickle yüklenmez. Kalibrasyon kaydı/kapı değişmez; yalnız servis kararı.
+        from pvquant.services.mod_c_bekcisi import ml_artefakti_sec
+        ml_artefakti_sec(g, (ml.artifact_path if ml else None), yukle=_model_yukle, sha16=_artefakt_sha16)
+        if g.mode == "C":
+            g.ml_model_id = ml.id
     g.uyeler, g.ensemble_kosu_zamani = _es.uyeler_getir(plant, days)
     g.ufuk_ayar = _uf.ayar_getir(plant)
     g.sapma_ayar = _sp.ayar_getir(tenant_id, plant)

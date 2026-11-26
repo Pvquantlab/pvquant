@@ -394,6 +394,12 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                  "r": json.dumps(session_ozeti(hyb), default=str)})
     sonuc["calibration_id"] = str(cal_id)
     sonuc["gate"] = gate
+    # Faz 1 Mod C bekçisi (27.11.2026): ml_models(active=true) «en son artefakt» demektir, MÜŞTERİ aktivasyonu DEĞİL —
+    # servis kararı forecast_service.girdileri_topla'da ayar + sha onayı ile (mod_c_bekcisi). Günlüğe açık yazılır.
+    from pvquant.services.mod_c_bekcisi import mod_c_aktivasyon
+    _akt = mod_c_aktivasyon()
+    sonuc["musteri_aktivasyon"] = {"mod_c_musteri": ("acik" if _akt["etkin"] else "kapali"), "onayli_artefakt_sayisi": len(_akt["onayli"]),
+                                   "not": "aylık kalibrasyon müşteri aktivasyonu vermez; C servis için ayar + artefakt sha onayı gerekir"}
     return sonuc
 
 
