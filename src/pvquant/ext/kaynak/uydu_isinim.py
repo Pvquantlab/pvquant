@@ -35,13 +35,33 @@ def pvgis_saatlik(lat: float, lon: float, yil_bas: int = 2005, yil_son: int = 20
     df, meta = pvlib.iotools.get_pvgis_hourly(lat, lon, start=yil_bas, end=yil_son, raddatabase=veri_tabani,
                                               components=True, surface_tilt=0, surface_azimuth=180,
                                               outputformat="json", map_variables=True)
-    out = pd.DataFrame(index=df.index)
-    # poa_* yatay düzlemde: global = ghi; direct ≈ dni·cosθ (yatay → beam yatay); diffuse+ground ≈ dhi
-    out["ghi"] = df["poa_global"]
-    out["dhi"] = df["poa_sky_diffuse"] + df.get("poa_ground_diffuse", 0.0)
-    out["temp_air"] = df["temp_air"]; out["wind_speed_10m"] = df["wind_speed"]
-    out = out.drop(columns=[c for c in ("dni",) if c in out])
+    out = pd.DataFrame(index=pvgis_saat_basi(df.index))
+    # poa_* yatay düzlemde: global = ghi; direct ≈ dni·cosθ (yatay → beam yatay); diffuse+ground ≈ dhi.
+    # G4-P1 (26.11.2026): PVGIS 5.3 components=True yanıtı `poa_global` VERMİYOR (pvlib 0.15: poa_direct/poa_sky_diffuse/
+    # poa_ground_diffuse) → toplamdan kurulur; eski şemada poa_global varsa o kullanılır. Damgalar saat ORTASI (HH:30 UTC) gelir →
+    # `pvgis_saat_basi` ile saat başına (HH:00, aralik_basi) hizalanır; ölçüm (saatlik ortalama, saat başı) ile aynı sözleşme.
+    skd = df["poa_sky_diffuse"].astype(float).to_numpy() if "poa_sky_diffuse" in df else 0.0
+    grd = df["poa_ground_diffuse"].astype(float).to_numpy() if "poa_ground_diffuse" in df else 0.0
+    if "poa_global" in df:
+        ghi = df["poa_global"].astype(float).to_numpy()
+    elif "poa_direct" in df:
+        ghi = df["poa_direct"].astype(float).to_numpy() + skd + grd
+    else:
+        raise KeyError("PVGIS yanıtında poa_global ya da poa_direct yok: " + ", ".join(map(str, df.columns)))
+    out["ghi"] = ghi
+    out["dhi"] = skd + grd
+    out["temp_air"] = df["temp_air"].to_numpy()
+    out["wind_speed_10m"] = df["wind_speed"].to_numpy()
     return MeteoCerceve(out, lat, lon, KAYNAKLAR["pvgis"])
+
+
+def pvgis_saat_basi(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """SAF (G4-P1). PVGIS saatlik damgası saat ortasıysa (dakika 30) saat başına indirir (12:30 → 12:00 = 12:00–13:00 ortalaması);
+    dakika 0 ya da 10 (SARAH) ise 'HH:00'a yuvarlar. tz'siz → UTC."""
+    i = pd.DatetimeIndex(idx)
+    if i.tz is None:
+        i = i.tz_localize("UTC")
+    return i.floor("h")
 
 
 def pvgis_tmy(lat: float, lon: float) -> tuple[pd.DataFrame, dict]:
