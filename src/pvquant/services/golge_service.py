@@ -7,6 +7,9 @@ Sözleşme (kullanıcı kararı, kısıtlı kapsam):
   sözleşmesiyle (forecast_runs künyesi: id, mode, model, run_at, ufuk_saat, kalibrasyon_id, etiket='golge'; forecast_values satırları).
   Göç uygulanmamış DB'de CHECK kısıtı INSERT'i reddeder → tek işlem rollback. Worker/uç çağırmaz; yalnız izole test ve ayrı onay.
 - C modu artefakt yoksa `tahmin_uret` B'ye düşer ve `geri_dusus` yazar; burada GİZLENMEZ (`mode_gerceklesen` ≠ `mod`).
+- G2-1 (26.11): `golge_turu` ELLE tur orkestratörü — meteo BİR kez çekilir, girdiler BİR kez toplanır, bütün modlar aynı `simdi`
+  (gerçek yayın anı) ile koşar, her mod ayrı run_id ile 'golge' etiketli yazılır. Çağıran yalnız `scripts/golge_tur.py`; worker/API
+  kancası, zamanlayıcı YOK. Bir mod düşerse diğerleri koşar, hata `GolgeTuru.hatalar`'da açıkça durur (gizlenmez, uydurulmaz).
 """
 from __future__ import annotations
 
@@ -15,7 +18,13 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from pvquant.services.forecast_service import TahminGirdisi, TahminSonucu, arsive_yaz, tahmin_uret
+from pvquant.services.forecast_service import (
+    TahminGirdisi,
+    TahminSonucu,
+    arsive_yaz,
+    girdileri_topla,
+    tahmin_uret,
+)
 from pvquant.services.karne_kurali import ETIKET_GOLGE, ETIKETLER
 
 GOLGE_MODLAR = ("A", "B", "C")
@@ -84,3 +93,48 @@ def golge_arsivle(tenant_id, plant: dict, meteo, sonuc: GolgeSonucu) -> GolgeSon
     run_id = arsive_yaz(tenant_id, plant, meteo, sonuc.kaynak_sonuc, kalibrasyon_id=sonuc.girdi.kalibrasyon_id, etiket=ETIKET_GOLGE,
                         girdi=sonuc.girdi)
     return dataclasses.replace(sonuc, run_id=run_id)
+
+
+@dataclass(frozen=True)
+class GolgeTuru:
+    """Tek elle turun özeti: aynı meteo + aynı yayın anı, mod başına bağımsız kimlik. `hatalar` boş değilse tur KISMİ."""
+    yayin_zamani: pd.Timestamp                # bütün modların run_at'i (gerçek yayın anı)
+    meteo_kaynak: str | None                  # meteo.kaynak (acik-nwp | open-meteo)
+    nwp_kosu_zamani: object                   # meteo.kosu_zamani (NWP yayını) — bütün modlar aynı
+    etiket: str                               # daima ETIKET_GOLGE
+    kaydedildi: bool                          # False: kuru koşu (arşive yazılmadı, run_id'ler None)
+    sonuclar: dict                            # mod → GolgeSonucu (başarılı modlar)
+    hatalar: dict                             # mod → hata metni (düşen modlar; boş = tam tur)
+
+    @property
+    def run_idler(self) -> dict:
+        return {m: s.run_id for m, s in self.sonuclar.items()}
+
+    @property
+    def tam(self) -> bool:
+        return not self.hatalar and bool(self.sonuclar)
+
+
+def golge_turu(tenant_id, plant: dict, modlar=GOLGE_MODLAR, *, meteo_istemci=None, simdi: pd.Timestamp | None = None,
+               kaydet: bool = True, days: int | None = None) -> GolgeTuru:
+    """G2-1 ELLE gölge turu (zamanlayıcı yok): meteo bir kez (`meteo_istemci.get_forecast`, varsayılan OpenMeteoClient), `girdileri_topla`
+    bir kez (aktif kalibrasyon/ML künyesi), sonra her mod için `golge_girdi` → `tahmin_uret(simdi aynı)` → `kaydet` ise `golge_arsivle`.
+    Üretim yolu `uret_ve_kaydet` ÇAĞRILMAZ ve değişmez. Mod başına hata yakalanır → `hatalar[mod]`; diğer modlar sürer; üçü de düşerse
+    yine GolgeTuru döner (sonuclar boş) — çağıran karar verir. Çekirdek/eşik değişmez."""
+    from pvquant.config import get_settings
+    from pvquant.io.meteo import OpenMeteoClient
+    simdi = pd.Timestamp(simdi).tz_convert("UTC") if simdi is not None and pd.Timestamp(simdi).tzinfo else (
+        pd.Timestamp(simdi, tz="UTC") if simdi is not None else pd.Timestamp.now(tz="UTC"))
+    days = int(days or get_settings().forecast_horizon_days)
+    meteo = (meteo_istemci or OpenMeteoClient()).get_forecast(latitude=plant["lat"], longitude=plant["lon"], days=days)
+    girdi = girdileri_topla(tenant_id, plant, days)
+    sonuclar, hatalar = {}, {}
+    for m in modlar:
+        try:
+            g = golge_girdi(girdi, m)
+            s = _sonuc(m, tahmin_uret(plant, meteo, g, simdi=simdi), g)
+            sonuclar[m] = golge_arsivle(tenant_id, plant, meteo, s) if kaydet else s
+        except Exception as e:   # mod başına izolasyon: hata metni açıkça saklanır, diğer modlar koşar
+            hatalar[m] = f"{type(e).__name__}: {e}"
+    return GolgeTuru(yayin_zamani=simdi, meteo_kaynak=getattr(meteo, "kaynak", None), nwp_kosu_zamani=getattr(meteo, "kosu_zamani", None),
+                     etiket=ETIKET_GOLGE, kaydedildi=bool(kaydet), sonuclar=sonuclar, hatalar=hatalar)
