@@ -314,7 +314,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
             sonuc["mode"] = "C"
             hyb = res
             gate = {
-                "denendi": True, "gecti": True,
+                "denendi": True, "gecti": True, "hata": False,   # 26.11: hata=True yalnız hibrit eğitimi İSTİSNA ile düşünce (kapı reddi değil)
                 "iyilesme_pct": res.improvement_pct,
                 "wmape_iyilesme_pct": _w_iyi,
                 "holdout_mape": res.holdout_mape_pct,
@@ -328,6 +328,10 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
         else:
             gate = {
                 "denendi": True, "gecti": False,
+                # 26.11 (MODEL_BC_MEVCUT_DURUM §0): run_hybrid_training istisnayı yutup ok=False döndüğünde bu, kapı reddi DEĞİL
+                # altyapı/veri hatasıdır (ör. PanelSpec ValidationError 01.10'da Mod C'yi 2 ay sessizce engelledi). Ayrı bayrak +
+                # sebep öneki ile görünür kılınır; model davranışı aynı (Mod B'de kalınır), kayıt dürüst.
+                "hata": (not res.ok),
                 "iyilesme_pct": res.improvement_pct,
                 "wmape_iyilesme_pct": _w_iyi,
                 "holdout_mape": res.holdout_mape_pct,
@@ -337,7 +341,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "kapsama_p10_p90": getattr(res, "coverage_p10_p90_pct", None),
                 "bant_ort_kw": getattr(res, "band_width_mean_kw", None),
                 "bant_pct": getattr(res, "band_width_pct_of_p50", None),
-                "sebep": (res.error
+                "sebep": ((f"hibrit DENENEMEDİ (altyapı/veri hatası, kapı reddi değil): {res.error}" if res.error else None)
                           or (f"holdout WMAPE %{_wtxt} > "
                               f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"
                               if not _taban_ok
@@ -345,11 +349,14 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                                     f"{_cfg.gate_min_improvement_pct:g} ({_iyi_dil})"
                                     if _iyi_etkin is not None
                                     else "iyilesme hesaplanamadi"))),            }
+    if hibrit and gate is not None and gate.get("hata"):
+        sonuc["hibrit_hata"] = res.error   # 26.11: çağıran (aylık iş) günlüğe/sonuc_json'a yazar; sessiz düşüş yok
     # G2-C1 (C2-8): Mod B kalite kapısı — düşerse HİÇBİR kayıt yazılmaz (mevcut aktif kalibrasyon korunur), sebep döner/günlüğe.
     kapi_ok, kapi_neden = mod_b_kapisi(cr.n_valid_hours, holdout.get("wmape_holdout_pct"), getattr(cr.validation_after, "total_deviation_pct", None))
     if not kapi_ok:
         return {"mode": "atlandi", "kapi": kapi_neden, "calibration_id": None, "gate": gate, "eta_bos": cr.eta_bos, "bg": cr.bg,
-                "n_valid_hours": cr.n_valid_hours, "warnings": list(cr.warnings or []), "holdout": holdout}
+                "n_valid_hours": cr.n_valid_hours, "warnings": list(cr.warnings or []), "holdout": holdout,
+                "hibrit_hata": sonuc.get("hibrit_hata")}
     from pvquant.surum import yazilim_surumu as _ys   # Faz 0 P0-04 (20.11): kalite kaydına sürüm ve değerlendirme sınıfı damgası
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
