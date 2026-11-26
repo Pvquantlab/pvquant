@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     meteo_uye_saklama_gun: int = 45
     # v2.274 (Dalga 2, ★): trend/sapma düzeltme katmanı — 'otomatik' (taze SCADA + anlamlı sapma varsa) | 'kapali'
     sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
+    # Faz 1 Mod C aktivasyon bekçisi (27.11.2026; fail-closed): aylık kalibrasyon C artefaktı üretip ml_models'a yazsa bile MÜŞTERİ tahmini
+    # yalnız (1) `mod_c_musteri="acik"` VE (2) artefaktın SHA-256 ilk 16 hex'i `mod_c_onayli_artefakt` listesinde (virgülle) ise C kullanır;
+    # aksi hâlde Mod B (künyede geri_dusus). Varsayılan kapalı; ayar okunamazsa kapalı. Onaysız dosya için pickle HİÇ yüklenmez.
+    mod_c_musteri: Literal["kapali", "acik"] = "kapali"
+    mod_c_onayli_artefakt: str = ""         # örn. "a1b2c3d4e5f60718,..." — açık onayla eklenen artefakt sha16'ları
     # G5-P1 / F1-14 (25.11.2026): tahmin yayın sürekliliği — son yayın koşusu bundan eskiyse /v1/sureklilik 503 (harici izleyici için)
     sureklilik_esik_saat: int = 30
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri
