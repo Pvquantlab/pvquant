@@ -483,6 +483,7 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
     """Gecmis kosular tablosu icin hafif okuma (yeni->eski)."""
     from sqlalchemy import text as _text
     from pvquant.db import tenant_baglami as _tb
+    from pvquant.services.karne_kurali import golge_disi_sql
     with _tb(tenant_id) as s:
         # v2.171: bos kosu (values yazilmamis) GIZLIDIR — kullanici karari
         # 20 Agu; son_kosu ile ayni EXISTS kalibi (v2.164). Silme gecmisi
@@ -493,5 +494,6 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
             "WHERE plant_id=:p "
             "AND EXISTS (SELECT 1 FROM forecast_values v "
             "  WHERE v.run_id = forecast_runs.id) "
+            f"AND {golge_disi_sql('forecast_runs')} "   # G3 (26.11): gölge koşu müşteri geçmişinde görünmez (backtest vb. görünür kalır)
             "ORDER BY run_at DESC LIMIT :n"),
             {"p": plant_id, "n": n}).fetchall()

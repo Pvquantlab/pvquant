@@ -11,6 +11,10 @@ import json
 import threading
 import time
 
+from pvquant.services.karne_kurali import (
+    golge_disi_sql,  # G3 (26.11): gölge koşu damga/son koşu zamanını oynatmaz
+)
+
 
 def etag_uret(damga: dict) -> str:
     return 'W/"' + hashlib.sha256(json.dumps(damga, sort_keys=True, default=str).encode()).hexdigest()[:16] + '"'
@@ -18,11 +22,12 @@ def etag_uret(damga: dict) -> str:
 
 def hesapla(tenant_id, plant_id) -> dict:
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text(
             "SELECT (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p) AS son_scada,"
-            " (SELECT max(run_at) FROM forecast_runs r WHERE plant_id=:p AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=r.id)) AS son_kosu,"
+            f" (SELECT max(run_at) FROM forecast_runs r WHERE plant_id=:p AND {golge_disi_sql('r')} AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=r.id)) AS son_kosu,"   # G3: gölge damgayı oynatmaz
             " (SELECT max(created_at) FROM alerts WHERE plant_id=:p) AS son_alarm,"
             " (SELECT count(*) FROM alerts WHERE plant_id=:p AND acked_by IS NULL AND created_at >= now() - interval '7 days') AS acik_alarm,"
             " (SELECT max(date) FROM skill_daily WHERE plant_id=:p) AS son_skill,"
@@ -47,6 +52,7 @@ def _ortak_damga(tenant_id, plant_id) -> dict:
     santral_ozu: santral parametreleri satırının özeti (kapasite, konum, params_json; Santral ayarları kaydedilince değişir).
     Küresel tablolar sistem bağlamından okunur (RLS dışı, kiracı süzgeci sorguda)."""
     from sqlalchemy import text
+
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
         d = _kiraci_damga(s, tenant_id)
@@ -83,12 +89,13 @@ def kiraci_hesapla(tenant_id) -> dict:
     ozu (/v1/portfoy acik alarm sayar: 7 gun, okunmamis), santral satirlarinin ozeti (arsivleme/ayar degisince) ve kiraci parcalari (piyasa, is).
     Kiraci baglaminda (RLS) ve ayrica santral suzgeciyle (alerts yalniz kiracinin arsivlenmemis santrallari)."""
     from sqlalchemy import text
+
     from pvquant.db import sistem_baglami, tenant_baglami
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text(
             "WITH u AS (SELECT id AS plant_id FROM plants WHERE NOT archived)"
             " SELECT (SELECT max(ts_utc) FROM scada_hourly h WHERE h.plant_id IN (SELECT plant_id FROM u)) AS son_scada,"
-            " (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"
+            f" (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND {golge_disi_sql('r')} AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"   # G3
             " (SELECT max(olusturma) FROM kgup_surum k WHERE k.plant_id IN (SELECT plant_id FROM u)) AS son_kgup_surum,"
             " (SELECT max(olusturma) FROM uzlastirma_bildirimi m WHERE m.plant_id IN (SELECT plant_id FROM u)) AS son_mutabakat_yukleme,"
             " (SELECT max(olusturma) FROM sayac_yukleme y WHERE y.plant_id IN (SELECT plant_id FROM u)) AS son_sayac_yukleme,"
@@ -106,12 +113,13 @@ def portfoy_hesapla(tenant_id, portfoy_id) -> dict:
     guncellemesi, gece isinin portfoy sonucu (portfoy_sonuc.hesap_zamani), uye santral satirlarinin ozeti ve kiraci parcalari (piyasa, is).
     Uyelik gecmisi (gecerli_bit dolmus uyeler dahil) kapsamda: donem gorunumleri gecmis uyelikle hesaplanir. Kiraci baglaminda (RLS)."""
     from sqlalchemy import text
+
     from pvquant.db import sistem_baglami, tenant_baglami
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text(
             "WITH u AS (SELECT DISTINCT plant_id FROM portfoy_uyelik WHERE portfoy_id = CAST(:pf AS uuid))"
             " SELECT (SELECT max(ts_utc) FROM scada_hourly h WHERE h.plant_id IN (SELECT plant_id FROM u)) AS son_scada,"
-            " (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"
+            f" (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND {golge_disi_sql('r')} AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"   # G3
             " (SELECT max(olusturma) FROM kgup_surum k WHERE k.plant_id IN (SELECT plant_id FROM u)) AS son_kgup_surum,"
             " (SELECT max(olusturma) FROM uzlastirma_bildirimi m WHERE m.plant_id IN (SELECT plant_id FROM u)) AS son_mutabakat_yukleme,"
             " (SELECT max(olusturma) FROM sayac_yukleme y WHERE y.plant_id IN (SELECT plant_id FROM u)) AS son_sayac_yukleme,"

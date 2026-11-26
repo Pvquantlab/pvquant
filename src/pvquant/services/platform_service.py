@@ -34,6 +34,7 @@ from pvquant.services import (
     yetki_service,  # v2.609 (F6-B): modül sözlüğü
 )
 from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services import karne_kurali as _kk  # G3 (26.11): gölge koşu dışlaması
 
 ROLLER = ("operator", "sahip")
 JWT_SAAT = 4
@@ -344,7 +345,7 @@ def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
         santraller = s.execute(text(
             "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.archived, p.created_at, p.params_json, "
             f"(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id=p.id AND {_ks.sql_kosulu('tazelik', 'sh')}) AS son_scada, "
-            "(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id=p.id) AS son_kosu "
+            f"(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id=p.id AND {_kk.golge_disi_sql('r')}) AS son_kosu "   # G3: gölge son koşu sayılmaz
             "FROM plants p WHERE p.tenant_id=:t ORDER BY p.name"), {"t": str(tid)}).mappings().all()
     iso = lambda v: v.isoformat() if v else None  # noqa: E731
     return {"id": str(t["id"]), "ad": t["name"], "plan": t["plan"], "durum": t["status"], "notlar": t["notlar"],
