@@ -142,3 +142,36 @@ def test_g5p2_kunye_dolulugu_sinyali():
     assert v2["kunye"]["eksik"] == {"yazilim_surumu": 42, "artefakt_sha16": 3} and v2["durum"] in ("dikkat", "kritik")   # bileşen hükmüne girer
     o["kunye"] = {"pencere_gun": 7, "kosu": 0, "eksik": {}}
     assert ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["kunye"]["durum"] == "dogrulanamadi"
+
+
+def test_g5p4_yeniden_kurulabilirlik_sinyali(monkeypatch):
+    """G5-P4 (26.11): ozet()['yeniden_kurma'] varsa veritabani.yeniden_kurma sinyali — hepsi kurulabilir → sağlıklı; kurulamaz/kısmi →
+    dikkat (sayı + eksik girdi adı); koşu yok → doğrulanamadı; anahtar yoksa sinyal eklenmez. Sayım yardımcısı: kurulabilirlik None ya da
+    istisna döndüren santral sayılmaz (sayı uydurulmaz), nedenler tekilleştirilir."""
+    taban = ss.sinifla(_ozet(), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert "yeniden_kurma" not in taban
+    o = _ozet()
+    o["yeniden_kurma"] = {"kosu": 3, "kurulabilir": 3, "kismi": 0, "kurulamaz": 0, "nedenler": []}
+    v = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v["yeniden_kurma"]["durum"] == "saglikli" and "3 santralin" in v["yeniden_kurma"]["neden"] and v["durum"] == taban["durum"]
+    o["yeniden_kurma"] = {"kosu": 3, "kurulabilir": 1, "kismi": 1, "kurulamaz": 1,
+                          "nedenler": ["spec_json yok (santral özelliği künyede değil)", "ufuk σ künyede yok — varsayılanla kurulur, birebir değil"]}
+    v2 = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v2["yeniden_kurma"]["durum"] == "dikkat" and "1 kurulamaz, 1 kısmi" in v2["yeniden_kurma"]["neden"]
+    assert "spec_json yok" in v2["yeniden_kurma"]["neden"] and v2["yeniden_kurma"]["kurulamaz"] == 1 and v2["durum"] in ("dikkat", "kritik")
+    o["yeniden_kurma"] = {"kosu": 0, "kurulabilir": 0, "kismi": 0, "kurulamaz": 0, "nedenler": []}
+    assert ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["yeniden_kurma"]["durum"] == "dogrulanamadi"
+    # sayım yardımcısı: hüküm sözlüğü sahte, DB yok
+    from pvquant.services import yeniden_kurma_service as yk
+    hukum = {"a": {"durum": "kurulabilir", "eksik": [], "kismi": []},
+             "b": {"durum": "kismi", "eksik": [], "kismi": ["mod B: kalibrasyon parametresi/ML artefaktı bu denetimin dışında"]},
+             "c": {"durum": "kismi", "eksik": [], "kismi": ["mod B: kalibrasyon parametresi/ML artefaktı bu denetimin dışında"]},
+             "d": None}
+
+    def sahte(tenant_id, run_id):
+        if run_id == "e":
+            raise RuntimeError("künye okunamadı")
+        return hukum[run_id]
+    monkeypatch.setattr(yk, "kurulabilirlik", sahte)
+    s = ss._yeniden_kurma_ozet([{"id": r, "tenant_id": "t"} for r in ("a", "b", "c", "d", "e")])
+    assert s == {"kosu": 3, "kurulabilir": 1, "kismi": 2, "kurulamaz": 0, "nedenler": ["mod B: kalibrasyon parametresi/ML artefaktı bu denetimin dışında"]}

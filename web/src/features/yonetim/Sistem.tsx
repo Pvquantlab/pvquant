@@ -83,6 +83,7 @@ export function Sistem() {
               <div><dt>Yedek doğrulaması</dt><dd><Rozet durum={sg.bilesenler.veritabani.yedek_dogrulama.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yedek_dogrulama.neden}</span></dd></div>
               {sg.bilesenler.veritabani.hiz_sayaci && <div><dt>Hız sayacı</dt><dd><Rozet durum={sg.bilesenler.veritabani.hiz_sayaci.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.hiz_sayaci.neden}</span></dd></div>}
               {sg.bilesenler.veritabani.kunye && <div><dt>Koşu künyesi</dt><dd><Rozet durum={sg.bilesenler.veritabani.kunye.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.kunye.neden}</span></dd></div>}
+              {sg.bilesenler.veritabani.yeniden_kurma && <div><dt>Yeniden kurulabilirlik</dt><dd><Rozet durum={sg.bilesenler.veritabani.yeniden_kurma.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yeniden_kurma.neden}</span></dd></div>}
               <div><dt>API</dt><dd><Rozet durum={sg.bilesenler.sunucu.api.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.api.neden}</span></dd></div>
               <div><dt>Hata günlüğü</dt><dd><Rozet durum={sg.bilesenler.sunucu.hata_gunlugu.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.hata_gunlugu.neden}</span></dd></div>
               <div><dt>İş hataları (24 sa)</dt><dd><Rozet durum={sg.bilesenler.sunucu.is_hatalari.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.is_hatalari.neden}</span></dd></div>
