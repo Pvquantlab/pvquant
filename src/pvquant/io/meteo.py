@@ -298,9 +298,11 @@ class OpenMeteoClient:
         if times.tz is None:
             try:
                 times = times.tz_localize(response_tz, ambiguous="infer", nonexistent="shift_forward")
-            except Exception:
-                # DST bilinmezliginden kacinmak icin fallback: UTC olarak varsay
-                times = times.tz_localize("UTC")
+            except Exception as e:
+                # Faz 1 Mod B veri sözleşmesi (28.11.2026): eskiden burada yerel saat sessizce UTC sayılıyordu — yukarıdaki
+                # DST ayıklaması tek kalan 02:00'ı belirsiz bırakır, `infer` düşer ve dizi saatlerce kayardı (Berlin: 2 sa).
+                # Belirsiz girdi geçerli sayılmaz: istek UTC ile yapılır (varsayılan), aksi açık hatadır.
+                raise OpenMeteoError(f"Zaman dilimi {response_tz!r} yerelleştirilemedi (DST belirsizliği): {type(e).__name__}: {e}") from e
 
         def series_or_none(key: str) -> pd.Series | None:
             values = hourly.get(key)
