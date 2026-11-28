@@ -22,10 +22,10 @@ install -o pvquant-deploy -g pvquant-deploy -m 0600 authorized_keys.pvquant-depl
 ```
 ## Doğrulama (dağıtım yok)
 ```bash
-T=$(mktemp -d); ssh-keyscan -H 178.18.206.235 2>/dev/null > $T/kh
-ssh -i ~/.ssh/pvquant_ci_dagitim -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@178.18.206.235 kontrol     # beklenen: sunucu/HEAD/ps
-ssh -i ~/.ssh/pvquant_ci_dagitim -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@178.18.206.235 id          # beklenen: REDDEDİLDİ, rc 126
-ssh -i ~/.ssh/pvquant_ci_dagitim -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@178.18.206.235 "dagit 0000000000000000000000000000000000000000 web"   # beklenen: HATA sunucu HEAD onaylı SHA değil (pull ff-only sonrası), rc 7 — DİKKAT: pull yapar; prova için 'kontrol' yeterli
+T=$(mktemp -d); ssh-keyscan -H SUNUCU 2>/dev/null > $T/kh
+ssh -i ~/.ssh/<dagitim_anahtari> -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@SUNUCU kontrol     # beklenen: sunucu/HEAD/ps
+ssh -i ~/.ssh/<dagitim_anahtari> -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@SUNUCU id          # beklenen: REDDEDİLDİ, rc 126
+ssh -i ~/.ssh/<dagitim_anahtari> -o IdentitiesOnly=yes -o UserKnownHostsFile=$T/kh -o StrictHostKeyChecking=yes -o BatchMode=yes pvquant-deploy@SUNUCU "dagit 0000000000000000000000000000000000000000 web"   # beklenen: HATA sunucu HEAD onaylı SHA değil (pull ff-only sonrası), rc 7 — DİKKAT: pull yapar; prova için 'kontrol' yeterli
 rm -rf $T
 ```
 ## GitHub
