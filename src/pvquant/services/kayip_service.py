@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from pvquant.services.plant_spec_service import egim_azimut
+
 VARSAYILAN = {"golge": 0.01, "modul_kalitesi": 0.01, "uyumsuzluk": 0.01, "dc_kablo": 0.01, "inverter": 0.02, "ac_kablo": 0.01}
 
 
@@ -23,7 +25,7 @@ def agac_hesapla(df: pd.DataFrame, plant: dict, oranlar_ek: dict, kaynaklar: dic
     gamma = float(getattr(spec, "effective_gamma", None) or getattr(spec, "gamma_pdc", None) or -0.0035)
     iam_b = 0.05 if getattr(spec, "iam_model", "none") != "none" else 0.0
     oranlar, ghi, poa = ka.oranlari_saatlikten(df["ghi"], df["dni"], df["dhi"], df["temp_air"], df["wind_speed_10m"], float(plant["lat"]), float(plant["lon"]),
-                                              float(plant.get("tilt") or 20), float(plant.get("azimuth") or 180), gamma=gamma, iam_b=iam_b, **{**VARSAYILAN, **oranlar_ek})
+                                              *egim_azimut(plant), gamma=gamma, iam_b=iam_b, **{**VARSAYILAN, **oranlar_ek})
     if iam_b == 0.0:
         oranlar["iam"] = 0.0
     kap = float(plant["capacity_kwp"])

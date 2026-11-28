@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.standart import iec61853 as gm
+from pvquant.services.plant_spec_service import egim_azimut
 
 G_SEVIYE = [100, 200, 400, 600, 800, 1000]
 
@@ -55,14 +56,14 @@ def davranis_tablosu(adr: dict) -> list[dict]:
 
 
 def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
-    from pvquant.io import arsiv_isinim
     from pvquant.ext.standart import kayip_agaci as ka
+    from pvquant.io import arsiv_isinim
     df = arsiv_isinim.pvgis_df(float(plant["lat"]), float(plant["lon"]), arsiv_isinim.PVGIS_SON_YIL, arsiv_isinim.PVGIS_SON_YIL)
     if df is None or df.empty:
         return {"durum": "veri_yok", "not": "uydu türevli ışınım arşivi alınamadı"}
     M, adr, kaynak, gamma = matris_getir(plant)
     poa = ka.transpozisyon(df["ghi"], df["dni"], df["dhi"], float(plant["lat"]), float(plant["lon"]),
-                           float(plant.get("tilt") or 20), float(plant.get("azimuth") or 180))
+                           *egim_azimut(plant))
     t_cell = df["temp_air"].astype(float) + poa / (25.0 + 6.84 * df["wind_speed_10m"].astype(float).clip(lower=0.0))
     ed = gm.enerji_derecesi(poa, t_cell, adr, p_stc_kwp=1.0)
     tablo = davranis_tablosu(adr)

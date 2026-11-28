@@ -13,6 +13,7 @@ from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzg
 from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 from pvquant.reporting import ReportContext, build_excel, build_json
 from pvquant.services.forecast_service import son_kosu
+from pvquant.services.plant_spec_service import egim_azimut
 
 
 def _gun_uzunlugu_saat(gun, tz: str) -> int:
@@ -78,8 +79,8 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         capacity_kwp=plant["capacity_kwp"],
         latitude=plant["lat"],
         longitude=plant["lon"],
-        tilt_deg=plant.get("tilt") or 20,
-        azimuth_deg=plant.get("azimuth") or 180,
+        tilt_deg=egim_azimut(plant)[0],
+        azimuth_deg=egim_azimut(plant)[1],
         plant_tz=plant["tz"],
         run_at_utc=(kosu.run_at if kosu else datetime.now(timezone.utc)),
         mode=(kosu.mode if kosu else (cal.mode if cal else "A")),
