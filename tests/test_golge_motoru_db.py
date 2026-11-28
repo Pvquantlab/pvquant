@@ -85,6 +85,25 @@ def test_db_golge_motoru_uctan_uca_idempotans_ve_degerlendirme(santral):   # noq
         assert len(set(n.values())) == 1 and n["yayin"] == len(saatler) > 0, "aynı maske: her modda aynı saat sayısı"
         assert all(v["picp80"] is None and v["esik"]["picp80"] is None for v in k.values()) and all(v["wmape"] >= 0 for v in k.values())
         assert k[("yayin", "24-48")]["wmape"] == k[("golge_B", "24-48")]["wmape"], "yayın (B) ile gölge B aynı girdi → aynı tahmin"
+        # 5b) kanıt toplayıcı betiği (salt okunur): provenans — aynı gün, aynı NWP, gölge yayından sonra
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("golge_kanit_topla", Path(__file__).resolve().parents[1] / "scripts" / "golge_kanit_topla.py")
+        kt = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(kt)
+        prov = kt.provenans({"id": plant["id"]}, simdi - pd.Timedelta(hours=2), simdi + pd.Timedelta(hours=1))
+        assert prov["gun"] == 1 and prov["ayni_nwp_gun"] == 1 and prov["golge_gun"] == 1
+        g0 = prov["gunler"][0]
+        assert g0["yayin_kosu"] == 1 and g0["golge_kosu"] == 2 and g0["golge_modlar"] == ["A", "B"] and g0["ayni_nwp"] and g0["golge_yayindan_sonra"] and g0["c_sha_dolu"] is None
+        # 6) devre kesici girdisi: jobs_log'da art arda hata sayımı (en yeniden geriye; ilk 'ok' sayımı keser)
+        with bakim_baglami() as s:
+            for i, durum in enumerate(("error", "error", "error")):
+                s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) VALUES('golge_tahmin', :t, :p, now() - make_interval(mins => :m), now(), :s, 'test')"),
+                          {"t": tid, "p": plant["id"], "m": 30 - i, "s": durum})
+        assert gs.golge_son_ardisik_hata(tid, plant["id"]) == 3
+        with bakim_baglami() as s:
+            s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) VALUES('golge_tahmin', :t, :p, now(), now(), 'ok', 'test')"), {"t": tid, "p": plant["id"]})
+        assert gs.golge_son_ardisik_hata(tid, plant["id"]) == 0
     finally:
         with bakim_baglami() as s:
             s.execute(text("DELETE FROM scada_hourly WHERE tenant_id=:t"), {"t": tid})
+            s.execute(text("DELETE FROM jobs_log WHERE tenant_id=:t"), {"t": tid})

@@ -51,12 +51,22 @@ def test_varsayilan_kapali_hic_bir_bagimlilik_cagrilmaz():
     assert gs.golge_ayarlari(object())["etkin"] is False   # ayar okunamazsa kapalı
 
 
+def test_devre_kesici_ardisik_hata_sinirinda_durur():
+    ayar = _ayar(golge_etkin="acik", golge_santraller=PLANT["id"])
+    assert gs.golge_ayarlari(ayar)["hata_sinir"] == 3 and gs.golge_ayarlari(_ayar(golge_ardisik_hata_sinir=0))["hata_sinir"] == 1
+    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, ardisik_hata_getir=lambda t, p: 3, nwp_yayin_getir=_patlat, meteo_getir=_patlat, girdi_getir=_patlat)
+    assert r["durum"] == "atlandi" and "devre kesici" in r["neden"] and r["ardisik_hata"] == 3
+    # sınır altı → akış sürer (yayın yok → bir sonraki kapıda atlanır)
+    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, ardisik_hata_getir=lambda t, p: 2, nwp_yayin_getir=lambda *a: None, meteo_getir=_patlat, girdi_getir=_patlat)
+    assert "yayın koşusu yok" in r["neden"]
+
+
 def test_yayin_yoksa_ve_meteo_farkliysa_atlanir():
     ayar = _ayar(golge_etkin="acik", golge_santraller=PLANT["id"])
-    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, nwp_yayin_getir=lambda *a: None, meteo_getir=_patlat, girdi_getir=_patlat)
+    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, nwp_yayin_getir=lambda *a: None, meteo_getir=_patlat, girdi_getir=_patlat, ardisik_hata_getir=lambda t, p: 0)
     assert r["durum"] == "atlandi" and "yayın koşusu yok" in r["neden"]
     meteo = SimpleNamespace(kosu_zamani=NWP - pd.Timedelta(hours=6))
-    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, nwp_yayin_getir=lambda *a: NWP, meteo_getir=lambda p: meteo, girdi_getir=_patlat)
+    r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, nwp_yayin_getir=lambda *a: NWP, meteo_getir=lambda p: meteo, girdi_getir=_patlat, ardisik_hata_getir=lambda t, p: 0)
     assert r["durum"] == "atlandi" and "aynı değil" in r["neden"]
 
 
@@ -99,7 +109,8 @@ def _girdi_ve_calistir(monkeypatch, *, model_var: bool, arsiv_hata: set | None =
         yazilan.append(snc.mod)
         return SimpleNamespace(run_id=f"run-{snc.mod}")
     r = gs.golge_motoru_calistir(PLANT, simdi=SIMDI, ayar=ayar, nwp_yayin_getir=lambda *a: NWP, meteo_getir=lambda p: meteo,
-                                 girdi_getir=lambda p: girdi, tekrar_var=lambda t, p, mode, model, nwp: mode in (tekrar or set()), arsivle=arsivle)
+                                 girdi_getir=lambda p: girdi, tekrar_var=lambda t, p, mode, model, nwp: mode in (tekrar or set()), arsivle=arsivle,
+                                 ardisik_hata_getir=lambda t, p: 0)
     return r, yazilan
 
 
