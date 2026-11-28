@@ -28,9 +28,10 @@ Open-Meteo GHI sapmaları vb.
 
 Kritik tasarım kararları:
 
-  1. **Zaman-bazlı split**: Eğitim/validasyon ayrımı kronolojiktir
-     (ilk %80 train, son %20 validation). Rastgele split veri sızıntısı
-     yaratır ve metrikleri yalancı iyileştirir.
+  1. **Zaman-bazlı üç-yollu split** (Faz 1 K1–K3, 28.11.2026): eğitim
+     (fizik parametreleri + LGBM) | doğrulama (erken durdurma + konformal q̂)
+     | holdout (yalnız rapor/kapı; hiçbir seçimde kullanılmaz) = 64/16/20,
+     kronolojik. Rastgele split ve «seçim yapılan kümede rapor» sızıntıdır.
   2. **Curtailment/arıza filtresi**: Yüksek ışınımda üretimin fizik
      tahmininin çok altında kaldığı saatler eğitimden çıkarılır; model
      "santral bazen sebepsiz düşer" örüntüsünü öğrenmemelidir.
@@ -86,8 +87,9 @@ CURTAILMENT_POA_MIN_W = 300.0
 #: ...gerçek üretim fizik tahmininin bu oranının altındaysa saat elenir.
 CURTAILMENT_RATIO = 0.15
 
-#: Kronolojik train/validation oranı.
+#: Kronolojik bölme: holdout = son (1 − TRAIN_FRACTION); doğrulama = eğitim payının son VALIDATION_FRACTION'ı (→ 64/16/20).
 TRAIN_FRACTION = 0.80
+VALIDATION_FRACTION = 0.20
 
 #: LGBM eğitiminde kullanılan feature kolonları (sıra önemli).
 FEATURE_COLUMNS = [
@@ -275,6 +277,10 @@ class HybridResidualModel:
         self._last_calibration_date: Optional[datetime] = None
         self._training_report: dict[str, float] = {}
         self._conformal_offset_kw: Optional[float] = None  # v2.57-B
+        # Faz 1 K4 (28.11.2026): eğitimde kullanılan `kt_referans` ayarı artefakta yazılır; servis ayarı farklıysa
+        # mod_c_bekcisi artefaktı uyumsuz sayar (sessiz özellik kayması yerine Mod B'ye açık düşüş). Denklem değişmez.
+        self.kt_referans: Optional[str] = None
+        self._bolme: Optional[dict] = None   # Faz 1 K1–K3: kronolojik kesimler (künye)
 
     # ------------------------------------------------------------------
     # Protocol: predict
@@ -483,6 +489,18 @@ class HybridResidualModel:
         if "power_kw" not in df.columns:
             raise ValueError("HistoricalData.data 'power_kw' kolonu içermelidir")
 
+        # ---------- Kronolojik üç-yollu bölme (Faz 1 K1–K3) ----------
+        # Zaman ekseninde geçerli ölçüm sırasına göre: eğitim | doğrulama | holdout. Fizik parametreleri (K1) ve LGBM
+        # yalnız eğitim dilimiyle; erken durdurma (K2) ve konformal q̂ (K3) doğrulama dilimiyle; holdout DOKUNULMAZ.
+        _pw_gecerli = df["power_kw"].dropna().sort_index()
+        if len(_pw_gecerli) < 3:
+            raise ValueError("Kronolojik bölme için yetersiz ölçüm")
+        kesim_holdout = _pw_gecerli.index[int(len(_pw_gecerli) * TRAIN_FRACTION)]
+        kesim_dogrulama = _pw_gecerli.index[int(len(_pw_gecerli) * TRAIN_FRACTION * (1.0 - VALIDATION_FRACTION))]
+        df_egitim = df[df.index < kesim_dogrulama]
+        self._bolme = {"yontem": "kronolojik_uc_yollu", "kesim_dogrulama": kesim_dogrulama.isoformat(),
+                       "kesim_holdout": kesim_holdout.isoformat(), "fizik_uydurma_dilimi": "egitim"}
+
         # ---------- Meteo: sahadan mı, Open-Meteo'dan mı? ----------
         # SCADA'da ghi/t_air/wind_speed varsa saha ölçümü tercih edilir:
         # hem daha doğrudur hem dış API bağımlılığını kaldırır.
@@ -536,7 +554,7 @@ class HybridResidualModel:
         # doğrudan çalıştırıyoruz — tek veri kaynağı, tek fetch.
         if "poa_global" in df.columns:
             bias_bins, bias_corrections = self._base._fit_ghi_bias(
-                scada_poa=df["poa_global"].astype(float),
+                scada_poa=df_egitim["poa_global"].astype(float),   # K1: yalnız eğitim dilimi
                 meteo=hist_meteo,
             )
             self.plant_profile.ghi_bias_bins = bias_bins
@@ -544,20 +562,20 @@ class HybridResidualModel:
             self._base.plant_profile.ghi_bias_bins = bias_bins
             self._base.plant_profile.ghi_bias_corrections = bias_corrections
 
-        scada_obj = SCADAData(
-            power_kw=df["power_kw"].astype(float),
+        scada_obj = SCADAData(   # K1: fizik uydurması yalnız eğitim dilimini görür (doğrulama + holdout dışarıda)
+            power_kw=df_egitim["power_kw"].astype(float),
             energy_kwh=None,
             poa_irradiance=(
-                df["poa_global"].astype(float) if "poa_global" in df.columns else None
+                df_egitim["poa_global"].astype(float) if "poa_global" in df.columns else None
             ),
             temp_ambient=(
-                df["t_air"].astype(float) if "t_air" in df.columns else None
+                df_egitim["t_air"].astype(float) if "t_air" in df.columns else None
             ),
             temp_module=(
-                df["t_module"].astype(float) if "t_module" in df.columns else None
+                df_egitim["t_module"].astype(float) if "t_module" in df.columns else None
             ),
             wind_speed=(
-                df["wind_speed"].astype(float) if "wind_speed" in df.columns else None
+                df_egitim["wind_speed"].astype(float) if "wind_speed" in df.columns else None
             ),
             plant_name=self.plant_profile.name,
             timestep_minutes=60,
@@ -646,10 +664,18 @@ class HybridResidualModel:
                 f"{len(X)} (minimum {min_hours}). Daha uzun SCADA dönemi gerekli."
             )
 
-        # ---------- Kronolojik split ----------
-        split = int(len(X) * TRAIN_FRACTION)
-        X_tr, X_va = X.iloc[:split], X.iloc[split:]
-        y_tr, y_va = y.iloc[:split], y.iloc[split:]
+        # ---------- Kronolojik üç-yollu split (zaman kesimleri yukarıda) ----------
+        _m_tr = X.index < kesim_dogrulama
+        _m_va = (X.index >= kesim_dogrulama) & (X.index < kesim_holdout)
+        _m_te = X.index >= kesim_holdout
+        X_tr, y_tr = X[_m_tr], y[_m_tr]
+        X_va, y_va = X[_m_va], y[_m_va]      # yalnız erken durdurma + konformal q̂
+        X_te = X[_m_te]                      # yalnız rapor/kapı (dokunulmaz); hedefi `actual` üzerinden okunur
+        if len(X_tr) < 100 or len(X_va) < 24 or len(X_te) < 24:
+            raise ValueError(
+                f"Kronolojik bölme dilimleri yetersiz: eğitim {len(X_tr)} / doğrulama {len(X_va)} / "
+                f"holdout {len(X_te)} temiz saat"
+            )
 
         # ---------- Nokta modeli (L2) ----------
         self._booster = lgb.LGBMRegressor(**self.LGBM_PARAMS)
@@ -674,12 +700,36 @@ class HybridResidualModel:
             )
             self._quantile_boosters[q] = booster_q
 
-        # ---------- Dürüst holdout raporu: fizik vs hibrit ----------
-        p_phys_va = physics_hourly["p_ac_kw"].loc[X_va.index]
-        actual_va = actual.loc[X_va.index]
-        p_hyb_va = self._apply_constraints(
-            p_phys_va + pd.Series(self._booster.predict(X_va), index=X_va.index),
-            physics_hourly["poa_global"].loc[X_va.index],
+        # ---------- K3: konformal q̂ YALNIZ doğrulama diliminden ----------
+        from pvquant.config import get_settings as _qgs
+        _hedef = float(_qgs().quantile_coverage_target_pct) / 100.0
+        _b10 = self._quantile_boosters.get(0.1)
+        _b90 = self._quantile_boosters.get(0.9)
+
+        def _bant(x_d: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
+            """Üretimle birebir ham bant: physics + res_q, kısıtlar, geçişme güvenliği, merkezi kucaklama (v2.58-B)."""
+            _pp = physics_hourly["p_ac_kw"].loc[x_d.index]
+            _poa = physics_hourly["poa_global"].loc[x_d.index]
+            _p50 = self._apply_constraints(_pp + pd.Series(self._booster.predict(x_d), index=x_d.index), _poa)
+            _l = self._apply_constraints(_pp + pd.Series(_b10.predict(x_d), index=x_d.index), _poa)
+            _h = self._apply_constraints(_pp + pd.Series(_b90.predict(x_d), index=x_d.index), _poa)
+            _lo = np.minimum(np.minimum(_l, _h), _p50)
+            _hi = np.maximum(np.maximum(_l, _h), _p50)
+            return _p50, pd.Series(np.asarray(_lo), index=x_d.index), pd.Series(np.asarray(_hi), index=x_d.index)
+
+        self._conformal_offset_kw = 0.0
+        if _b10 is not None and _b90 is not None and len(X_va) > 0:
+            _, _lo_va, _hi_va = _bant(X_va)
+            _act_va = actual.loc[X_va.index]
+            _skor_va = np.maximum(_lo_va - _act_va, _act_va - _hi_va)
+            self._conformal_offset_kw = float(np.quantile(np.asarray(_skor_va, dtype=float), _hedef))
+
+        # ---------- Dürüst holdout raporu: fizik vs hibrit (holdout hiçbir seçimde kullanılmadı) ----------
+        p_phys_te = physics_hourly["p_ac_kw"].loc[X_te.index]
+        actual_te = actual.loc[X_te.index]
+        p_hyb_te = self._apply_constraints(
+            p_phys_te + pd.Series(self._booster.predict(X_te), index=X_te.index),
+            physics_hourly["poa_global"].loc[X_te.index],
         )
 
         def _mape(pred: pd.Series, act: pd.Series) -> float:
@@ -701,61 +751,30 @@ class HybridResidualModel:
                 return float("nan")
             return float(np.abs(pred - act).sum() / s * 100)
 
-        # ---------- Kuantil karnesi (v2.57): gunduz-kosullu kapsama ----------
-        # X_va clean_idx'ten gelir (gece + curtailment elenmis), dolayisiyla
-        # kapsama otomatik gunduz-kosullu olculur; gece bandi skoru sisiremez.
-        # Bant tarifi uretimle birebir: physics + res_q, _apply_constraints.
-        _cov = float("nan")
-        _bw_mean = float("nan")
-        _bw_pct = float("nan")
-        _b10 = self._quantile_boosters.get(0.1)
-        _b90 = self._quantile_boosters.get(0.9)
-        if _b10 is not None and _b90 is not None and len(X_va) > 0:
-            _poa_va = physics_hourly["poa_global"].loc[X_va.index]
-            _p10_va = self._apply_constraints(
-                p_phys_va + pd.Series(_b10.predict(X_va), index=X_va.index),
-                _poa_va,
-            )
-            _p90_va = self._apply_constraints(
-                p_phys_va + pd.Series(_b90.predict(X_va), index=X_va.index),
-                _poa_va,
-            )
-            # Kuantil gecisme guvenligi: alt/ust ters duserse sirala
-            _lo = np.minimum(_p10_va, _p90_va)
-            _hi = np.maximum(_p10_va, _p90_va)
-            # v2.58-B: uretim bandiyla ayni kucaklama (p_hyb = merkez)
-            _lo = np.minimum(_lo, p_hyb_va)
-            _hi = np.maximum(_hi, p_hyb_va)
-            # v2.57-B: konformal ayar (CQR) — uyum skorlarinin hedef-seviye
-            # persentili ofset olur; kapsama dusukse pozitif (genisletir),
-            # fazlaysa negatif (daraltir). Ayni holdout'tan hesaplandigi icin
-            # bu holdout'ta hedefe oturmasi insa geregidir; gercek sinav
-            # gelecek veridedir (durustluk serhi raporda).
-            _inside_raw = (actual_va >= _lo) & (actual_va <= _hi)
-            _cov_raw = float(_inside_raw.mean() * 100)
-            from pvquant.config import get_settings as _qgs
-            _hedef = float(_qgs().quantile_coverage_target_pct) / 100.0
-            _skor = np.maximum(_lo - actual_va, actual_va - _hi)
-            _q_hat = float(np.quantile(np.asarray(_skor, dtype=float), _hedef))
-            self._conformal_offset_kw = _q_hat
+        # ---------- Kuantil karnesi: gündüz-koşullu kapsama, HOLDOUT'ta; q̂ doğrulamadan geldi (bağımsız PICP) ----------
+        _cov = _cov_raw = _bw_mean = _bw_pct = float("nan")
+        if _b10 is not None and _b90 is not None and len(X_te) > 0:
+            _, _lo, _hi = _bant(X_te)
+            _cov_raw = float(((actual_te >= _lo) & (actual_te <= _hi)).mean() * 100)
+            _q_hat = float(self._conformal_offset_kw or 0.0)
             _lo = (_lo - _q_hat).clip(lower=0.0)
             _hi = _hi + _q_hat
-            _inside = (actual_va >= _lo) & (actual_va <= _hi)
-            _cov = float(_inside.mean() * 100)
+            _cov = float(((actual_te >= _lo) & (actual_te <= _hi)).mean() * 100)
             _bw_mean = float((_hi - _lo).mean())
-            _s50 = float(p_hyb_va.sum())
+            _s50 = float(p_hyb_te.sum())
             if _s50 > 0:
                 _bw_pct = float((_hi - _lo).sum() / _s50 * 100)
 
         report = {
-            "holdout_hours": float(len(X_va)),
+            "holdout_hours": float(len(X_te)),
+            "validation_hours": float(len(X_va)),
             "train_hours": float(len(X_tr)),
-            "mape_pct_physics_holdout": _mape(p_phys_va, actual_va),
-            "mape_pct_hybrid_holdout": _mape(p_hyb_va, actual_va),
-            "wmape_pct_physics_holdout": _wmape(p_phys_va, actual_va),
-            "wmape_pct_hybrid_holdout": _wmape(p_hyb_va, actual_va),
-            "rmse_kw_physics_holdout": _rmse(p_phys_va, actual_va),
-            "rmse_kw_hybrid_holdout": _rmse(p_hyb_va, actual_va),
+            "mape_pct_physics_holdout": _mape(p_phys_te, actual_te),
+            "mape_pct_hybrid_holdout": _mape(p_hyb_te, actual_te),
+            "wmape_pct_physics_holdout": _wmape(p_phys_te, actual_te),
+            "wmape_pct_hybrid_holdout": _wmape(p_hyb_te, actual_te),
+            "rmse_kw_physics_holdout": _rmse(p_phys_te, actual_te),
+            "rmse_kw_hybrid_holdout": _rmse(p_hyb_te, actual_te),
             "best_iteration": float(self._booster.best_iteration_ or 0),
             "coverage_p10_p90_holdout_pct": _cov,
             "coverage_p10_p90_raw_pct": _cov_raw,
@@ -767,6 +786,13 @@ class HybridResidualModel:
             report["mape_pct_physics_holdout"] - report["mape_pct_hybrid_holdout"]
         )
         self._training_report = report
+
+        # Faz 1 K4: build_features'ın okuduğu ayarla aynı kaynaktan; artefakt künyesi (raporda da görünür)
+        try:
+            from pvquant.config import get_settings as _kt_gs
+            self.kt_referans = str(getattr(_kt_gs(), "kt_referans", "toa") or "toa")
+        except Exception:  # pragma: no cover — ayar katmanı yoksa build_features de 'toa' kullanır
+            self.kt_referans = "toa"
 
         self._calibrated = True
         self._last_calibration_date = datetime.now(timezone.utc)
@@ -823,6 +849,8 @@ class HybridResidualModel:
                 "conformal_offset_kw": self._conformal_offset_kw,
                 "feature_columns": FEATURE_COLUMNS,
                 "model_version": self.MODEL_VERSION,
+                "kt_referans": self.kt_referans,   # Faz 1 K4
+                "bolme": getattr(self, "_bolme", None),   # Faz 1 K1–K3 künyesi
             },
             d / f"{self.plant_profile.plant_id}_{self.MODEL_NAME}.joblib",
         )
@@ -852,6 +880,7 @@ class HybridResidualModel:
         self._quantile_boosters = payload["quantile_boosters"]
         self._training_report = payload.get("training_report", {})
         self._conformal_offset_kw = payload.get("conformal_offset_kw")
+        self.kt_referans = payload.get("kt_referans")   # Faz 1 K4 (eski yük: None → bekçi serbest)
         return True
 
     # ------------------------------------------------------------------

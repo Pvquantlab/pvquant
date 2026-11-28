@@ -42,6 +42,16 @@ def artefakt_uyumlu(model) -> tuple[bool, str | None]:
     adlar = list(getattr(b, "feature_name_", None) or []) if b is not None else []
     if adlar != list(hr.FEATURE_COLUMNS):
         return False, "özellik şeması kodla uyuşmuyor"
+    # Faz 1 K4 (28.11.2026): `kt` özelliği `kt_referans` ayarına bağlı üretilir (toa | ineichen). Eğitim ayarı artefaktta
+    # yazılıysa servis ayarıyla aynı olmalı; değilse sessiz özellik kayması yerine B'ye düşülür. Eski artefakt (alan yok) → serbest.
+    kt_art = getattr(model, "kt_referans", None)
+    if kt_art is not None:
+        try:
+            kt_kod = str(getattr(get_settings(), "kt_referans", "toa") or "toa")
+        except Exception:
+            kt_kod = "toa"
+        if str(kt_art) != kt_kod:
+            return False, f"kt_referans eğitim {kt_art} ≠ servis {kt_kod}"
     return True, None
 
 
