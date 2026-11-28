@@ -275,6 +275,9 @@ class HybridResidualModel:
         self._last_calibration_date: Optional[datetime] = None
         self._training_report: dict[str, float] = {}
         self._conformal_offset_kw: Optional[float] = None  # v2.57-B
+        # Faz 1 K4 (28.11.2026): eğitimde kullanılan `kt_referans` ayarı artefakta yazılır; servis ayarı farklıysa
+        # mod_c_bekcisi artefaktı uyumsuz sayar (sessiz özellik kayması yerine Mod B'ye açık düşüş). Denklem değişmez.
+        self.kt_referans: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Protocol: predict
@@ -768,6 +771,13 @@ class HybridResidualModel:
         )
         self._training_report = report
 
+        # Faz 1 K4: build_features'ın okuduğu ayarla aynı kaynaktan; artefakt künyesi (raporda da görünür)
+        try:
+            from pvquant.config import get_settings as _kt_gs
+            self.kt_referans = str(getattr(_kt_gs(), "kt_referans", "toa") or "toa")
+        except Exception:  # pragma: no cover — ayar katmanı yoksa build_features de 'toa' kullanır
+            self.kt_referans = "toa"
+
         self._calibrated = True
         self._last_calibration_date = datetime.now(timezone.utc)
 
@@ -823,6 +833,7 @@ class HybridResidualModel:
                 "conformal_offset_kw": self._conformal_offset_kw,
                 "feature_columns": FEATURE_COLUMNS,
                 "model_version": self.MODEL_VERSION,
+                "kt_referans": self.kt_referans,   # Faz 1 K4
             },
             d / f"{self.plant_profile.plant_id}_{self.MODEL_NAME}.joblib",
         )
@@ -852,6 +863,7 @@ class HybridResidualModel:
         self._quantile_boosters = payload["quantile_boosters"]
         self._training_report = payload.get("training_report", {})
         self._conformal_offset_kw = payload.get("conformal_offset_kw")
+        self.kt_referans = payload.get("kt_referans")   # Faz 1 K4 (eski yük: None → bekçi serbest)
         return True
 
     # ------------------------------------------------------------------
