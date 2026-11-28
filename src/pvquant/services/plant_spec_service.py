@@ -25,6 +25,23 @@ def params_json(plant) -> dict:
     return pj or {}
 
 
+GAMMA_PDC_ALT, GAMMA_PDC_UST = -0.01, 0.0   # 1/°C: ticari modüller −0,0015 (a-Si) … −0,0045; yüzde (−0,28) ya da pozitif değer reddedilir
+
+
+def gamma_pdc_oku(deger) -> float | None:
+    """SAF (C1). `params_json.gamma_pdc` → float ya da None. Yalnız sonlu ve (−0,01, 0) aralığındaki değer kabul edilir;
+    bozuk/eksik/yüzde birimli değer sessizce None (varsayılan yol) — uydurma ya da birim tahmini yapılmaz."""
+    if deger is None or isinstance(deger, bool):
+        return None
+    try:
+        g = float(deger)
+    except (TypeError, ValueError):
+        return None
+    if g != g or not (GAMMA_PDC_ALT < g < GAMMA_PDC_UST):
+        return None
+    return g
+
+
 def sayi_veya(deger, varsayilan: float) -> float:
     """SAF (v2.669 geometri kusuru, 28.11.2026). Eksik/None/boş/bozuk → varsayılan; **0 geçerli sayıdır** (düz çatı tilt 0°,
     kuzey azimut 0°). Eski `plant.get("tilt") or 20.0` kalıbı 0'ı eksik sayıp 20°/180° yazıyordu."""
@@ -81,6 +98,12 @@ def plant_spec_kur(plant, kalibrasyon_params=None) -> PlantSpec:
         izleyici_gcr=float(pj.get("izleyici_gcr") or 0.35),
         izleyici_capraz_egim=float(pj.get("izleyici_capraz_egim") or 0.0),
     )
+    # Faz 1 ticari hazırlık C1 (28.11.2026): BELGELİ sıcaklık katsayısı — `params_json.gamma_pdc` (1/°C, negatif; örn. PVDAQ 9068
+    # CdTe metadata −0,0028). Otomatik «thin_film → CdTe» eşlemesi YAPILMAZ (ince film alt türü beyanda yok; CdTe/CIGS/a-Si farklı).
+    # Anahtar yoksa ya da değer geçersizse alan None kalır → `effective_gamma` eski yol (mono −0,004): geriye uyum birebir.
+    g = gamma_pdc_oku(pj.get("gamma_pdc"))
+    if g is not None:
+        spec.gamma_pdc = g
     pr = _sozluk(kalibrasyon_params)
     if pr.get("eta_bos"):
         spec.eta_bos = pr["eta_bos"]

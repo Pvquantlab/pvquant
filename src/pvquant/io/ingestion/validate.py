@@ -45,6 +45,12 @@ ZERO_DAYTIME_IRRADIANCE_WM2 = 200.0    # v2.598: ışınım eşiği (W/m²)
 
 #: v2.573 (Faz 1 F1-B): saatin en az bu kadar dakikası ölçülü değilse 'partial_hour' — ortalama güç saati temsil etmez.
 PARTIAL_HOUR_MIN_MINUTES = 45
+#: Faz 1 ticari hazırlık D4 (28.11.2026): etkin tavan ŞÜPHESİ — üst dilim (p99) etiket AC'nin bu oranının altında bir seviyede yığılıyorsa
+#: kırpma platosu değil (muafiyet yok), onaylanmamış bağlantı/kısıntı sınırı olabilir. Yalnız uyarı; bayrak ve model tavanı değişmez.
+ETKIN_TAVAN_ORAN = 0.95            # CLIPPING_PLATEAU_FRACTION ile aynı sınır: üstü = kırpma, altı = şüphe
+ETKIN_TAVAN_BANT = 0.02            # p99 çevresinde ±%2 yığılma bandı
+ETKIN_TAVAN_YIGIN_ORAN = 0.05      # yüklü saatlerin ≥%5'i bantta (PVDAQ 9068 2022: %9,8; çan biçimli seri: ≈%2)
+ETKIN_TAVAN_ASGARI_YUKLU_SAAT = 500
 
 #: Kırpma platosu muafiyeti: güç AC tavanının bu oranı ve üstündeyse
 #: 'saatlerce sabit değer' arıza değil KIRPMADIR — inverter AC limitine
@@ -235,6 +241,14 @@ def validate(
             f"{n_kirpma_muaf} saat AC tavanı platosunda (kırpma): sabit "
             "değerler arıza değil inverter limitidir, geçerli sayıldı."
         )
+    tavan = etkin_tavan_suphesi(power, capacity_kwp, ac_limit_kw, gunluk_ozet)
+    if tavan is not None:
+        report.warnings.append(
+            f"Etkin tavan şüphesi: üst dilim (p99) {tavan['p99_kw']:.0f} kW seviyesinde {tavan['yigin_saat']} saat yığılma "
+            f"(yüklü saatlerin %{tavan['yigin_oran'] * 100:.0f}'i), etiket AC {tavan['ac_kw']:.0f} kW'ın %{tavan['oran_ac'] * 100:.0f}'i. "
+            "Kırpma platosu DEĞİL (AC'nin %95 altı): onaylanmamış bağlantı/kısıntı sınırı ya da küçük inverter olabilir — "
+            "işletmeciyle teyit edin; satırlar geçerli sayıldı, model tavanı değiştirilmedi."
+        )
     n_night = int(counts.get(RowFlag.NIGHT_PRODUCTION.value, 0))
     if n_read > 0 and n_night > 0.02 * n_read:
         report.warnings.append(
@@ -251,6 +265,27 @@ def validate(
                 "kontrol edin."
             )
     return out, report
+
+
+def etkin_tavan_suphesi(power: pd.Series, capacity_kwp: float, ac_limit_kw: float | None, gunluk_ozet: bool = False) -> dict | None:
+    """SAF (D4). Etiket AC biliniyorken üst dilimin AC'nin altında bir platoda yığılıp yığılmadığını ölçer.
+    Döner: {p99_kw, yigin_saat, yigin_oran, ac_kw, oran_ac} ya da None (AC yok, günlük özet, yetersiz veri, plato yok ya da kırpma ≥ %95 AC).
+    Şüphe ≠ teyit: kök neden (bağlantı sınırı, kısıntı ayarı, inverter) belge ister; bayrak/model değişmez."""
+    if gunluk_ozet or ac_limit_kw is None or ac_limit_kw <= 0 or capacity_kwp <= 0:
+        return None
+    yuklu = power.dropna()
+    yuklu = yuklu[yuklu > 0.05 * capacity_kwp]
+    if len(yuklu) < ETKIN_TAVAN_ASGARI_YUKLU_SAAT:
+        return None
+    p99 = float(yuklu.quantile(0.99))
+    if p99 <= 0 or p99 > ETKIN_TAVAN_ORAN * float(ac_limit_kw):
+        return None                                   # ≥ %95 AC: kırpma platosu (mevcut muafiyet yolu), şüphe değil
+    bant = (yuklu >= (1 - ETKIN_TAVAN_BANT) * p99) & (yuklu <= (1 + ETKIN_TAVAN_BANT) * p99)
+    yigin = int(bant.sum())
+    oran = yigin / len(yuklu)
+    if oran < ETKIN_TAVAN_YIGIN_ORAN:
+        return None
+    return {"p99_kw": p99, "yigin_saat": yigin, "yigin_oran": oran, "ac_kw": float(ac_limit_kw), "oran_ac": p99 / float(ac_limit_kw)}
 
 
 def _find_gaps(index: pd.DatetimeIndex) -> tuple[int, list[tuple[str, str]]]:
