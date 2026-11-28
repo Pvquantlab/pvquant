@@ -34,6 +34,7 @@ ISIM_TR = {
     "kgup_revizyon_kontrol": "Program revizyonu kontrolü (gün içi)",   # 30.10 v2.507 (F-10)
     "kgup_teslim_kontrol": "Program bildirimi kontrolü (15:35)",
     "iletisim_kontrol": "İletişim kesintisi kontrolü (her saat)",      # 01.11 v2.519 (P7a)
+    "hizmet_uyari": "Servis hatası uyarısı (her saat)",               # 28.11 v2.670 adayı
     "teminat_hatirlatma": "Teminat saati hatırlatması (10:15)",       # 01.11 v2.519 (P7a): iş günü, lisanslı
     "ptf_kontrol": "Yarın düşük fiyat kontrolü (14:40)",              # 01.11 v2.519 (P7a)
     "gece_kur": "Döviz kuru çekimi (TCMB, 16:05)",                     # 01.11 v2.520 (P5a)

@@ -12,7 +12,12 @@ from sqlalchemy import text
 
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.gozlem import sentry_baslat as _sentry_baslat
-from pvquant.services import calib_service, forecast_service, plant_service
+from pvquant.services import (
+    calib_service,
+    forecast_service,
+    hizmet_uyari_service,  # v2.670 adayı: servis hatası uyarısı
+    plant_service,
+)
 from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.services.alarm_service import hatirlatma_avans as alarm_avans
 from pvquant.services.alarm_service import hatirlatma_teminat as alarm_teminat
@@ -1085,6 +1090,8 @@ if __name__ == "__main__":
     # 01.11 v2.519 (P7a): kural bazlı sıklık — iletişim kesintisi her saat (:50), teminat 07:15 UTC (10:15 TSİ) ve avans 11:45 UTC (14:45 TSİ)
     # iş günü hatırlatmaları, PTF düşük saat 11:40 UTC (gün öncesi PTF işinden 5 dk sonra); takvim son tarihleri gece alarm taramasında
     sch.add_job(_logla("iletisim_kontrol", alarm_iletisim), "cron", minute=50)
+    # v2.670 adayı (28.11.2026): servis hatası uyarısı — jobs_log error → PVQ_ALARM_TO e-posta (mevcut kanal; tekilleme 6 sa; düzelme mektubu)
+    sch.add_job(_logla_tek("hizmet_uyari", hizmet_uyari_service.calistir), "cron", minute=55)
     sch.add_job(_logla("teminat_hatirlatma", alarm_teminat), "cron", hour=7, minute=15)
     sch.add_job(_logla("ptf_kontrol", alarm_ptf), "cron", hour=11, minute=40)
     sch.add_job(_logla("avans_hatirlatma", alarm_avans), "cron", hour=11, minute=45)
