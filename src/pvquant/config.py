@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     # aksi hâlde Mod B (künyede geri_dusus). Varsayılan kapalı; ayar okunamazsa kapalı. Onaysız dosya için pickle HİÇ yüklenmez.
     mod_c_musteri: Literal["kapali", "acik"] = "kapali"
     mod_c_onayli_artefakt: str = ""         # örn. "a1b2c3d4e5f60718,..." — açık onayla eklenen artefakt sha16'ları
+    # Faz 1 gölge motoru (28.11.2026; fail-closed, varsayılan KAPALI): sabah yayın koşusundan sonra aynı NWP yayınıyla A/B/C gölge
+    # koşuları `etiket='golge'` olarak arşivlenir (müşteri yüzeyleri karne_kurali ile dışlar). Üç kapı birden gerekir:
+    # golge_etkin=acik ∧ santral id `golge_santraller` listesinde ∧ (C için) mod_c_golge=acik ∧ artefakt sha16 `mod_c_onayli_artefakt`'ta.
+    golge_etkin: Literal["kapali", "acik"] = "kapali"
+    golge_santraller: str = ""              # virgülle plants.id listesi (boş = hiçbiri) — kaynak sınırı + açık santral onayı
+    golge_modlar: str = "A,B,C"             # istenen gölge modları
+    mod_c_golge: Literal["kapali", "acik"] = "kapali"   # gölge C artefaktı yüklenebilir mi (müşteri bayrağından bağımsız; aynı sha listesi)
     # G5-P1 / F1-14 (25.11.2026): tahmin yayın sürekliliği — son yayın koşusu bundan eskiyse /v1/sureklilik 503 (harici izleyici için)
     sureklilik_esik_saat: int = 30
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri

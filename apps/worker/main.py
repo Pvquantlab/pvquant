@@ -15,6 +15,7 @@ from pvquant.gozlem import sentry_baslat as _sentry_baslat
 from pvquant.services import (
     calib_service,
     forecast_service,
+    golge_service,  # Faz 1 gölge motoru (28.11.2026; varsayılan kapalı)
     hizmet_uyari_service,  # v2.670 adayı: servis hatası uyarısı
     plant_service,
 )
@@ -99,6 +100,11 @@ def sabah_tahmin(plant):
     # v2.264: koşu kaydedildikten SONRA webhook (tahmin.yeni); alıcı hatası koşuyu düşürmez
     from pvquant.services import webhook_service
     webhook_service.sabah_sonrasi(plant, str(kosu_id) if kosu_id else None)
+
+
+def golge_tahmin(plant):
+    """Faz 1 gölge motoru: santral başına gölge turu (bkz. golge_service.golge_motoru_calistir); sonuç sözlüğü jobs_log'a."""
+    return golge_service.golge_motoru_calistir(plant)
 
 
 def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
@@ -856,6 +862,10 @@ def tam_tur():
     _logla("iklim_yakalama", iklim_yakalama)()          # v2.359 (yalnız beklentisi olmayan santral)
     _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
     _logla("sabah_tahmin", sabah_tahmin)()
+    # Faz 1 gölge motoru (28.11.2026): varsayılan KAPALI — golge_etkin=acik değilse ne koşar ne jobs_log satırı düşer.
+    # Açıkken yayın koşusundan SONRA, aynı NWP yayınıyla A/B/C gölge koşuları etiket='golge' (müşteri yüzeyleri dışlar).
+    if golge_service.golge_ayarlari()["etkin"]:
+        _logla("golge_tahmin", golge_tahmin)()
     _logla("alarm", alarm_tara)()
 
 

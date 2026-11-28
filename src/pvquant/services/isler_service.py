@@ -35,6 +35,7 @@ ISIM_TR = {
     "kgup_teslim_kontrol": "Program bildirimi kontrolü (15:35)",
     "iletisim_kontrol": "İletişim kesintisi kontrolü (her saat)",      # 01.11 v2.519 (P7a)
     "hizmet_uyari": "Servis hatası uyarısı (her saat)",               # 28.11 v2.670 adayı
+    "golge_tahmin": "Gölge tahmin kıyası (A/B/C, yayın sonrası)",   # 28.11 gölge motoru — yalnız golge_etkin=acik iken koşar
     "teminat_hatirlatma": "Teminat saati hatırlatması (10:15)",       # 01.11 v2.519 (P7a): iş günü, lisanslı
     "ptf_kontrol": "Yarın düşük fiyat kontrolü (14:40)",              # 01.11 v2.519 (P7a)
     "gece_kur": "Döviz kuru çekimi (TCMB, 16:05)",                     # 01.11 v2.520 (P5a)
