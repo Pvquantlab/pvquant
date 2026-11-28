@@ -175,3 +175,42 @@ def test_g5p4_yeniden_kurulabilirlik_sinyali(monkeypatch):
     monkeypatch.setattr(yk, "kurulabilirlik", sahte)
     s = ss._yeniden_kurma_ozet([{"id": r, "tenant_id": "t"} for r in ("a", "b", "c", "d", "e")])
     assert s == {"kosu": 3, "kurulabilir": 1, "kismi": 2, "kurulamaz": 0, "nedenler": ["mod B: kalibrasyon parametresi/ML artefaktı bu denetimin dışında"]}
+
+
+def test_tasarim_a_kalibrasyon_yasi_sinyali():
+    """Tasarım A (26.11): kalibrasyon yaşı/başarısızlık sinyali — saf sınıflama: NEVER_CALIBRATED / FAILED / STALE / HEALTHY; sınır 60 g
+    (60 → HEALTHY, 61 → STALE); created_at tz'siz ve ISO metin kabul; eksik damga → NEVER; FAILED yalnız hata aktif kalibrasyondan SONRAYSA;
+    ozet'te anahtar yoksa sinyal eklenmez; mevcut sözleşme (diğer bileşenler) değişmez."""
+    simdi = SIMDI
+
+    def g(d):
+        return simdi - dt.timedelta(days=d)
+    assert ss.kalibrasyon_yasi_gun(None, simdi) is None and ss.kalibrasyon_yasi_gun("", simdi) is None
+    assert ss.kalibrasyon_yasi_gun(g(60), simdi) == 60 and ss.kalibrasyon_yasi_gun(g(60).replace(tzinfo=None), simdi) == 60   # tz'siz = UTC
+    assert ss.kalibrasyon_yasi_gun(g(3).isoformat(), simdi) == 3
+    assert ss.kalibrasyon_durumu(None, None, None, None, simdi, 60) == ("NEVER_CALIBRATED", None)
+    assert ss.kalibrasyon_durumu("B", None, "ok", g(1), simdi, 60) == ("NEVER_CALIBRATED", None)                       # damga yok → kanıt yok
+    assert ss.kalibrasyon_durumu("B", g(60), "ok", g(60), simdi, 60) == ("HEALTHY", 60)                                 # sınır dâhil
+    assert ss.kalibrasyon_durumu("B", g(61), "ok", g(61), simdi, 60) == ("STALE", 61)
+    assert ss.kalibrasyon_durumu("B", g(56), "error", g(25), simdi, 60) == ("FAILED", 56)                              # hata kalibrasyondan sonra
+    assert ss.kalibrasyon_durumu("B", g(10), "error", g(40), simdi, 60) == ("HEALTHY", 10)                             # eski hata, yeni kalibrasyon → sağlıklı
+    assert ss.kalibrasyon_durumu("C", g(70), "error", g(5), simdi, 60) == ("FAILED", 70)                               # FAILED, STALE'den önce
+
+    def satir(ad, mode, ca, st, sz):
+        return {"name": ad, "mode": mode, "created_at": ca, "son_is_durum": st, "son_is_zaman": sz}
+
+    taban = ss.sinifla(_ozet(), ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert "kalibrasyon" not in taban
+    o = _ozet()
+    o["kalibrasyon"] = ss.kalibrasyon_ozeti_kur([satir("A", None, None, None, None), satir("B", None, None, "error", g(25))], simdi)
+    v = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v["kalibrasyon"]["durum"] == "dogrulanamadi" and "Mod A" in v["kalibrasyon"]["neden"] and v["durum"] == taban["durum"]
+    o["kalibrasyon"] = ss.kalibrasyon_ozeti_kur([satir("Golden", "B", g(56), "error", g(25)), satir("K", None, None, "error", g(25))], simdi)
+    v2 = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v2["kalibrasyon"]["durum"] == "dikkat" and "Golden" in v2["kalibrasyon"]["neden"] and "HATA" in v2["kalibrasyon"]["neden"]
+    assert v2["kalibrasyon"]["sayim"] == {"NEVER_CALIBRATED": 1, "FAILED": 1, "STALE": 0, "HEALTHY": 0} and v2["durum"] in ("dikkat", "kritik")
+    o["kalibrasyon"] = ss.kalibrasyon_ozeti_kur([satir("Golden", "B", g(70), "ok", g(70))], simdi)
+    assert ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]["kalibrasyon"]["durum"] == "dikkat"                 # STALE
+    o["kalibrasyon"] = ss.kalibrasyon_ozeti_kur([satir("Golden", "B", g(5), "ok", g(5)), satir("K", None, None, None, None)], simdi)
+    v4 = ss.sinifla(o, ISLER_OK, SIMDI)["bilesenler"]["veritabani"]
+    assert v4["kalibrasyon"]["durum"] == "saglikli" and "1 santral Mod A" in v4["kalibrasyon"]["neden"]
