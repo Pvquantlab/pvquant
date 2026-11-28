@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     golge_santraller: str = ""              # virgülle plants.id listesi (boş = hiçbiri) — kaynak sınırı + açık santral onayı
     golge_modlar: str = "A,B,C"             # istenen gölge modları
     mod_c_golge: Literal["kapali", "acik"] = "kapali"   # gölge C artefaktı yüklenebilir mi (müşteri bayrağından bağımsız; aynı sha listesi)
+    golge_ardisik_hata_sinir: int = 3       # devre kesici: santralın son N gölge turu art arda 'error' ise motor o santral için durur (elle inceleme)
     # G5-P1 / F1-14 (25.11.2026): tahmin yayın sürekliliği — son yayın koşusu bundan eskiyse /v1/sureklilik 503 (harici izleyici için)
     sureklilik_esik_saat: int = 30
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri

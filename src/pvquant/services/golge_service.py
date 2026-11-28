@@ -106,9 +106,25 @@ def golge_ayarlari(ayar=None) -> dict:
         etkin = str(getattr(s, "golge_etkin", "kapali") or "").strip().lower() == "acik"
         santraller = frozenset(x.strip().lower() for x in str(getattr(s, "golge_santraller", "") or "").split(",") if x.strip())
         modlar = tuple(m.strip().upper() for m in str(getattr(s, "golge_modlar", "A,B,C") or "").split(",") if m.strip().upper() in GOLGE_MODLAR)
+        _hs = getattr(s, "golge_ardisik_hata_sinir", 3)
+        hata_sinir = max(int(3 if _hs is None else _hs), 1)   # 0/negatif → 1 (en sıkı); None → 3
     except Exception:
-        return {"etkin": False, "santraller": frozenset(), "modlar": ()}
-    return {"etkin": etkin, "santraller": santraller, "modlar": modlar}
+        return {"etkin": False, "santraller": frozenset(), "modlar": (), "hata_sinir": 3}
+    return {"etkin": etkin, "santraller": santraller, "modlar": modlar, "hata_sinir": hata_sinir}
+
+
+def golge_son_ardisik_hata(tenant_id, plant_id, n: int = 10) -> int:
+    """DB (salt okunur): jobs_log'da santralın en yeni `golge_tahmin` satırlarından başa dönük art arda 'error' sayısı (devre kesici girdisi)."""
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        durumlar = [r[0] for r in s.execute(_text("SELECT status FROM jobs_log WHERE job='golge_tahmin' AND plant_id=:p ORDER BY started DESC LIMIT :n"),
+                                            {"p": plant_id, "n": n}).all()]
+    say = 0
+    for d in durumlar:
+        if d != "error":
+            break
+        say += 1
+    return say
 
 
 def golge_kosu_kimligi(plant_id, mode_gerceklesen: str, model_adi: str, nwp_kosu_zamani) -> tuple:
@@ -142,7 +158,7 @@ def yayin_nwp_kosusu(tenant_id, plant_id, simdi: pd.Timestamp):
 
 
 def golge_motoru_calistir(plant: dict, *, simdi: pd.Timestamp | None = None, ayar=None, meteo_getir=None, girdi_getir=None,
-                          nwp_yayin_getir=None, tekrar_var=None, arsivle=None) -> dict:
+                          nwp_yayin_getir=None, tekrar_var=None, arsivle=None, ardisik_hata_getir=None) -> dict:
     """Bir santral için gölge turu (worker `golge_tahmin`). Dönen sözlük jobs_log sonuc_json'una gider; durum ∈ {atlandi, ok, kismi}.
     Bağımlılıklar enjekte edilebilir (test); varsayılanlar üretim yolları. Sıra: kapı → yayın NWP → meteo (aynı yayın mı?) → girdi
     (gölge C artefaktı fail-closed) → modlar → tekrar denetimi → arşiv. Hiçbir adım müşteri koşusunu değiştirmez."""
@@ -156,6 +172,11 @@ def golge_motoru_calistir(plant: dict, *, simdi: pd.Timestamp | None = None, aya
         return {"durum": "atlandi", "neden": "golge_modlar boş"}
     simdi = pd.Timestamp(simdi) if simdi is not None else pd.Timestamp.now(tz="UTC")
     tenant_id = plant["tenant_id"]
+    # Devre kesici (otomatik durdurma): son N tur art arda hata → bu santral için gölge durur; jobs_log'a 'atlandi' + neden; elle inceleme/sıfırlama
+    ardisik = (ardisik_hata_getir or golge_son_ardisik_hata)(tenant_id, plant["id"])
+    if ardisik >= a["hata_sinir"]:
+        return {"durum": "atlandi", "neden": f"devre kesici: son {ardisik} gölge turu art arda hatalı (sınır {a['hata_sinir']}) — elle inceleme gerekir",
+                "ardisik_hata": ardisik}
     nwp_yayin = (nwp_yayin_getir or yayin_nwp_kosusu)(tenant_id, plant["id"], simdi)
     if nwp_yayin is None:
         return {"durum": "atlandi", "neden": "bugün yayın koşusu yok (gölge yayınsız koşmaz)"}
