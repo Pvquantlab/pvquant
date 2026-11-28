@@ -799,11 +799,23 @@ def aylik_kalibrasyon(plant):
     bayat, neden = calib_service.kalibrasyon_bayat_mi(oz.get("son_ts"))
     if bayat:
         print(f"aylik_kalibrasyon atlandı: {plant.get('name')} — {neden}; mevcut ayar korunur")
-        return
+        # 26.11: None dönüş jobs_log'a boş 'ok' yazıyordu (01.11: Golden/Edikli iki boş ok) → yapılı 'atlandi' + neden (G1 sınıflaması)
+        return {"durum": "atlandi", "mesaj": f"kalibrasyon atlandı: {neden}; mevcut ayar korunur", "mode": None, "neden": neden,
+                "hibrit_hata": None, "hibrit_gecti": False}
     r = calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
-    if isinstance(r, dict) and r.get("mode") == "atlandi":   # G2-C1 (C2-8): kör B yazılmadı — jobs_log 'atlandi' (G1 sınıflaması)
-        return f"kalibrasyon atlandı (Mod B kapısı): {r.get('kapi')}; mevcut ayar korunur"
-    return f"kalibrasyon {r.get('mode')} yazıldı" if isinstance(r, dict) else None
+    if not isinstance(r, dict):
+        return None
+    # 26.11: yapılı sonuç → jobs_log.sonuc_json (Sistem sağlığı / veri yolu regex yerine bunu okur); hibrit altyapı hatası
+    # (gate.hata) metinde ve JSON'da AÇIKÇA görünür — Mod B'ye düşüş sessiz kalmaz. İş durumu semantiği aynı: 'atlandi' yalnız
+    # Mod B kapısı düştüğünde; hibrit hatası tek başına 'error' yapılmaz (mevcut ayar korunur, model davranışı değişmez).
+    g = r.get("gate") or {}
+    hib = (f"hibrit DENENEMEDİ: {r.get('hibrit_hata')}" if r.get("hibrit_hata")
+           else ("hibrit kapıyı geçti" if g.get("gecti") else (f"hibrit kapıyı geçmedi: {g.get('sebep')}" if g.get("denendi") else "hibrit denenmedi")))
+    if r.get("mode") == "atlandi":   # G2-C1 (C2-8): kör B yazılmadı — jobs_log 'atlandi' (G1 sınıflaması)
+        return {"durum": "atlandi", "mesaj": f"kalibrasyon atlandı (Mod B kapısı): {r.get('kapi')}; mevcut ayar korunur; {hib}",
+                "mode": "atlandi", "kapi": r.get("kapi"), "hibrit_hata": r.get("hibrit_hata"), "hibrit_gecti": bool(g.get("gecti"))}
+    return {"durum": "ok", "mesaj": f"kalibrasyon {r.get('mode')} yazıldı; {hib}", "mode": r.get("mode"), "calibration_id": r.get("calibration_id"),
+            "hibrit_hata": r.get("hibrit_hata"), "hibrit_gecti": bool(g.get("gecti")), "eta_bos": r.get("eta_bos")}
 
 
 def aylik_bankable(plant):
