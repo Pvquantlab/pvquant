@@ -16,7 +16,7 @@ def _oku():
 
 
 def test_yalniz_elle_ve_yalniz_main():
-    metin, y = _oku()
+    _, y = _oku()
     on = y.get("on", y.get(True))
     assert list(on.keys()) == ["workflow_dispatch"]                       # otomatik tetikleme yok
     assert y["jobs"]["deploy"]["if"] == "github.ref == 'refs/heads/main'"
