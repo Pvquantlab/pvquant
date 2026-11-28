@@ -297,6 +297,22 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
         HIBRIT_MUTLAK_TAVAN = _cfg.gate_mape_ceiling          # v2.53: ayardan
         HIBRIT_MUTLAK_TAVAN_WMAPE = _cfg.gate_wmape_ceiling   # v2.53: ayardan
         _w = getattr(res, "holdout_wmape_pct", None)
+        _pw_bloklu = None
+        _sd = None
+        if _cfg.secim_dogrulama == "mevsim_bloklu":   # 26.11: kapı holdout'u zaman sıralı mevsim blokları (eşikler aynı); başarısızsa eski yola düşer
+            try:
+                from pvquant.services import secim_dogrulama as _sdm
+                _m_b, _m_c = _sdm.uretim_degerlendiriciler(scada, meteo, _plant_spec(plant), plant_ctx={
+                    "capacity_kwp": plant["capacity_kwp"], "latitude": plant["lat"], "longitude": plant["lon"], "timezone": plant["tz"],
+                    "tilt": plant.get("tilt") or 20, "azimuth": plant.get("azimuth") or 180,
+                    "panel_technology": panel_teknolojisi(plant.get("panel_tech")), "ac_limit_kw": plant.get("ac_limit_kw")},
+                    plant_name=plant["name"], threshold_kw=1.0)
+                _sd = _sdm.degerlendir(scada.power_kw.index, scada.power_kw, _m_b, _m_c, esik_kw=1.0)
+            except Exception as e:  # doğrulama yardımcı; kalibrasyonu düşürmez, eski yol kalır
+                _sd = {"hata": f"{type(e).__name__}: {e}"[:200]}
+            if _sd and _sd.get("C") is not None:
+                _w = _sd["C"]["wmape"]
+                _pw_bloklu = _sd["B"]["wmape"]
         _wtxt = f"{_w:.1f}" if _w is not None else "yok"
         _taban_ok = ((_w <= HIBRIT_MUTLAK_TAVAN_WMAPE) if _w is not None
                      else (res.holdout_mape_pct is not None
@@ -304,7 +320,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
         # v2.51-C: goreli esik de WMAPE diline tasinir. Ayrisma vakasi #1
         # kaniti: ayni holdout'ta MAPE-iyilesmesi %-43 derken WMAPE
         # hibriti 0,23p onde gormustu — kapi karari yanlis dilden geliyordu.
-        _pw = getattr(res, "physics_wmape_pct", None)
+        _pw = _pw_bloklu if _pw_bloklu is not None else getattr(res, "physics_wmape_pct", None)
         _w_iyi = (float((_pw - _w) / _pw * 100.0)
                   if (_w is not None and _pw is not None and _pw > 0) else None)
         _iyi_etkin = _w_iyi if _w_iyi is not None else res.improvement_pct
@@ -325,6 +341,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "kapsama_p10_p90": getattr(res, "coverage_p10_p90_pct", None),
                 "bant_ort_kw": getattr(res, "band_width_mean_kw", None),
                 "bant_pct": getattr(res, "band_width_pct_of_p50", None),
+                "secim_dogrulama": _sd,   # 26.11: None = eski son %20 yolu
             }
         else:
             gate = {
@@ -338,6 +355,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "kapsama_p10_p90": getattr(res, "coverage_p10_p90_pct", None),
                 "bant_ort_kw": getattr(res, "band_width_mean_kw", None),
                 "bant_pct": getattr(res, "band_width_pct_of_p50", None),
+                "secim_dogrulama": _sd,
                 "sebep": (res.error
                           or (f"holdout WMAPE %{_wtxt} > "
                               f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"

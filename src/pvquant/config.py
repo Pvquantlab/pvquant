@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     gate_wmape_ceiling: float = 25.0        # hibrit mutlak taban (birincil, WMAPE)
     gate_mape_ceiling: float = 35.0         # eski MAPE tavani — yedek yol
     gate_min_improvement_pct: float = 3.0   # goreli kapi esigi
+    # 26.11.2026 (MODEL_BC_KIYAS): Mod C kapısının holdout kümesi — "son20" = eğitim penceresinin son %20'si (eski, mevsim yanlı),
+    # "mevsim_bloklu" = zaman sıralı 4 mevsim bloğu, havuzlanmış (secim_dogrulama). Eşikler aynı; yalnız holdout kümesi değişir.
+    secim_dogrulama: Literal["son20", "mevsim_bloklu"] = "son20"
     guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
     min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
     skill_naive_ratio_clip: float = 4.0     # v2.55: berrak-gok orani kelepcesi
