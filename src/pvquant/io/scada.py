@@ -72,7 +72,9 @@ class SCADAData:
             return s.resample("1h").mean() if s is not None else None
 
         def resample_sum(s: pd.Series | None) -> pd.Series | None:
-            return s.resample("1h").sum() if s is not None else None
+            # Faz 1 Mod B veri sözleşmesi (28.11.2026): hiç örneği olmayan ya da tüm örnekleri NaN olan saat NaN kalır —
+            # pandas `sum()` boş kovada 0 döndürür, bu «0 kWh üretildi» uydurmasıdır (güç aynı saatte NaN iken enerji 0 çelişkisi).
+            return s.resample("1h").sum(min_count=1) if s is not None else None
 
         return SCADAData(
             power_kw=self.power_kw.resample("1h").mean(),
