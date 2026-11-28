@@ -2,9 +2,9 @@
 KUSUR KANITI testleri (sentetik veri yalnız mekanizmayı gösterir; metrik kanıtı değildir).
 
 Her test bir hükmü pinler; davranış (sözleşme) değişirse test kırılır ve karar görünür olur:
-  K1  fizik parametreleri (η_BoS/BG) TÜM pencereyle uydurulur, sonra son %20 «holdout» ilan edilir → fizik için holdout örneklem içi.
-  K2  LightGBM erken durdurma (model seçimi) AYNI holdout üzerinde yapılır → raporlanan holdout metriği seçimden bağımsız değil.
-  K3  konformal q̂ aynı holdout'tan hesaplanır ve kapsama aynı holdout'ta raporlanır → kapsama inşa gereği hedefe oturur (bilgi taşımaz).
+  K1  fizik parametreleri (η_BoS/BG) yalnız EĞİTİM dilimiyle uydurulur (holdout + doğrulama dışarıda) — 28.11 KAPANDI.
+  K2  LightGBM erken durdurma DOĞRULAMA diliminde; raporlanan holdout seçimde kullanılmaz — 28.11 KAPANDI.
+  K3  konformal q̂ doğrulama diliminden; PICP holdout'ta bağımsız ölçülür — 28.11 KAPANDI.
   K4  `kt_referans` ayarı özellik üretimini değiştirir; 28.11 düzeltmesiyle artefakta yazılır ve bekçi servis ayarıyla kıyaslar (KAPANDI).
 Üretim parametreleri, eşikler ve denklemler DEĞİŞMEZ; bu dosya yalnız gözlemler.
 """
@@ -79,11 +79,11 @@ def test_k1_fizik_uydurmasi_holdout_penceresini_icerir(monkeypatch):
     _, hist = _veri()
     m = _egit(hist)
     r = m._training_report
-    son_olcum = pd.Timestamp(hist["timestamp"].max())
-    # Fizik uydurması pencerenin SON damgasına kadar görür; oysa holdout = temiz saatlerin son %20'si (aynı kuyruk).
-    assert gorulen["son"] == son_olcum, "fizik uydurması holdout kuyruğunu görmüyorsa bu test (ve K1 hükmü) güncellenmeli"
-    assert r["holdout_hours"] > 0 and gorulen["n"] >= r["train_hours"] + r["holdout_hours"], \
-        "fizik uydurma örneklemi eğitim+holdout toplamından küçük olmalıydı (dürüst bölme) — değil"
+    kesim_dog, kesim_hold = pd.Timestamp(m._bolme["kesim_dogrulama"]), pd.Timestamp(m._bolme["kesim_holdout"])
+    assert kesim_dog < kesim_hold < pd.Timestamp(hist["timestamp"].max())
+    # K1 kapandı: fizik uydurması yalnız eğitim dilimini görür (doğrulama ve holdout kuyruğu dışarıda).
+    assert gorulen["son"] < kesim_dog, "fizik uydurması doğrulama/holdout damgası görüyor → K1 yeniden açıldı"
+    assert gorulen["n"] <= 0.66 * int(hist["power_kw"].notna().sum()) and r["holdout_hours"] > 0 and r["validation_hours"] > 0
 
 
 # ---------------------------------------------------------------- K2: erken durdurma = raporlanan holdout
@@ -104,25 +104,31 @@ def test_k2_erken_durdurma_kumesi_raporlanan_holdout_ile_ayni(monkeypatch):
     r = m._training_report
     assert len(yakalanan) == 4, "L2 + 3 kuantil booster bekleniyordu"
     ix = yakalanan[0]
-    assert len(ix) == int(r["holdout_hours"]), "erken durdurma kümesi raporlanan holdout boyutunda değil → hüküm K2 değişti"
-    assert all(len(j) == len(ix) and j.equals(ix) for j in yakalanan[1:]), "kuantil boosterlar da aynı holdout'ta seçiliyor"
-    assert r["best_iteration"] > 0, "en iyi iterasyon bu kümede seçildi (model seçimi = rapor kümesi)"
+    kesim_dog, kesim_hold = pd.Timestamp(m._bolme["kesim_dogrulama"]), pd.Timestamp(m._bolme["kesim_holdout"])
+    # K2 kapandı: erken durdurma kümesi = doğrulama dilimi; holdout ile kesişmez.
+    assert len(ix) == int(r["validation_hours"]) and ix.min() >= kesim_dog and ix.max() < kesim_hold, "erken durdurma holdout'a değiyor → K2 yeniden açıldı"
+    assert all(j.equals(ix) for j in yakalanan[1:]), "kuantil boosterlar da aynı doğrulama diliminde durmalı"
+    assert r["best_iteration"] > 0 and r["holdout_hours"] > 0
 
 
 # ---------------------------------------------------------------- K3: konformal q̂ ve kapsama aynı veride
-def test_k3_konformal_kapsama_hedefe_insa_geregi_oturur():
-    from pvquant.config import get_settings
-    hedef = float(get_settings().quantile_coverage_target_pct)
-    sonuc = {}
-    for ad, gurultu in (("az", 0.03), ("cok", 0.20)):
-        _, hist = _veri(gurultu=gurultu, tohum=11)
-        r = _egit(hist)._training_report
-        sonuc[ad] = (r["coverage_p10_p90_raw_pct"], r["coverage_p10_p90_holdout_pct"], r["conformal_offset_kw"])
-    for ad, (_ham, kal, _ofs) in sonuc.items():
-        assert kal >= hedef - 0.5, f"{ad}: q̂ aynı holdout'tan alındığı için kapsama ≥ hedef olmalıydı (inşa gereği); {kal:.1f} < {hedef}"
-    # Ham kapsamalar gürültüye göre ayrışır ama kalibre kapsama ikisinde de hedefe oturur → metrik model kalitesini ayırt etmez.
-    assert abs(sonuc["az"][1] - sonuc["cok"][1]) < 5.0, "kalibre kapsama iki gürültü düzeyinde de ~hedef olmalı"
-    assert sonuc["az"][2] != sonuc["cok"][2], "ofsetler farklı → kapsamayı eşitleyen şey veri değil, aynı veriden alınan q̂"
+def test_k3_konformal_q_hat_dogrulamadan_picp_holdoutta(monkeypatch):
+    # K3 kapandı: q̂ kuantili DOĞRULAMA dilimi boyutundaki skor dizisinden alınır; kapsama HOLDOUT'ta ölçülür (bağımsız PICP).
+    import numpy as _np
+    boylar: list = []
+    orijinal = _np.quantile
+
+    def sarmal(a, q, *args, **k):
+        boylar.append(len(_np.asarray(a)))
+        return orijinal(a, q, *args, **k)
+
+    monkeypatch.setattr(_np, "quantile", sarmal)
+    _, hist = _veri(gurultu=0.08, tohum=11)
+    m = _egit(hist)
+    r = m._training_report
+    assert boylar and boylar[-1] == int(r["validation_hours"]) and boylar[-1] != int(r["holdout_hours"]), "q̂ doğrulama diliminden gelmiyor → K3 yeniden açıldı"
+    assert r["coverage_p10_p90_holdout_pct"] == r["coverage_p10_p90_holdout_pct"] and r["coverage_p10_p90_raw_pct"] == r["coverage_p10_p90_raw_pct"]  # NaN değil
+    assert m._bolme["yontem"] == "kronolojik_uc_yollu"
 
 
 # ---------------------------------------------------------------- K4: kt_referans artefakta yazılmaz
