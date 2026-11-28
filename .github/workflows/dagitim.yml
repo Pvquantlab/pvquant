@@ -11,6 +11,10 @@ name: Dağıtım
 on:
   workflow_dispatch:
     inputs:
+      onayli_sha:
+        description: "Onaylanmış commit SHA (40 hex). Sunucu HEAD bu SHA olmazsa dağıtım DURUR; CI bu SHA'da yeşil olmalı."
+        type: string
+        required: true
       imajlar:
         description: "Yeniden derlenecek imajlar (api ve worker aynı Dockerfile'dan ayrı etiketlerdir)"
         type: choice
@@ -33,8 +37,25 @@ jobs:
     env:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       IMAJLAR: ${{ inputs.imajlar }}
+      ONAYLI_SHA: ${{ inputs.onayli_sha }}
 
     steps:
+      # v2.669 sürüm güvenliği (28.11.2026): (1) SHA biçimi, (2) SHA main'in atası, (3) o SHA'da CI yeşil — hepsi dağıtımdan ÖNCE;
+      # sunucuda `git pull` sonrası HEAD = onaylı SHA kapısı aşağıda. Beklenmeyen revizyon (onay ile dağıtım arasında main'e giren
+      # commit) bu kapılarda durur. Geri dönüş: eski imaj etiketi `:onceki` build öncesi alınır.
+      - name: Onaylı SHA biçimi, main atası ve CI durumu
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ inputs.onayli_sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::onayli_sha 40 hex olmalı"; exit 1; }
+          durum=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${SHA}...main" --jq '.status')
+          echo "main ile ilişki: $durum"
+          [ "$durum" = "identical" ] || [ "$durum" = "ahead" ] || { echo "::error::SHA main'in atası değil ($durum)"; exit 1; }
+          ci=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" --jq '[.check_runs[] | select(.name|test("test|CI|ci"))] | map(.conclusion) | unique | join(",")')
+          echo "CI check-run sonuçları: ${ci:-<yok>}"
+          [ "$ci" = "success" ] || { echo "::error::CI bu SHA'da yeşil değil (${ci:-yok})"; exit 1; }
+
       - name: Gizli değişkenler tanımlı mı
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -66,6 +87,8 @@ jobs:
               cd /opt/pvquant
               git pull --ff-only
               echo \"sunucu HEAD: \$(git log --oneline -1)\"
+              [ \"\$(git rev-parse HEAD)\" = \"${ONAYLI_SHA}\" ] || { echo \"HATA: sunucu HEAD onaylı SHA değil\"; exit 7; }
+              for i in ${IMAJLAR}; do docker image inspect pvquant-\$i:latest >/dev/null 2>&1 && docker tag pvquant-\$i:latest pvquant-\$i:onceki || true; done
               export PVQ_SURUM=\$(git describe --always)
               echo \"PVQ_SURUM=\$PVQ_SURUM\"
               docker compose build ${IMAJLAR}
