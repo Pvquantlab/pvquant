@@ -52,9 +52,10 @@ jobs:
           durum=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${SHA}...main" --jq '.status')
           echo "main ile ilişki: $durum"
           [ "$durum" = "identical" ] || [ "$durum" = "ahead" ] || { echo "::error::SHA main'in atası değil ($durum)"; exit 1; }
-          ci=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" --jq '[.check_runs[] | select(.name|test("test|CI|ci"))] | map(.conclusion) | unique | join(",")')
-          echo "CI check-run sonuçları: ${ci:-<yok>}"
-          [ "$ci" = "success" ] || { echo "::error::CI bu SHA'da yeşil değil (${ci:-yok})"; exit 1; }
+          # ci.yml iki check-run üretir: "test" ve "web" — ikisi de success olmalı; eksik/bekleyen/kırmızı → dur (bayat onay da burada düşer)
+          ozet=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" --jq '[.check_runs[] | select(.name=="test" or .name=="web")] | map("\(.name)=\(.conclusion)") | sort | unique | join(",")')
+          echo "CI check-run sonuçları: ${ozet:-<yok>}"
+          [ "$ozet" = "test=success,web=success" ] || { echo "::error::CI bu SHA'da tam yeşil değil (${ozet:-yok})"; exit 1; }
 
       - name: Gizli değişkenler tanımlı mı
         env:
