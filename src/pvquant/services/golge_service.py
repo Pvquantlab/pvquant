@@ -17,6 +17,9 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text as _text
 
+from pvquant.services import (
+    kalite_sozlugu as _ks,  # flag süzgeci TEK sözlükten (test_kalite_sozlugu_v2598 bekçisi)
+)
 from pvquant.services.forecast_service import TahminGirdisi, TahminSonucu, arsive_yaz, tahmin_uret
 from pvquant.services.karne_kurali import ETIKET_GOLGE, ETIKETLER
 
@@ -274,7 +277,7 @@ def golge_degerlendir_df(df: pd.DataFrame, capacity_kwp: float, esikler: dict | 
 
 
 def golge_degerlendir(tenant_id, plant: dict, bas, bit) -> list[dict]:
-    """DB (salt okunur): [bas, bit) içinde run_at'li yayın (müşteri) ve gölge koşuları + scada_hourly flag='valid' gerçekleşen → golge_degerlendir_df.
+    """DB (salt okunur): [bas, bit) içinde run_at'li yayın (müşteri) ve gölge koşuları + scada_hourly gerçekleşen (kalite sözlüğü süzgeci) → golge_degerlendir_df.
     Yayın koşusu 'yayin' etiketiyle, gölgeler 'golge_<mode>' etiketiyle kıyaslanır; aynı ts yalnız her modda tahmin varsa sayılır."""
     from pvquant.db import tenant_baglami
     from pvquant.services.karne_kurali import yayin_kosu_sql
@@ -284,7 +287,7 @@ def golge_degerlendir(tenant_id, plant: dict, bas, bit) -> list[dict]:
             " EXTRACT(EPOCH FROM (v.ts_utc - r.run_at))/3600.0 AS ufuk_saat, v.p50_kw, v.p10_kw, v.p90_kw, "
             " COALESCE(h.energy_kwh, h.power_kw) AS gercek_kw "
             "FROM forecast_runs r JOIN forecast_values v ON v.run_id = r.id "
-            "LEFT JOIN scada_hourly h ON h.plant_id = r.plant_id AND h.ts_utc = v.ts_utc AND h.flag = 'valid' "
+            "LEFT JOIN scada_hourly h ON h.plant_id = r.plant_id AND h.ts_utc = v.ts_utc AND " + _ks.sql_kosulu('karne', 'h') + " "
             "WHERE r.plant_id = :p AND r.run_at >= :a AND r.run_at < :b AND v.ts_utc >= r.run_at "
             " AND (r.etiket = :g OR (" + yayin_kosu_sql("r", elle_dahil=False) + " AND COALESCE(r.etiket,'yayin') = 'yayin'))"),
             s.connection(), params={"p": plant["id"], "a": pd.Timestamp(bas).to_pydatetime(), "b": pd.Timestamp(bit).to_pydatetime(), "g": ETIKET_GOLGE})
