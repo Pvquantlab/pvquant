@@ -176,10 +176,17 @@ def test_g2_c_artefakt_yoksa_dusus_gizlenmez():
     assert (s.mod, s.mode_gerceklesen, s.model_adi, s.geri_dusus) == ("C", "B", "barhdadi_bennis", "hibrit_artefakt_yok")
 
 
-def test_g2_worker_ve_uretim_akisinda_golge_yok():
-    for yol in ("apps/worker/main.py", "apps/api/main.py", "src/pvquant/services/forecast_service.py"):
+def test_g2_uretim_akisinda_golge_yok_worker_kancasi_yalniz_bayrakla():
+    """28.11 gölge motoru: worker kancası ARTIK VAR ama yalnız `golge_etkin=acik` ile ve yalnız `golge_tahmin` adıyla (kapalıyken tam_tur
+    birebir — tests/test_golge_motoru.py::test_worker_kancasi_yalniz_bayrakla). API ve üretim tahmin yolu gölgeyi hâlâ tanımaz."""
+    for yol in ("apps/api/main.py", "src/pvquant/services/forecast_service.py"):
         metin = (KOK / yol).read_text()   # (api'deki `golge_gorunum` kaynak-seçim görünümüdür, bu pakete ait değil)
-        assert not any(k in metin for k in ("golge_service", "golge_calistir", "golge_girdi", "ETIKET_GOLGE")), yol   # zamanlama/uç/üretim kancası yok
+        assert not any(k in metin for k in ("golge_service", "golge_calistir", "golge_girdi", "ETIKET_GOLGE")), yol   # uç/üretim kancası yok
+    w = (KOK / "apps/worker/main.py").read_text()
+    assert 'if golge_service.golge_ayarlari()["etkin"]:' in w and w.count("golge_service.golge_motoru_calistir(plant)") == 1   # tek kanca, bayrak kapılı
+    assert not any(k in w for k in ("golge_calistir", "golge_girdi", "ETIKET_GOLGE", "golge_arsivle")), "worker yalnız motor orkestratörünü çağırır"
+    from pvquant.config import Settings
+    assert Settings.model_fields["golge_etkin"].default == "kapali"
 
 
 # ---------------------------------------------------------------- G1+G3 DB entegrasyonu (test DB; göç v2667 uygulanmış olmalı)
