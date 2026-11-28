@@ -30,6 +30,19 @@ def mod_c_aktivasyon(ayar=None) -> dict:
     return {"etkin": etkin, "onayli": onayli}
 
 
+def golge_aktivasyon(ayar=None) -> dict:
+    """Gölge C için {etkin, onayli}: `mod_c_golge` bayrağı + AYNI onaylı sha listesi (`mod_c_onayli_artefakt`). Fail-closed.
+    Müşteri bayrağı (`mod_c_musteri`) okunmaz: gölge açıkken müşteri yine B alır; müşteri açıkken gölge ayrıca açılmalıdır."""
+    try:
+        s = ayar if ayar is not None else get_settings()
+        etkin = str(getattr(s, "mod_c_golge", "kapali") or "").strip().lower() == "acik"
+        ham = str(getattr(s, "mod_c_onayli_artefakt", "") or "")
+        onayli = frozenset(x.strip().lower() for x in ham.split(",") if x.strip())
+    except Exception:
+        return {"etkin": False, "onayli": frozenset()}
+    return {"etkin": etkin, "onayli": onayli}
+
+
 def artefakt_uyumlu(model) -> tuple[bool, str | None]:
     """Yüklenmiş artefakt kodla uyumlu mu: HybridResidualModel, aynı MODEL_VERSION, booster özellik adları = FEATURE_COLUMNS."""
     from pvquant.models_v2 import hybrid_residual as hr
