@@ -134,6 +134,16 @@ def _servisleri_on_yukle() -> None:
 
 
 @app.on_event("startup")
+def _nabiz_bekcisini_baslat() -> None:
+    """v2.670 adayı (28.11.2026): worker'dan bağımsız nabız bekçisi — worker tamamen durursa PVQ_ALARM_TO'ya e-posta (bkz. nabiz_bekcisi_service).
+    Kanal yoksa başlamaz; hiçbir hata açılışı düşürmez."""
+    import contextlib
+    with contextlib.suppress(Exception):
+        from pvquant.services import nabiz_bekcisi_service
+        nabiz_bekcisi_service.baslat()
+
+
+@app.on_event("startup")
 def _yanit_isiticisini_baslat() -> None:
     """17.11 Genel bakış hız turu — sunucu içi ısıtıcı: damga değişince (gece koşusu, SCADA, ayar) her etkin santral için
     genel-bakis / summary / forecast(384) önbelleğini tek işçi yeniden üretir; ilk ziyaretçi soğuk bedeli (573/184/294 ms +
