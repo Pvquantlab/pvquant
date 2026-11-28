@@ -35,7 +35,9 @@ def _ayar(plant, **k):
 def test_db_golge_motoru_uctan_uca_idempotans_ve_degerlendirme(santral):   # noqa: F811 — pytest fixture parametresi
     tid, plant, cid = santral
     simdi = pd.Timestamp.now("UTC").floor("h")
-    if simdi.hour == 0:                      # yayın koşusu aynı UTC gününde kalsın (yayin_nwp_kosusu gün başından arar)
+    # Gün sınırı tuzağı (CI 46189752729, 00:12 TSİ): yayın koşusu simdi−1 dk → hem UTC günü (yayin_nwp_kosusu gün başından arar) hem
+    # TSİ günü (provenans gün bazında gruplar) aynı kalmalı; iki saat diliminde de saat 0 ise bir saat ileri al.
+    while simdi.hour == 0 or simdi.tz_convert("Europe/Istanbul").hour == 0:
         simdi += pd.Timedelta(hours=1)
     nwp = simdi - pd.Timedelta(hours=6)
     meteo = _sentetik_meteo(simdi.strftime("%Y-%m-%d"), 3, kosu_zamani=nwp)
