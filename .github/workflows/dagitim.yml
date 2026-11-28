@@ -1,4 +1,4 @@
-# PVQuant dağıtımı (v2.509) — yalnız elle tetiklenir, yalnız main dalından.
+# PVQuant dağıtımı (v2.509; 28.11.2026 pvquant-deploy hesabı) — yalnız elle tetiklenir, yalnız main dalından.
 # Neden: dağıtım bugüne dek geliştiricinin bilgisayarından ssh ile yapılıyordu; 30.10.2026'da port 22
 # tek bir IP'ye kapandı ve v2.506 saatlerce bekledi. Bu iş GitHub runner'ından aynı komutu koşar.
 # Sırlar depoda değil, GitHub gizli değişkenlerinde (docs/CI-DAGITIM.md):
@@ -83,19 +83,10 @@ jobs:
         run: |
           # 25.11.2026 (Faz 1 kalan #7): PVQ_SURUM dışa aktarılmazsa compose build.args boş kalır → X-PVQ-Yazilim ve koşu künyesi
           # yazilim_surumu boş (24.11 A1 hazırlık bulgusu). Damga sunucuda git describe'tan alınır ve doğrulama adımına taşınır.
+          # v2.670 adayı (28.11.2026): en az ayrıcalık — root yerine `pvquant-deploy` (docker grubu yok, genel sudo yok); authorized_keys
+          # `restrict,command=pvquant-dagit-sarmal` zorunlu komut; sunucudaki root'a ait sabit betik aynı sırayı koşar (pull → HEAD=SHA → :onceki → build → up).
           ssh -i ~/.ssh/dagitim -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
-            "root@${DEPLOY_HOST}" "set -e
-              cd /opt/pvquant
-              git pull --ff-only
-              echo \"sunucu HEAD: \$(git log --oneline -1)\"
-              [ \"\$(git rev-parse HEAD)\" = \"${ONAYLI_SHA}\" ] || { echo \"HATA: sunucu HEAD onaylı SHA değil\"; exit 7; }
-              for i in ${IMAJLAR}; do docker image inspect pvquant-\$i:latest >/dev/null 2>&1 && docker tag pvquant-\$i:latest pvquant-\$i:onceki || true; done
-              export PVQ_SURUM=\$(git describe --always)
-              echo \"PVQ_SURUM=\$PVQ_SURUM\"
-              docker compose build ${IMAJLAR}
-              docker compose up -d
-              sleep 6
-              docker compose ps --format '{{.Name}} {{.Status}}'" | tee /tmp/sunucu.log
+            "pvquant-deploy@${DEPLOY_HOST}" "dagit ${ONAYLI_SHA} ${IMAJLAR}" | tee /tmp/sunucu.log
           surum=$(sed -n 's/^PVQ_SURUM=//p' /tmp/sunucu.log | tail -1)
           [ -n "$surum" ] || { echo "::error::PVQ_SURUM sunucuda üretilemedi"; exit 1; }
           echo "surum=$surum" >> "$GITHUB_OUTPUT"

@@ -7,7 +7,11 @@ from pathlib import Path
 
 import yaml
 
-YOL = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "dagitim.yml"
+KOK = Path(__file__).resolve().parents[1]
+YOL = KOK / ".github" / "workflows" / "dagitim.yml"
+BETIK = KOK / "scripts" / "sunucu" / "pvquant-dagit"
+SARMAL = KOK / "scripts" / "sunucu" / "pvquant-dagit-sarmal"
+SUDOERS = KOK / "scripts" / "sunucu" / "sudoers-pvquant-deploy"
 
 
 def _oku():
@@ -30,9 +34,23 @@ def test_onayli_sha_girdisi_zorunlu_ve_kapilar_var():
     assert '[[ "$SHA" =~ ^[0-9a-f]{40}$ ]]' in metin                                   # biçim
     assert 'compare/${SHA}...main' in metin and '"identical"' in metin and '"ahead"' in metin   # main atası
     assert 'check-runs' in metin and '"test=success,web=success"' in metin           # CI iki iş de yeşil
-    assert 'git rev-parse HEAD)\\" = \\"${ONAYLI_SHA}\\"' in metin and "exit 7" in metin   # sunucu HEAD kapısı
-    assert ":onceki" in metin                                                          # geri dönüş etiketi
-    assert "git pull --ff-only" in metin and "docker compose up -d" in metin
+    # 28.11 (en az ayrıcalık): sunucu adımı root yerine pvquant-deploy + zorunlu komut; HEAD=SHA / :onceki / pull / up kapıları
+    # sunucudaki root'a ait sabit betikte (scripts/sunucu/pvquant-dagit) — aşağıda pinlenir
+    assert '"pvquant-deploy@${DEPLOY_HOST}" "dagit ${ONAYLI_SHA} ${IMAJLAR}"' in metin and "root@" not in metin
+
+
+def test_sunucu_betigi_kapilari_ve_en_az_ayricalik():
+    b = BETIK.read_text(encoding="utf-8")
+    assert '[[ "$sha" =~ ^[0-9a-f]{40}$ ]]' in b                                          # sha biçimi
+    assert '"api worker web"|"api web"|"web"' in b                                      # imajlar beyaz listesi
+    assert "git pull --ff-only" in b and '[ "$(git rev-parse HEAD)" = "$sha" ]' in b and "exit 7" in b
+    assert ":onceki" in b and "docker compose build $imajlar" in b and "docker compose up -d" in b
+    assert "kontrol)" in b                                                               # dağıtımsız test modu
+    w = SARMAL.read_text(encoding="utf-8")
+    assert "SSH_ORIGINAL_COMMAND" in w and "exec sudo -n /usr/local/sbin/pvquant-dagit" in w and "REDDEDİLDİ" in w
+    su = SUDOERS.read_text(encoding="utf-8")
+    assert su.strip().splitlines()[-1] == "pvquant-deploy ALL=(root) NOPASSWD: /usr/local/sbin/pvquant-dagit"   # tek komut
+    assert "ALL=(ALL)" not in su and "docker" not in su.lower().replace("pvquant-dagit", "")
 
 
 def test_sirlar_yalniz_secrets_ten_gelir():
