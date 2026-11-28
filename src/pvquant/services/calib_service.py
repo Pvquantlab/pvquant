@@ -13,6 +13,7 @@ from pvquant.pipeline.calibration import calibrate_from_scada
 from pvquant.services.plant_spec_service import params_json, plant_spec_kur
 from pvquant.pipeline.forecast import PlantSpec
 from pvquant.pipeline.hybrid_ui import run_hybrid_training, session_ozeti
+from pvquant.services.plant_spec_service import egim_azimut
 
 ARTIFACT_DIR = pathlib.Path("var/artifacts")
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -280,8 +281,8 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "capacity_kwp": plant["capacity_kwp"],
                 "latitude": plant["lat"], "longitude": plant["lon"],
                 "timezone": plant["tz"],
-                "tilt": plant.get("tilt") or 20,
-                "azimuth": plant.get("azimuth") or 180,
+                "tilt": egim_azimut(plant)[0],
+                "azimuth": egim_azimut(plant)[1],
                 "panel_technology": panel_teknolojisi(plant.get("panel_tech")),   # G2-C1 (C2-2): monofacial → mono
                 # B-1 v2.27: AC tavanı kaynağı → PlantProfile ailesi
                 "ac_limit_kw": plant.get("ac_limit_kw"),

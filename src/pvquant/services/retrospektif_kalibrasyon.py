@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from pvquant.services.plant_spec_service import egim_azimut
+
 ETIKET = "retrospektif_model_deneyi"
 GEREKLI = ("power_kw",)
 GUNDUZ_ORAN = 0.02       # geçerli saat eşiği = kWp × 0,02 (karne_kurali.GUNDUZ_ORAN ile aynı); motorun mutlak 1 kW varsayılanı küçük santralde (2,4 kWp)
@@ -114,7 +116,7 @@ def hibrit_kapisi(scada, meteo, plant: dict) -> dict:
     from pvquant.services.calib_service import panel_teknolojisi
     cfg = get_settings()
     ctx = {"capacity_kwp": plant["capacity_kwp"], "latitude": plant["lat"], "longitude": plant["lon"], "timezone": plant.get("tz") or "UTC",
-           "tilt": plant.get("tilt") or 20, "azimuth": plant.get("azimuth") or 180, "panel_technology": panel_teknolojisi(plant.get("panel_tech")),
+           "tilt": egim_azimut(plant)[0], "azimuth": egim_azimut(plant)[1], "panel_technology": panel_teknolojisi(plant.get("panel_tech")),
            "ac_limit_kw": plant.get("ac_limit_kw")}
     try:
         res = run_hybrid_training(scada=scada, historical_meteo=meteo, plant_ctx=ctx, plant_name=str(plant.get("name") or "retrospektif"))

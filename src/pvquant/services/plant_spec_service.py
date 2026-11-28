@@ -25,6 +25,25 @@ def params_json(plant) -> dict:
     return pj or {}
 
 
+def sayi_veya(deger, varsayilan: float) -> float:
+    """SAF (v2.669 geometri kusuru, 28.11.2026). Eksik/None/boş/bozuk → varsayılan; **0 geçerli sayıdır** (düz çatı tilt 0°,
+    kuzey azimut 0°). Eski `plant.get("tilt") or 20.0` kalıbı 0'ı eksik sayıp 20°/180° yazıyordu."""
+    if deger is None or isinstance(deger, bool):
+        return float(varsayilan)
+    try:
+        g = float(deger)
+    except (TypeError, ValueError):
+        return float(varsayilan)
+    if g != g:                      # NaN
+        return float(varsayilan)
+    return g
+
+
+def egim_azimut(plant) -> tuple[float, float]:
+    """Santral satırı → (tilt, azimuth); eksikse 20°/180° (eski varsayılan), 0° korunur. TEK nokta: tüm servisler bunu çağırır."""
+    return sayi_veya(plant.get("tilt"), 20.0), sayi_veya(plant.get("azimuth"), 180.0)
+
+
 def _sozluk(params) -> dict:
     if params is None:
         return {}
@@ -42,8 +61,8 @@ def plant_spec_kur(plant, kalibrasyon_params=None) -> PlantSpec:
     pj = params_json(plant)
     spec = PlantSpec(
         p_nom_kwp=plant["capacity_kwp"], latitude=plant["lat"],
-        longitude=plant["lon"], tilt=plant.get("tilt") or 20.0,
-        azimuth=plant.get("azimuth") or 180.0,
+        longitude=plant["lon"], tilt=egim_azimut(plant)[0],
+        azimuth=egim_azimut(plant)[1],
         bifacial_factor=0.7 if plant.get("panel_tech") == "bifacial" else 0.0,
         # B-1 Adım 3: AC kırpma köprüsü (None = kırpma yok)
         p_ac_clip_kw=plant.get("ac_limit_kw"),
