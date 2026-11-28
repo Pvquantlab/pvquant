@@ -1,0 +1,13 @@
+#!/bin/bash
+# /usr/local/sbin/pvquant-dagit-sarmal — root:root 0755; authorized_keys'te zorunlu komut (restrict,command=…).
+# SSH_ORIGINAL_COMMAND yalnız "kontrol" ya da "dagit <sha40> <imajlar>" olabilir; başka her şey reddedilir; shell/pty/forwarding yok (restrict).
+set -euo pipefail
+cmd="${SSH_ORIGINAL_COMMAND:-}"
+case "$cmd" in
+  kontrol) exec sudo -n /usr/local/sbin/pvquant-dagit kontrol ;;
+  dagit\ *)
+    case "$cmd" in *[\;\|\&\`\$\(\)\<\>\\]*|*$'\n'*) echo "REDDEDİLDİ: geçersiz karakter" >&2; exit 126 ;; esac
+    set -f; set -- $cmd; shift                       # noglob: '*' dosya adlarına açılmaz; argümanlar betikte regex/beyaz liste ile doğrulanır
+    exec sudo -n /usr/local/sbin/pvquant-dagit dagit "$@" ;;
+  *) echo "REDDEDİLDİ: yalnız 'kontrol' ya da 'dagit <sha> <imajlar>'" >&2; exit 126 ;;
+esac

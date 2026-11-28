@@ -1,0 +1,30 @@
+#!/bin/bash
+# /usr/local/sbin/pvquant-dagit — root:root 0755; YALNIZ sudoers ile pvquant-deploy tarafından çağrılır.
+# Modlar: kontrol | dagit <sha40> <imajlar>   (imajlar ∈ "api worker web" | "api web" | "web")
+# dagitim.yml'nin sunucu adımıyla birebir aynı sıra: pull --ff-only → HEAD = SHA kapısı → :onceki → PVQ_SURUM → build → up -d → ps
+set -euo pipefail
+umask 022
+cd /opt/pvquant
+mod="${1:-}"
+case "$mod" in
+  kontrol)
+    echo "sunucu: $(hostname) | HEAD: $(git log --oneline -1) | PVQ_SURUM(api): $(docker compose exec -T api env 2>/dev/null | sed -n 's/^PVQ_SURUM=//p')"
+    docker compose ps --format '{{.Name}} {{.Status}}'
+    ;;
+  dagit)
+    sha="${2:-}"; shift 2 || true; imajlar="${*:-}"
+    [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "HATA: sha biçimi"; exit 2; }
+    case "$imajlar" in "api worker web"|"api web"|"web") ;; *) echo "HATA: imajlar '$imajlar' izinli değil"; exit 3;; esac
+    git pull --ff-only
+    echo "sunucu HEAD: $(git log --oneline -1)"
+    [ "$(git rev-parse HEAD)" = "$sha" ] || { echo "HATA: sunucu HEAD onaylı SHA değil"; exit 7; }
+    for i in $imajlar; do docker image inspect "pvquant-$i:latest" >/dev/null 2>&1 && docker tag "pvquant-$i:latest" "pvquant-$i:onceki" || true; done
+    export PVQ_SURUM="$(git describe --always)"
+    echo "PVQ_SURUM=$PVQ_SURUM"
+    docker compose build $imajlar
+    docker compose up -d
+    sleep 6
+    docker compose ps --format '{{.Name}} {{.Status}}'
+    ;;
+  *) echo "kullanım: pvquant-dagit kontrol | dagit <sha40> <imajlar>"; exit 1;;
+esac
