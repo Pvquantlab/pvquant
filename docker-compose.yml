@@ -97,6 +97,7 @@ services:
       PVQ_SMTP_PASS: ${PVQ_SMTP_PASS:-}
       PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
       PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
+      PVQ_ALARM_TO: ${PVQ_ALARM_TO:-}   # 28.11 v2.670 adayı: API nabız bekçisi (worker kesintisi e-postası)
       PVQ_BILDIRIM_EPOSTA: ${PVQ_BILDIRIM_EPOSTA:-}
       PVQ_DOMAIN: ${PVQ_DOMAIN:-localhost}   # v2.335: sıfırlama bağlantısı tabanı
       # v2.377: EPİAŞ Şeffaflık kimliği — /epias-uretim durum ucu uygun_mu ile bunu okur
